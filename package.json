@@ -1,0 +1,29 @@
+{
+  "name": "frozen-shake",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "mobile": "turbo run dev --filter=mobile",
+    "server": "turbo run dev --filter=server"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.4"
+  },
+  "overrides": {
+    "drizzle-orm": "^0.45.2",
+    "typescript": "^5.5.4"
+  },
+
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.8.0"
+}
