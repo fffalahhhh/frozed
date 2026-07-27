@@ -53,28 +53,27 @@ function CategoryCard({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className={`rounded-3xl px-4 py-3.5 mr-3 min-w-[145px] h-[96px] justify-between border ${
-        isActive
-          ? 'bg-primary border-primary shadow-lg shadow-primary/30'
-          : 'bg-white/90 border-border/60 shadow-sm'
-      }`}
+      className={`rounded-3xl px-4 py-3.5 mr-3 min-w-[145px] h-[96px] justify-between border ${isActive
+        ? 'bg-primary border-primary shadow-lg shadow-primary/30'
+        : 'bg-white/90 border-border/60 shadow-sm'
+        }`}
       activeOpacity={0.85}
       style={
         isActive
           ? {
-              shadowColor: '#1B4332',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.25,
-              shadowRadius: 10,
-              elevation: 6,
-            }
+            shadowColor: '#1B4332',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.25,
+            shadowRadius: 10,
+            elevation: 6,
+          }
           : {
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.04,
-              shadowRadius: 6,
-              elevation: 2,
-            }
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.04,
+            shadowRadius: 6,
+            elevation: 2,
+          }
       }
     >
       {/* Badge */}
@@ -87,9 +86,8 @@ function CategoryCard({
         </View>
       ) : (
         <View
-          className={`self-start rounded-full px-2.5 py-0.5 flex-row items-center gap-1 ${
-            isActive ? 'bg-white/20' : 'bg-success-bg border border-primary/10'
-          }`}
+          className={`self-start rounded-full px-2.5 py-0.5 flex-row items-center gap-1 ${isActive ? 'bg-white/20' : 'bg-success-bg border border-primary/10'
+            }`}
         >
           <Ionicons
             name="checkmark-circle"
@@ -97,9 +95,8 @@ function CategoryCard({
             color={isActive ? '#FFFFFF' : '#1B4332'}
           />
           <Text
-            className={`text-[10px] font-sans-semibold ${
-              isActive ? 'text-white' : 'text-primary'
-            }`}
+            className={`text-[10px] font-sans-semibold ${isActive ? 'text-white' : 'text-primary'
+              }`}
           >
             Available
           </Text>
@@ -109,17 +106,15 @@ function CategoryCard({
       {/* Title & Count */}
       <View>
         <Text
-          className={`font-sans-bold text-base leading-tight ${
-            isActive ? 'text-white' : 'text-text-primary'
-          }`}
+          className={`font-sans-bold text-base leading-tight ${isActive ? 'text-white' : 'text-text-primary'
+            }`}
           numberOfLines={1}
         >
           {name}
         </Text>
         <Text
-          className={`font-sans text-xs mt-0.5 ${
-            isActive ? 'text-white/75' : 'text-text-muted'
-          }`}
+          className={`font-sans text-xs mt-0.5 ${isActive ? 'text-white/75' : 'text-text-muted'
+            }`}
         >
           {itemCount} Items
         </Text>
@@ -209,9 +204,8 @@ function OrderTypeTabs({
         <TouchableOpacity
           key={t.key}
           onPress={() => onChange(t.key)}
-          className={`flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5 ${
-            value === t.key ? 'bg-primary shadow-sm' : 'bg-transparent'
-          }`}
+          className={`flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5 ${value === t.key ? 'bg-primary shadow-sm' : 'bg-transparent'
+            }`}
           activeOpacity={0.8}
         >
           <Ionicons
@@ -220,9 +214,8 @@ function OrderTypeTabs({
             color={value === t.key ? '#FFFFFF' : '#8A8A8A'}
           />
           <Text
-            className={`font-sans-semibold text-xs ${
-              value === t.key ? 'text-white' : 'text-text-muted'
-            }`}
+            className={`font-sans-semibold text-xs ${value === t.key ? 'text-white' : 'text-text-muted'
+              }`}
           >
             {t.label}
           </Text>
@@ -430,11 +423,10 @@ function CartPanel({ receiptNumber }: { receiptNumber: string }) {
 
       <TouchableOpacity
         disabled={items.length === 0}
-        className={`mx-5 mb-5 mt-4 rounded-full flex-row items-center justify-between px-5 py-3.5 ${
-          items.length === 0
-            ? 'bg-primary/40'
-            : 'bg-primary shadow-lg shadow-primary/30'
-        }`}
+        className={`mx-5 mb-5 mt-4 rounded-full flex-row items-center justify-between px-5 py-3.5 ${items.length === 0
+          ? 'bg-primary/40'
+          : 'bg-primary shadow-lg shadow-primary/30'
+          }`}
         activeOpacity={0.85}
       >
         <Text className="text-white font-sans-bold text-base">
@@ -476,7 +468,7 @@ export default function FOHScreen() {
 
   const activeSection = menuData?.find(
     (s: MenuWithCategories) => s.category.id === activeCategoryId
-  );
+  ) ?? menuData?.[0];
 
   const filteredItems = (activeSection?.items ?? []).filter((item: MenuItem) =>
     item.name.toLowerCase().includes(search.toLowerCase())
@@ -525,21 +517,21 @@ export default function FOHScreen() {
       >
         {isLoading
           ? [1, 2, 3].map((i) => (
-              <View
-                key={i}
-                className="bg-white/60 rounded-3xl mr-3 min-w-[145px] h-[96px] border border-border/40"
-              />
-            ))
+            <View
+              key={i}
+              className="bg-white/60 rounded-3xl mr-3 min-w-[145px] h-[96px] border border-border/40"
+            />
+          ))
           : menuData?.map((section: MenuWithCategories) => (
-              <CategoryCard
-                key={section.category.id}
-                name={section.category.name}
-                itemCount={section.items.length}
-                isActive={activeCategoryId === section.category.id}
-                needsRestock={section.needsRestock}
-                onPress={() => setActiveCategoryId(section.category.id)}
-              />
-            ))}
+            <CategoryCard
+              key={section.category.id}
+              name={section.category.name}
+              itemCount={section.items.length}
+              isActive={activeCategoryId === section.category.id}
+              needsRestock={section.needsRestock}
+              onPress={() => setActiveCategoryId(section.category.id)}
+            />
+          ))}
       </ScrollView>
 
       {/* Menu Item Grid */}

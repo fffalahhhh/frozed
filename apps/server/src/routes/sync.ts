@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import { orders, orderItems, menuItems } from '../db/schema.js';
+import { orders, orderItems, menuItems, users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 export const syncRouter = new Hono();
@@ -10,13 +10,23 @@ syncRouter.post('/orders', async (c) => {
   const { orders: offlineOrders } = await c.req.json();
   const results = [];
 
+  const defaultUser = await db.query.users.findFirst();
+
   for (const payload of offlineOrders) {
     const { order: orderData, items: itemsData } = payload;
+
+    let cashierId = orderData.cashierId;
+    if (!cashierId || cashierId === '00000000-0000-0000-0000-000000000000') {
+      cashierId = defaultUser?.id;
+    }
 
     // Insert order
     const [inserted] = await db
       .insert(orders)
-      .values(orderData)
+      .values({
+        ...orderData,
+        cashierId,
+      })
       .onConflictDoNothing()
       .returning();
 

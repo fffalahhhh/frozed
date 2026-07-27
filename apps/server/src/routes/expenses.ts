@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import { shopExpenses } from '../db/schema.js';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { shopExpenses, users } from '../db/schema.js';
+import { eq, gte, lte } from 'drizzle-orm';
 
 export const expensesRouter = new Hono();
 
@@ -19,12 +19,24 @@ expensesRouter.get('/', async (c) => {
 
 // POST /expenses — log a new expense
 expensesRouter.post('/', async (c) => {
-  const { recordedBy, category, amount, note, expenseDate } =
+  const { recordedBy: reqRecordedBy, category, amount, note, expenseDate } =
     await c.req.json();
+
+  let recordedBy = reqRecordedBy;
+  if (!recordedBy || recordedBy === '00000000-0000-0000-0000-000000000000') {
+    const firstUser = await db.query.users.findFirst();
+    recordedBy = firstUser?.id;
+  }
+
+  if (!recordedBy) {
+    return c.json({ success: false, error: 'No user found' }, 400);
+  }
+
   const [expense] = await db
     .insert(shopExpenses)
     .values({ recordedBy, category, amount, note, expenseDate })
     .returning();
+
   return c.json({ success: true, data: expense }, 201);
 });
 

@@ -3,8 +3,6 @@ import { db } from '../db/index.js';
 import {
   categories,
   menuItems,
-  menuItemFlavours,
-  flavours,
   inventoryItems,
 } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
@@ -54,6 +52,13 @@ menuRouter.get('/', async (c) => {
   });
 
   return c.json({ success: true, data: result });
+});
+
+// POST /menu/categories — create category
+menuRouter.post('/categories', async (c) => {
+  const body = await c.req.json();
+  const [cat] = await db.insert(categories).values(body).returning();
+  return c.json({ success: true, data: cat }, 201);
 });
 
 // GET /menu/items/:id

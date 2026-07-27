@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import { inventoryItems, inventoryAdjustments } from '../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { inventoryItems, inventoryAdjustments, users } from '../db/schema.js';
+import { eq, sql, desc } from 'drizzle-orm';
 
 export const inventoryRouter = new Hono();
 
@@ -30,8 +30,18 @@ inventoryRouter.patch('/:id', async (c) => {
 
 // POST /inventory/adjust — log an adjustment (restock / waste / correction)
 inventoryRouter.post('/adjust', async (c) => {
-  const { inventoryItemId, userId, type, quantityDelta, note } =
+  const { inventoryItemId, userId: reqUserId, type, quantityDelta, note } =
     await c.req.json();
+
+  let userId = reqUserId;
+  if (!userId || userId === '00000000-0000-0000-0000-000000000000') {
+    const firstUser = await db.query.users.findFirst();
+    userId = firstUser?.id;
+  }
+
+  if (!userId) {
+    return c.json({ success: false, error: 'No user found' }, 400);
+  }
 
   // Update stock quantity
   await db
@@ -54,7 +64,7 @@ inventoryRouter.post('/adjust', async (c) => {
 inventoryRouter.get('/adjustments', async (c) => {
   const adjustments = await db.query.inventoryAdjustments.findMany({
     with: { item: true, user: true },
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    orderBy: [desc(inventoryAdjustments.createdAt)],
     limit: 100,
   });
   return c.json({ success: true, data: adjustments });

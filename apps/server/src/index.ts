@@ -19,7 +19,7 @@ app.use('*', logger());
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:8081', 'exp://localhost:8081'],
+    origin: '*',
     credentials: true,
   })
 );
@@ -40,6 +40,6 @@ app.route('/sync', syncRouter);
 
 // ─── Start server ─────────────────────────────────────────────────────────────
 const port = parseInt(process.env.PORT ?? '3000');
-console.log(`🧃 Frozen Shake API running on http://localhost:${port}`);
+console.log(`🧃 Frozen Shake API running on http://0.0.0.0:${port}`);
 
-serve({ fetch: app.fetch, port });
+serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });

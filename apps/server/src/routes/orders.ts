@@ -7,8 +7,9 @@ import {
   recipes,
   makingCosts,
   menuItems,
+  users,
 } from '../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 export const ordersRouter = new Hono();
 
@@ -22,7 +23,6 @@ async function computeItemCost(
     .from(recipes)
     .where(eq(recipes.menuItemId, menuItemId));
 
-  // Include common rows (flavourId = null) and flavour-specific rows
   const relevant = recipeRows.filter(
     (r) => r.flavourId === null || r.flavourId === flavourId
   );
@@ -40,10 +40,30 @@ async function computeItemCost(
   return ingredientCost + making;
 }
 
+// GET /orders — list all orders
+ordersRouter.get('/', async (c) => {
+  const list = await db.query.orders.findMany({
+    orderBy: [desc(orders.createdAt)],
+    with: { items: true, cashier: true, bill: true },
+  });
+  return c.json({ success: true, data: list });
+});
+
 // POST /orders — create new order
 ordersRouter.post('/', async (c) => {
-  const { cashierId, tableRef, orderType, customerName, items: cartItems, notes } =
+  const { cashierId: reqCashierId, tableRef, orderType, customerName, items: cartItems, notes } =
     await c.req.json();
+
+  // Resolve valid cashier ID
+  let cashierId = reqCashierId;
+  if (!cashierId || cashierId === '00000000-0000-0000-0000-000000000000') {
+    const firstUser = await db.query.users.findFirst();
+    cashierId = firstUser?.id;
+  }
+
+  if (!cashierId) {
+    return c.json({ success: false, error: 'No user found for cashierId' }, 400);
+  }
 
   let subtotal = 0;
   const processedItems: typeof orderItems.$inferInsert[] = [];
@@ -69,7 +89,7 @@ ordersRouter.post('/', async (c) => {
       itemCost: itemCost.toFixed(2),
       lineTotal: lineTotal.toFixed(2),
       notes: ci.notes ?? null,
-      orderId: '', // filled after order insert
+      orderId: '',
     });
   }
 
@@ -116,7 +136,7 @@ ordersRouter.get('/:id', async (c) => {
   return c.json({ success: true, data: order });
 });
 
-// PATCH /orders/:id — update status, discount, etc.
+// PATCH /orders/:id
 ordersRouter.patch('/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
@@ -128,7 +148,7 @@ ordersRouter.patch('/:id', async (c) => {
   return c.json({ success: true, data: updated });
 });
 
-// POST /orders/:id/bill — generate bill
+// POST /orders/:id/bill
 ordersRouter.post('/:id/bill', async (c) => {
   const id = c.req.param('id');
   const order = await db.query.orders.findFirst({
@@ -151,7 +171,7 @@ ordersRouter.post('/:id/bill', async (c) => {
   return c.json({ success: true, data: { bill, billNumber } });
 });
 
-// POST /orders/:id/pay — mark paid
+// POST /orders/:id/pay
 ordersRouter.post('/:id/pay', async (c) => {
   const id = c.req.param('id');
   const { paymentMethod } = await c.req.json();
