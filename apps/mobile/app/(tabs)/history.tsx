@@ -7,7 +7,11 @@ import { api } from '../../lib/api';
 const fmt = (n: number | string) => `₹${parseFloat(String(n)).toFixed(0)}`;
 
 export default function HistoryScreen() {
-  const { data: ordersList, isLoading, refetch } = useQuery<any[]>({
+  const {
+    data: ordersList,
+    isLoading,
+    refetch,
+  } = useQuery<any[]>({
     queryKey: ['orders-history'],
     queryFn: () => api.get('/orders'),
   });
@@ -72,16 +76,21 @@ export default function HistoryScreen() {
 
                 <View className="py-2.5">
                   <Text className="text-text-muted font-sans text-xs">
-                    {order.customerName ? `Customer: ${order.customerName}` : 'Walk-in'} • {order.tableRef || 'Takeaway'}
+                    {order.customerName ? `Customer: ${order.customerName}` : 'Walk-in'} •{' '}
+                    {order.tableRef || 'Takeaway'}
                   </Text>
                   <Text className="text-text-muted font-sans-medium text-xs mt-1">
-                    Items: {order.items?.map((i: any) => `${i.quantity}x ${i.menuItemName}`).join(', ')}
+                    Items:{' '}
+                    {order.items?.map((i: any) => `${i.quantity}x ${i.menuItemName}`).join(', ')}
                   </Text>
                 </View>
 
                 <View className="flex-row items-center justify-between pt-2 border-t border-border/30">
                   <Text className="text-text-muted font-sans text-xs">
-                    {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(order.createdAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </Text>
                   <Text className="text-primary font-sans-bold text-base">
                     {fmt(order.totalAmount)}
@@ -92,7 +101,9 @@ export default function HistoryScreen() {
           ) : (
             <View className="items-center justify-center py-20">
               <Ionicons name="receipt-outline" size={48} color="#8A8A8A" />
-              <Text className="text-text-muted font-sans-medium text-sm mt-2">No orders recorded yet</Text>
+              <Text className="text-text-muted font-sans-medium text-sm mt-2">
+                No orders recorded yet
+              </Text>
             </View>
           )}
         </ScrollView>

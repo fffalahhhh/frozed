@@ -4,7 +4,7 @@ export type UserRole = 'cashier' | 'manager' | 'admin';
 
 export type OrderStatus = 'open' | 'billed' | 'paid' | 'voided';
 
-export type PaymentMethod = 'cash' | 'upi' | 'card';
+export type PaymentMethod = 'cash' | 'upi' | 'card' | 'credit';
 
 export type OrderType = 'dine_in' | 'take_away' | 'order_online';
 
@@ -92,6 +92,7 @@ export interface Order {
   tableRef: string | null;
   orderType: OrderType;
   customerName: string | null;
+  customerPhone?: string | null;
   status: OrderStatus;
   paymentMethod: PaymentMethod | null;
   subtotal: string;

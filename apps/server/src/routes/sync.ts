@@ -31,12 +31,10 @@ syncRouter.post('/orders', async (c) => {
       .returning();
 
     if (inserted && itemsData?.length) {
-      const withOrderId = itemsData.map(
-        (i: (typeof orderItems.$inferInsert)) => ({
-          ...i,
-          orderId: inserted.id,
-        })
-      );
+      const withOrderId = itemsData.map((i: typeof orderItems.$inferInsert) => ({
+        ...i,
+        orderId: inserted.id,
+      }));
       await db.insert(orderItems).values(withOrderId).onConflictDoNothing();
     }
 

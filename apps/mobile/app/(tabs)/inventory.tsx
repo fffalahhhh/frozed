@@ -22,7 +22,11 @@ const UNITS = ['ml', 'g', 'pcs', 'kg', 'liters', 'packets'];
 
 export default function InventoryScreen() {
   const queryClient = useQueryClient();
-  const { data: stockItems, isLoading, refetch } = useQuery<any[]>({
+  const {
+    data: stockItems,
+    isLoading,
+    refetch,
+  } = useQuery<any[]>({
     queryKey: ['inventory-stock'],
     queryFn: () => api.get('/inventory'),
   });
@@ -81,7 +85,9 @@ export default function InventoryScreen() {
       <View className="flex-row items-center justify-between pb-4 border-b border-border/40 mb-3">
         <View>
           <Text className="text-text-primary font-sans-bold text-2xl">Inventory</Text>
-          <Text className="text-text-muted font-sans text-xs mt-0.5">Ingredient levels & stock alerts</Text>
+          <Text className="text-text-muted font-sans text-xs mt-0.5">
+            Ingredient levels & stock alerts
+          </Text>
         </View>
 
         <View className="flex-row items-center gap-2">
@@ -129,17 +135,23 @@ export default function InventoryScreen() {
                     {item.needsRestock && (
                       <View className="bg-warning/10 border border-warning/30 rounded-full px-2 py-0.5 flex-row items-center gap-1">
                         <Ionicons name="alert-circle" size={12} color="#F97316" />
-                        <Text className="text-warning text-[10px] font-sans-semibold">Low Stock</Text>
+                        <Text className="text-warning text-[10px] font-sans-semibold">
+                          Low Stock
+                        </Text>
                       </View>
                     )}
                   </View>
                   <Text className="text-text-muted font-sans text-xs mt-1">
-                    Cost: {fmt(item.costPerUnit)} / {item.unit} • Reorder at: {parseFloat(item.reorderLevel)} {item.unit}
+                    Cost: {fmt(item.costPerUnit)} / {item.unit} • Reorder at:{' '}
+                    {parseFloat(item.reorderLevel)} {item.unit}
                   </Text>
                 </View>
 
                 <View className="items-end">
-                  <Text className="text-primary font-sans-bold text-lg" style={{ color: '#1B4332' }}>
+                  <Text
+                    className="text-primary font-sans-bold text-lg"
+                    style={{ color: '#1B4332' }}
+                  >
                     {parseFloat(item.currentStock)}
                   </Text>
                   <Text className="text-text-muted font-sans text-xs">{item.unit}</Text>
@@ -149,7 +161,9 @@ export default function InventoryScreen() {
           ) : (
             <View className="items-center justify-center py-20">
               <Ionicons name="cube-outline" size={48} color="#8A8A8A" />
-              <Text className="text-text-muted font-sans-medium text-sm mt-2">No inventory items found</Text>
+              <Text className="text-text-muted font-sans-medium text-sm mt-2">
+                No inventory items found
+              </Text>
             </View>
           )}
         </ScrollView>
@@ -177,7 +191,9 @@ export default function InventoryScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* Item Name */}
               <View className="mb-4">
-                <Text className="text-text-primary font-sans-medium text-xs mb-1.5">Item Name *</Text>
+                <Text className="text-text-primary font-sans-medium text-xs mb-1.5">
+                  Item Name *
+                </Text>
                 <TextInput
                   value={name}
                   onChangeText={setName}
@@ -189,18 +205,20 @@ export default function InventoryScreen() {
 
               {/* Unit Selection */}
               <View className="mb-4">
-                <Text className="text-text-primary font-sans-medium text-xs mb-1.5">Unit of Measure *</Text>
+                <Text className="text-text-primary font-sans-medium text-xs mb-1.5">
+                  Unit of Measure *
+                </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                   {UNITS.map((u) => (
                     <TouchableOpacity
                       key={u}
                       onPress={() => setUnit(u)}
                       className={`px-4 py-2 rounded-xl border mr-2 ${
-                        unit === u
-                          ? 'bg-primary border-primary'
-                          : 'bg-white border-border'
+                        unit === u ? 'bg-primary border-primary' : 'bg-white border-border'
                       }`}
-                      style={unit === u ? { backgroundColor: '#1B4332', borderColor: '#1B4332' } : {}}
+                      style={
+                        unit === u ? { backgroundColor: '#1B4332', borderColor: '#1B4332' } : {}
+                      }
                     >
                       <Text
                         className={`font-sans-medium text-xs ${

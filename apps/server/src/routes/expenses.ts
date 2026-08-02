@@ -19,8 +19,7 @@ expensesRouter.get('/', async (c) => {
 
 // POST /expenses — log a new expense
 expensesRouter.post('/', async (c) => {
-  const { recordedBy: reqRecordedBy, category, amount, note, expenseDate } =
-    await c.req.json();
+  const { recordedBy: reqRecordedBy, category, amount, note, expenseDate } = await c.req.json();
 
   let recordedBy = reqRecordedBy;
   if (!recordedBy || recordedBy === '00000000-0000-0000-0000-000000000000') {

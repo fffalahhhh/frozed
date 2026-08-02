@@ -78,7 +78,7 @@ async function seed() {
       flavourNames.map((name) => ({
         name,
         baseFlavourId: baseFlavour?.id ?? null,
-      }))
+      })),
     )
     .onConflictDoNothing()
     .returning();
@@ -124,7 +124,7 @@ async function seed() {
           menuItemId: mangoShake.id,
           flavourId: f.id,
           extraCost: '0.00',
-        }))
+        })),
       )
       .onConflictDoNothing();
   }

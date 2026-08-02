@@ -28,71 +28,59 @@ export default function TabLayout() {
         },
       }}
     >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Orders',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'fast-food' : 'fast-food-outline'}
-                size={22}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="history"
-          options={{
-            title: 'History',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'receipt' : 'receipt-outline'}
-                size={22}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="inventory"
-          options={{
-            title: 'Inventory',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'cube' : 'cube-outline'}
-                size={22}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="menu"
-          options={{
-            title: 'Menu',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'restaurant' : 'restaurant-outline'}
-                size={22}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="analytics"
-          options={{
-            title: 'Analytics',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'stats-chart' : 'stats-chart-outline'}
-                size={22}
-                color={color}
-              />
-            ),
-          }}
-        />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Orders',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'fast-food' : 'fast-food-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: 'History',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="inventory"
+        options={{
+          title: 'Inventory',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'cube' : 'cube-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'restaurant' : 'restaurant-outline'}
+              size={22}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: 'Analytics',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'stats-chart' : 'stats-chart-outline'}
+              size={22}
+              color={color}
+            />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

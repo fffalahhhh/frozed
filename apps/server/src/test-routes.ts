@@ -32,9 +32,7 @@ async function request(method: string, path: string, body?: unknown) {
       data: json.data || json,
     });
 
-    console.log(
-      `${passed ? '✅' : '❌'} ${method.padEnd(6)} ${path.padEnd(30)} → ${res.status}`
-    );
+    console.log(`${passed ? '✅' : '❌'} ${method.padEnd(6)} ${path.padEnd(30)} → ${res.status}`);
     return json;
   } catch (err: any) {
     results.push({
@@ -57,7 +55,7 @@ async function runTests() {
 
   // 2. Menu Routes
   const menuRes = await request('GET', '/menu');
-  
+
   // 3. Create Category
   const catRes = await request('POST', '/menu/categories', {
     name: 'Special Mocktails',

@@ -17,37 +17,38 @@ Both surfaces live inside one React Native app with role-based navigation. The a
 
 ## Tech Stack
 
-| Layer | Technology | Rationale |
-|---|---|---|
-| **Mobile App** | React Native (Expo SDK 51+) | Cross-platform iOS/Android/iPadOS, fast iteration |
-| **Navigation** | Expo Router (file-based) | Deep links, tab + stack + sidebar layout |
-| **State / Cache** | Zustand + TanStack Query | Local UI state + server cache |
-| **UI Library** | NativeWind (Tailwind for RN) + Tamagui primitives | Fast, consistent theming, responsive breakpoints |
-| **Offline DB (local)** | Expo SQLite + Drizzle ORM (SQLite dialect) | Local-first order queue with sync |  
-| **Sync Layer** | Custom sync queue (outbox pattern) | Reliable offline → online sync |
-| **API Layer** | Node.js + Hono (lightweight, edge-ready) | Type-safe, fast HTTP server |
-| **ORM (server)** | Drizzle ORM (Postgres dialect) | Type-safe SQL, great Postgres support |
-| **Database** | PostgreSQL 16 | Reliable RDBMS, rich aggregation |
-| **Auth** | Better-Auth or Clerk (JWT/session) | Role-based access (cashier / manager / admin) |
-| **Realtime** | Server-Sent Events or Supabase Realtime | Live order status updates |
-| **File Storage** | Supabase Storage or S3 | Menu item images |
-| **Deployment** | Railway / Render (backend), EAS Build (app) | Simple, low-ops hosting |
+| Layer                  | Technology                                        | Rationale                                         |
+| ---------------------- | ------------------------------------------------- | ------------------------------------------------- |
+| **Mobile App**         | React Native (Expo SDK 51+)                       | Cross-platform iOS/Android/iPadOS, fast iteration |
+| **Navigation**         | Expo Router (file-based)                          | Deep links, tab + stack + sidebar layout          |
+| **State / Cache**      | Zustand + TanStack Query                          | Local UI state + server cache                     |
+| **UI Library**         | NativeWind (Tailwind for RN) + Tamagui primitives | Fast, consistent theming, responsive breakpoints  |
+| **Offline DB (local)** | Expo SQLite + Drizzle ORM (SQLite dialect)        | Local-first order queue with sync                 |
+| **Sync Layer**         | Custom sync queue (outbox pattern)                | Reliable offline → online sync                    |
+| **API Layer**          | Node.js + Hono (lightweight, edge-ready)          | Type-safe, fast HTTP server                       |
+| **ORM (server)**       | Drizzle ORM (Postgres dialect)                    | Type-safe SQL, great Postgres support             |
+| **Database**           | PostgreSQL 16                                     | Reliable RDBMS, rich aggregation                  |
+| **Auth**               | Better-Auth or Clerk (JWT/session)                | Role-based access (cashier / manager / admin)     |
+| **Realtime**           | Server-Sent Events or Supabase Realtime           | Live order status updates                         |
+| **File Storage**       | Supabase Storage or S3                            | Menu item images                                  |
+| **Deployment**         | Railway / Render (backend), EAS Build (app)       | Simple, low-ops hosting                           |
 
 ---
 
 ## User Roles
 
-| Role | Access |
-|---|---|
+| Role        | Access                                                        |
+| ----------- | ------------------------------------------------------------- |
 | **Cashier** | Place orders, view menu, generate bills, mark orders complete |
-| **Manager** | All cashier access + inventory management, analytics view |
-| **Admin** | All above + user management, menu CRUD, system config |
+| **Manager** | All cashier access + inventory management, analytics view     |
+| **Admin**   | All above + user management, menu CRUD, system config         |
 
 ---
 
 ## Database Schema (Drizzle ORM)
 
 ### `users`
+
 ```sql
 id          uuid PK
 name        text
@@ -58,6 +59,7 @@ created_at  timestamp
 ```
 
 ### `categories`
+
 ```sql
 id          uuid PK
 name        text          -- e.g. "Juices", "Snacks"
@@ -66,6 +68,7 @@ sort_order  int
 ```
 
 ### `menu_items`
+
 ```sql
 id              uuid PK
 category_id     uuid FK → categories
@@ -79,15 +82,18 @@ created_at      timestamp
 ```
 
 ### `flavours`
+
 ```sql
 id              uuid PK
 name            text          -- e.g. "Mango", "Strawberry"
 base_flavour_id uuid FK → flavours (self-ref, NULL = it is a base)
 ```
+
 > This supports your "20 flavours, 90% share the same base" requirement.
 > A flavour like "Mango Twist" points to base "Mango".
 
-### `menu_item_flavours`  *(junction)*
+### `menu_item_flavours` _(junction)_
+
 ```sql
 menu_item_id    uuid FK → menu_items
 flavour_id      uuid FK → flavours
@@ -95,7 +101,8 @@ extra_cost      numeric(10,2) DEFAULT 0   -- upcharge for exotic flavours
 PRIMARY KEY (menu_item_id, flavour_id)
 ```
 
-### `recipes`  *(ingredient cost per menu item)*
+### `recipes` _(ingredient cost per menu item)_
+
 ```sql
 id              uuid PK
 menu_item_id    uuid FK → menu_items
@@ -105,10 +112,12 @@ unit            text          -- ml, g, pcs
 quantity        numeric(10,3)
 cost_per_unit   numeric(10,4)
 ```
+
 > `cost_per_unit × quantity` = ingredient cost.
 > Sum across a recipe = total ingredient cost for one item.
 
 ### `making_costs`
+
 ```sql
 id              uuid PK
 menu_item_id    uuid FK → menu_items
@@ -117,6 +126,7 @@ amount          numeric(10,2)
 ```
 
 ### `inventory_items`
+
 ```sql
 id              uuid PK
 name            text          -- matches ingredient_name for cost link
@@ -128,6 +138,7 @@ updated_at      timestamp
 ```
 
 ### `inventory_adjustments`
+
 ```sql
 id              uuid PK
 inventory_item_id uuid FK → inventory_items
@@ -139,6 +150,7 @@ created_at      timestamp
 ```
 
 ### `orders`
+
 ```sql
 id              uuid PK
 order_number    serial / text (e.g. ORD-0042)
@@ -155,6 +167,7 @@ paid_at         timestamp
 ```
 
 ### `order_items`
+
 ```sql
 id              uuid PK
 order_id        uuid FK → orders
@@ -168,6 +181,7 @@ notes           text            -- "less sweet", "extra ice"
 ```
 
 ### `shop_expenses`
+
 ```sql
 id              uuid PK
 recorded_by     uuid FK → users
@@ -177,10 +191,12 @@ note            text
 expense_date    date
 created_at      timestamp
 ```
+
 > Expenses are logged manually by the manager and included in net profit calculations.
 > `category` is a free-text field (no separate table) to keep it simple.
 
 ### `bills`
+
 ```sql
 id              uuid PK
 order_id        uuid FK → orders UNIQUE
@@ -194,11 +210,13 @@ printed_at      timestamp (nullable)
 ## API Surface (Hono + REST/tRPC)
 
 ### Auth
+
 - `POST /auth/login`
 - `POST /auth/logout`
 - `GET  /auth/me`
 
 ### Menu
+
 - `GET  /menu` — list categories + items (for FOH)
 - `GET  /menu/items/:id`
 - `POST /menu/items` (admin)
@@ -206,6 +224,7 @@ printed_at      timestamp (nullable)
 - `PATCH /menu/items/:id/toggle` — availability toggle
 
 ### Orders
+
 - `POST /orders` — create new order
 - `GET  /orders/:id`
 - `PATCH /orders/:id` — update status, add items
@@ -213,18 +232,21 @@ printed_at      timestamp (nullable)
 - `POST /orders/:id/pay` — mark paid, record payment method
 
 ### Inventory
+
 - `GET  /inventory`
 - `PATCH /inventory/:id` — update stock / cost
 - `POST /inventory/adjust` — log adjustment
 - `GET  /inventory/adjustments` — audit log
 
 ### Expenses
+
 - `GET  /expenses?from=&to=` — list shop expenses
 - `POST /expenses` — log a new expense
 - `PATCH /expenses/:id` — edit an expense
 - `DELETE /expenses/:id` — remove an expense
 
 ### Analytics
+
 - `GET  /analytics/sales?from=&to=` — revenue, order count
 - `GET  /analytics/top-items?from=&to=`
 - `GET  /analytics/profit?from=&to=` — revenue minus COGS minus shop expenses = net profit
@@ -232,6 +254,7 @@ printed_at      timestamp (nullable)
 - `GET  /analytics/inventory-usage?from=&to=`
 
 ### Sync (Offline Support)
+
 - `POST /sync/orders` — bulk upsert orders + order_items from offline queue
 - `GET  /sync/menu` — pull latest menu snapshot for local cache
 
@@ -244,50 +267,53 @@ printed_at      timestamp (nullable)
 
 ### Color Palette
 
-| Token | Hex | Usage |
-|---|---|---|
-| `--color-primary` | `#1B4332` | Active category card, CTA buttons, tab highlight |
-| `--color-primary-light` | `#2D6A4F` | Hover states, icon accents |
-| `--color-surface` | `#F5F1E8` | App background (warm cream) |
-| `--color-card` | `#FFFFFF` | Menu item cards, cart panel |
-| `--color-border` | `#E8E2D9` | Card borders, dividers |
-| `--color-text-primary` | `#1A1A1A` | Item names, prices, headings |
-| `--color-text-muted` | `#8A8A8A` | Subtitles, placeholder text |
-| `--color-success-bg` | `#E8F5EE` | "Available" badge background |
-| `--color-success-text` | `#1B4332` | "Available" badge text |
-| `--color-warning` | `#F97316` | "Need to re-stock" badge |
-| `--color-add-btn` | `#FFFFFF` | + button background (bordered circle) |
+| Token                   | Hex       | Usage                                            |
+| ----------------------- | --------- | ------------------------------------------------ |
+| `--color-primary`       | `#1B4332` | Active category card, CTA buttons, tab highlight |
+| `--color-primary-light` | `#2D6A4F` | Hover states, icon accents                       |
+| `--color-surface`       | `#F5F1E8` | App background (warm cream)                      |
+| `--color-card`          | `#FFFFFF` | Menu item cards, cart panel                      |
+| `--color-border`        | `#E8E2D9` | Card borders, dividers                           |
+| `--color-text-primary`  | `#1A1A1A` | Item names, prices, headings                     |
+| `--color-text-muted`    | `#8A8A8A` | Subtitles, placeholder text                      |
+| `--color-success-bg`    | `#E8F5EE` | "Available" badge background                     |
+| `--color-success-text`  | `#1B4332` | "Available" badge text                           |
+| `--color-warning`       | `#F97316` | "Need to re-stock" badge                         |
+| `--color-add-btn`       | `#FFFFFF` | + button background (bordered circle)            |
 
 ### Typography
 
-| Element | Font | Weight | Size |
-|---|---|---|---|
-| App header / Logo | Inter | 700 | 14px |
-| Date / breadcrumb | Inter | 400 | 14px |
-| Category card title | Inter | 700 | 20px |
-| Category item count | Inter | 400 | 13px |
-| Menu item name | Inter | 600 | 13px |
-| Menu item price | Inter | 500 | 12px, muted |
-| Receipt heading | Inter | 700 | 16px |
-| Order-type tab | Inter | 600 | 13px |
-| Order item name | Inter | 600 | 14px |
-| Payment label/value | Inter | 400/600 | 13px |
-| CTA button | Inter | 700 | 16px |
+| Element             | Font  | Weight  | Size        |
+| ------------------- | ----- | ------- | ----------- |
+| App header / Logo   | Inter | 700     | 14px        |
+| Date / breadcrumb   | Inter | 400     | 14px        |
+| Category card title | Inter | 700     | 20px        |
+| Category item count | Inter | 400     | 13px        |
+| Menu item name      | Inter | 600     | 13px        |
+| Menu item price     | Inter | 500     | 12px, muted |
+| Receipt heading     | Inter | 700     | 16px        |
+| Order-type tab      | Inter | 600     | 13px        |
+| Order item name     | Inter | 600     | 14px        |
+| Payment label/value | Inter | 400/600 | 13px        |
+| CTA button          | Inter | 700     | 16px        |
 
 ### Component Specs — FOH Screen
 
 #### 1. Top Header Bar
+
 - Full-width bar with `--color-card` background, bottom border
 - **Left**: Café logo + name (2-line stacked, bold green) + current date
 - **Center-right**: "Total: N Orders" label + **Report** button (outlined, icon + label)
 - **Right**: Notification bell with red badge dot + User avatar chip (avatar image + name + role label)
 
 #### 2. Search Bar
+
 - Full-width input with rounded pill shape, light border
 - Left: search icon; Right: keyboard shortcut badge (⌘K style)
 - Background: white, placeholder text muted
 
 #### 3. Category Pill Cards (horizontal scroll row)
+
 - **Active card**: Dark green (`--color-primary`) background, white text, decorative item illustration (right-aligned, ghosted)
 - **Inactive card**: White background, dark text, item count below name
 - **Warning card**: White background, orange "Need to re-stock ⚠" badge top-left
@@ -295,6 +321,7 @@ printed_at      timestamp (nullable)
 - Availability badge: pill-shaped, top-left of card
 
 #### 4. Menu Item Grid Cards
+
 - **4 columns** in landscape tablet layout
 - Each card: white background, rounded-xl, subtle shadow
 - Product photo centered (transparent background PNG preferred)
@@ -303,6 +330,7 @@ printed_at      timestamp (nullable)
 - Tap card → opens bottom sheet for flavour selection + qty + notes
 
 #### 5. Right Panel — Receipt / Cart
+
 - White card background, rounded-2xl, slight shadow
 - **Header row**: Back chevron icon (dark green filled circle) + "Purchase Receipt #XXXXX" text + list icon button
 - **Order-type tab bar**: 3 tabs — Dine In / Take Away / Order Online; active tab = dark green filled pill, inactive = plain text
@@ -325,16 +353,19 @@ printed_at      timestamp (nullable)
   - Height ~52px
 
 #### 6. Offline Banner
+
 - Thin banner below header, amber/yellow background
 - Icon + "Offline Mode — orders will sync when connection is restored"
 
 ### Responsive — Portrait Phone
+
 - Left panel takes full screen
 - Cart is a **floating bottom drawer** (drag up to expand)
 - Category row scrolls horizontally
 - Menu grid collapses to **2 columns**
 
 ### Manager Screens Design Language
+
 - Same cream background (`--color-surface`)
 - Cards use `--color-card` white with border
 - Charts: use the primary green palette with cream fills
@@ -343,15 +374,17 @@ printed_at      timestamp (nullable)
 
 ---
 
-
 ### Tablet Layout (Primary)
+
 The FOH screen uses a **two-column split layout** in landscape:
+
 - **Left panel (~65%)** — Top bar + search + category pills + 4-column menu item grid
 - **Right panel (~35%)** — Receipt header + order-type tabs + customer/table fields + order list + payment summary + CTA
 
 On portrait phones, these collapse into a single stack with a bottom cart drawer.
 
 ### Cashier Flow (FOH)
+
 ```
 Home / New Order
   ├── [LEFT]  Menu Browser (category tabs → item grid)
@@ -367,6 +400,7 @@ Orders History tab
 ```
 
 ### Manager Flow
+
 ```
 Dashboard (today's snapshot: revenue, orders, top item, net profit)
   ├── Sales Analytics
@@ -392,6 +426,7 @@ Dashboard (today's snapshot: revenue, orders, top item, net profit)
 ## Key User Flows
 
 ### 1. Taking an Order (Cashier)
+
 1. Tap **New Order** → enter table or "Takeaway"
 2. Browse categories → select item → pick flavour → set qty → tap **Add to Cart**
 3. Repeat for all items
@@ -401,17 +436,20 @@ Dashboard (today's snapshot: revenue, orders, top item, net profit)
 7. Order moves to **Completed**; stock auto-decremented
 
 ### 2. Inventory Restocking (Manager)
+
 1. Open **Inventory** tab → see items below reorder level highlighted
 2. Tap item → tap **Restock** → enter quantity + cost per unit
 3. Confirm → stock updated, adjustment logged with timestamp + user
 
 ### 3. Offline Order (Cashier — no internet)
+
 1. App detects no connectivity → shows **"Offline Mode"** banner
 2. Cashier takes order normally — order written to local SQLite queue
 3. Internet restored → sync queue automatically flushes to server via `POST /sync/orders`
 4. Synced orders appear in analytics and history as normal
 
 ### 4. Profit Analysis (Manager)
+
 1. Open **Analytics** → **Profit** tab
 2. Pick date range
 3. See: Revenue vs. COGS (ingredient + making costs) = **Gross Profit**
@@ -464,6 +502,7 @@ This avoids duplicating 18 near-identical recipes and makes bulk cost updates si
 ## Phased Rollout
 
 ### Phase 1 — MVP (5–7 weeks)
+
 - [ ] Server DB schema + Drizzle migrations (Postgres)
 - [ ] Auth (cashier + admin roles, JWT)
 - [ ] Menu CRUD (backend + admin screen)
@@ -476,6 +515,7 @@ This avoids duplicating 18 near-identical recipes and makes bulk cost updates si
 - [ ] Shop expenses — log and list (manager screen)
 
 ### Phase 2 — Analytics & Cost Tracking (2–3 weeks)
+
 - [ ] Recipe + making cost entry UI
 - [ ] Gross profit analytics (revenue vs COGS)
 - [ ] Net profit view (gross profit − shop expenses)
@@ -484,6 +524,7 @@ This avoids duplicating 18 near-identical recipes and makes bulk cost updates si
 - [ ] Top items report
 
 ### Phase 3 — Polish & Scale (ongoing)
+
 - [ ] Reorder alerts / push notifications
 - [ ] Discount and promo codes
 - [ ] Bluetooth thermal printer integration (ESC/POS)
@@ -494,10 +535,10 @@ This avoids duplicating 18 near-identical recipes and makes bulk cost updates si
 
 ## Resolved Decisions
 
-| Question | Decision |
-|---|---|
-| Device target | **Tablet-first** (landscape), responsive to portrait phone |
-| Offline support | **Yes** — SQLite outbox pattern, Phase 1 |
-| Thermal printer | **Later** — Phase 3 |
-| Tax / GST | **None** — no tax fields |
-| Shop overhead | **`shop_expenses` table** — manual log by manager, included in net profit |
+| Question        | Decision                                                                  |
+| --------------- | ------------------------------------------------------------------------- |
+| Device target   | **Tablet-first** (landscape), responsive to portrait phone                |
+| Offline support | **Yes** — SQLite outbox pattern, Phase 1                                  |
+| Thermal printer | **Later** — Phase 3                                                       |
+| Tax / GST       | **None** — no tax fields                                                  |
+| Shop overhead   | **`shop_expenses` table** — manual log by manager, included in net profit |

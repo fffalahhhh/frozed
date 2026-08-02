@@ -26,10 +26,7 @@ function getBaseUrl(): string {
 
 const BASE_URL = getBaseUrl();
 
-async function request<T>(
-  path: string,
-  options?: RequestInit
-): Promise<T> {
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
@@ -62,6 +59,5 @@ export const api = {
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: <T>(path: string) =>
-    request<T>(path, { method: 'DELETE' }),
+  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };

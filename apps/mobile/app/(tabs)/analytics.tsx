@@ -7,12 +7,20 @@ import { api } from '../../lib/api';
 const fmt = (n: number | string) => `₹${parseFloat(String(n || 0)).toFixed(0)}`;
 
 export default function AnalyticsScreen() {
-  const { data: salesData, isLoading: loadingSales, refetch: refetchSales } = useQuery<any>({
+  const {
+    data: salesData,
+    isLoading: loadingSales,
+    refetch: refetchSales,
+  } = useQuery<any>({
     queryKey: ['analytics-sales'],
     queryFn: () => api.get('/analytics/sales'),
   });
 
-  const { data: profitData, isLoading: loadingProfit, refetch: refetchProfit } = useQuery<any>({
+  const {
+    data: profitData,
+    isLoading: loadingProfit,
+    refetch: refetchProfit,
+  } = useQuery<any>({
     queryKey: ['analytics-profit'],
     queryFn: () => api.get('/analytics/profit'),
   });
@@ -30,7 +38,9 @@ export default function AnalyticsScreen() {
       <View className="flex-row items-center justify-between pb-4 border-b border-border/40 mb-3">
         <View>
           <Text className="text-text-primary font-sans-bold text-2xl">Analytics</Text>
-          <Text className="text-text-muted font-sans text-xs mt-0.5">Sales, COGS & Net Profit breakdown</Text>
+          <Text className="text-text-muted font-sans text-xs mt-0.5">
+            Sales, COGS & Net Profit breakdown
+          </Text>
         </View>
         <TouchableOpacity
           onPress={handleRefresh}
@@ -79,7 +89,9 @@ export default function AnalyticsScreen() {
           </View>
 
           {/* Breakdown Section */}
-          <Text className="text-text-primary font-sans-bold text-base mb-3">Profit & Cost Math</Text>
+          <Text className="text-text-primary font-sans-bold text-base mb-3">
+            Profit & Cost Math
+          </Text>
 
           <View className="bg-white rounded-3xl p-4 border border-border/60 shadow-sm gap-3">
             <View className="flex-row justify-between items-center pb-2.5 border-b border-border/30">
@@ -95,7 +107,9 @@ export default function AnalyticsScreen() {
             <View className="flex-row justify-between items-center pb-2.5 border-b border-border/30">
               <View className="flex-row items-center gap-2">
                 <Ionicons name="cart-outline" size={18} color="#F97316" />
-                <Text className="text-text-muted font-sans text-sm">COGS (Ingredients + Making)</Text>
+                <Text className="text-text-muted font-sans text-sm">
+                  COGS (Ingredients + Making)
+                </Text>
               </View>
               <Text className="text-warning font-sans-semibold text-sm">
                 − {fmt(profitData?.totalCOGS)}
@@ -115,7 +129,9 @@ export default function AnalyticsScreen() {
             <View className="flex-row justify-between items-center pb-2.5 border-b border-border/30">
               <View className="flex-row items-center gap-2">
                 <Ionicons name="business-outline" size={18} color="#DC2626" />
-                <Text className="text-text-muted font-sans text-sm">Shop Expenses (Rent/Bills)</Text>
+                <Text className="text-text-muted font-sans text-sm">
+                  Shop Expenses (Rent/Bills)
+                </Text>
               </View>
               <Text className="text-danger font-sans-semibold text-sm">
                 − {fmt(profitData?.shopExpenses)}

@@ -10,8 +10,7 @@ inventoryRouter.get('/', async (c) => {
   const items = await db.select().from(inventoryItems);
   const withAlert = items.map((item) => ({
     ...item,
-    needsRestock:
-      parseFloat(item.currentStock) <= parseFloat(item.reorderLevel),
+    needsRestock: parseFloat(item.currentStock) <= parseFloat(item.reorderLevel),
   }));
   return c.json({ success: true, data: withAlert });
 });
@@ -54,8 +53,7 @@ inventoryRouter.patch('/:id', async (c) => {
 
 // POST /inventory/adjust — log an adjustment (restock / waste / correction)
 inventoryRouter.post('/adjust', async (c) => {
-  const { inventoryItemId, userId: reqUserId, type, quantityDelta, note } =
-    await c.req.json();
+  const { inventoryItemId, userId: reqUserId, type, quantityDelta, note } = await c.req.json();
 
   let userId = reqUserId;
   if (!userId || userId === '00000000-0000-0000-0000-000000000000') {

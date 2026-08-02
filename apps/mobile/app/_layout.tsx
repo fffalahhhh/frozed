@@ -50,9 +50,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ToastBanner />
           <Stack screenOptions={{ headerShown: false }} />
-          {showSplash && (
-            <AnimatedSplashScreen onDone={() => setShowSplash(false)} />
-          )}
+          {showSplash && <AnimatedSplashScreen onDone={() => setShowSplash(false)} />}
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

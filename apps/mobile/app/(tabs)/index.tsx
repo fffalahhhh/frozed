@@ -64,8 +64,20 @@ const FONTS = {
 // ─── Top Center Logo Header ──────────────────────────────────────────────────
 function TopLogoHeader() {
   return (
-    <SafeAreaView style={{ backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40 }}>
-      <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 8 }}>
+    <SafeAreaView
+      style={{
+        backgroundColor: COLORS.white,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.borderAlpha40,
+      }}
+    >
+      <View
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 8,
+        }}
+      >
         <Image
           source={require('../../assets/logo.png')}
           style={{ width: 64, height: 64 }}
@@ -109,26 +121,45 @@ function CategoryCard({
         },
         isActive
           ? {
-            shadowColor: '#1B4332',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.25,
-            shadowRadius: 10,
-            elevation: 6,
-          }
+              shadowColor: '#1B4332',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+              elevation: 6,
+            }
           : {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.04,
-            shadowRadius: 6,
-            elevation: 2,
-          },
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.04,
+              shadowRadius: 6,
+              elevation: 2,
+            },
       ]}
     >
       {/* Badge */}
       {needsRestock ? (
-        <View style={{ alignSelf: 'flex-start', backgroundColor: COLORS.warningAlpha10, borderWidth: 1, borderColor: COLORS.warningAlpha30, borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <View
+          style={{
+            alignSelf: 'flex-start',
+            backgroundColor: COLORS.warningAlpha10,
+            borderWidth: 1,
+            borderColor: COLORS.warningAlpha30,
+            borderRadius: 9999,
+            paddingHorizontal: 10,
+            paddingVertical: 2,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
           <Ionicons name="alert-circle" size={12} color={COLORS.warning} />
-          <Text style={{ color: COLORS.warning, fontSize: 10, fontFamily: FONTS.semiBold }}>
+          <Text
+            style={{
+              color: COLORS.warning,
+              fontSize: 10,
+              fontFamily: FONTS.semiBold,
+            }}
+          >
             Re-stock
           </Text>
         </View>
@@ -193,13 +224,7 @@ function CategoryCard({
 }
 
 // ─── Menu Item Card ───────────────────────────────────────────────────────────
-function MenuItemCard({
-  item,
-  onAdd,
-}: {
-  item: MenuItem;
-  onAdd: (item: MenuItem) => void;
-}) {
+function MenuItemCard({ item, onAdd }: { item: MenuItem; onAdd: (item: MenuItem) => void }) {
   return (
     <Pressable
       onPress={() => onAdd(item)}
@@ -225,7 +250,17 @@ function MenuItemCard({
       ]}
     >
       {/* Item Image or Graphic */}
-      <View style={{ alignItems: 'center', justifyContent: 'center', height: 96, marginBottom: 8, backgroundColor: COLORS.surfaceAlpha40, borderRadius: 16, padding: 8 }}>
+      <View
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 96,
+          marginBottom: 8,
+          backgroundColor: COLORS.surfaceAlpha40,
+          borderRadius: 16,
+          padding: 8,
+        }}
+      >
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
@@ -240,14 +275,32 @@ function MenuItemCard({
       {/* Item Name & Price */}
       <View>
         <Text
-          style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, lineHeight: 18 }}
+          style={{
+            color: COLORS.textPrimary,
+            fontFamily: FONTS.bold,
+            fontSize: 14,
+            lineHeight: 18,
+          }}
           numberOfLines={2}
         >
           {item.name}
         </Text>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-          <Text style={{ color: COLORS.primary, fontFamily: FONTS.bold, fontSize: 16 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 8,
+          }}
+        >
+          <Text
+            style={{
+              color: COLORS.primary,
+              fontFamily: FONTS.bold,
+              fontSize: 16,
+            }}
+          >
             {fmt(item.sellingPrice)}
           </Text>
 
@@ -276,63 +329,6 @@ function MenuItemCard({
   );
 }
 
-// ─── Order Type Tabs ──────────────────────────────────────────────────────────
-const ORDER_TYPES: { key: OrderType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'dine_in', label: 'Dine In', icon: 'restaurant-outline' },
-  { key: 'take_away', label: 'Take Away', icon: 'bag-handle-outline' },
-  { key: 'order_online', label: 'Online', icon: 'globe-outline' },
-];
-
-function OrderTypeTabs({
-  value,
-  onChange,
-}: {
-  value: OrderType;
-  onChange: (t: OrderType) => void;
-}) {
-  return (
-    <View style={{ flexDirection: 'row', backgroundColor: COLORS.surfaceAlpha80, borderRadius: 16, padding: 4, gap: 4, borderWidth: 1, borderColor: COLORS.borderAlpha40 }}>
-      {ORDER_TYPES.map((t) => (
-        <Pressable
-          key={t.key}
-          onPress={() => onChange(t.key)}
-          style={({ pressed }) => ({
-            flex: 1,
-            paddingVertical: 8,
-            borderRadius: 12,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            backgroundColor: value === t.key ? COLORS.primary : 'transparent',
-            opacity: pressed ? 0.8 : 1,
-            shadowColor: value === t.key ? '#000' : 'transparent',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: value === t.key ? 0.1 : 0,
-            shadowRadius: 2,
-            elevation: value === t.key ? 2 : 0,
-          })}
-        >
-          <Ionicons
-            name={t.icon}
-            size={15}
-            color={value === t.key ? COLORS.white : '#8A8A8A'}
-          />
-          <Text
-            style={{
-              fontFamily: FONTS.semiBold,
-              fontSize: 12,
-              color: value === t.key ? COLORS.white : COLORS.textMuted,
-            }}
-          >
-            {t.label}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
 // ─── Cart Item Row ────────────────────────────────────────────────────────────
 function CartItemRow({
   item,
@@ -344,45 +340,140 @@ function CartItemRow({
   onDecrease: () => void;
 }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40 }}>
-      <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: COLORS.surfaceAlpha60, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.borderAlpha40 }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+      }}
+    >
+      {/* Soft rounded image/icon container */}
+      <View
+        style={{
+          width: 60,
+          height: 60,
+          borderRadius: 16,
+          backgroundColor: '#F7F7F2',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1,
+          borderColor: '#EFEFE8',
+        }}
+      >
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
-            style={{ width: 36, height: 36 }}
+            style={{ width: 44, height: 44 }}
             resizeMode="contain"
           />
         ) : (
-          <Ionicons name="cafe-outline" size={24} color={COLORS.primary} />
+          <Ionicons name="cafe-outline" size={28} color="#044E35" />
         )}
       </View>
 
+      {/* Item info */}
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, flex: 1, paddingRight: 4 }} numberOfLines={1}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+          }}
+        >
+          <Text
+            style={{
+              color: '#111827',
+              fontFamily: FONTS.bold,
+              fontSize: 14,
+              flex: 1,
+              paddingRight: 6,
+            }}
+            numberOfLines={1}
+          >
             {item.menuItemName}
           </Text>
-          <Text style={{ color: COLORS.primary, fontFamily: FONTS.bold, fontSize: 14 }}>
+          <Text style={{ color: '#111827', fontFamily: FONTS.bold, fontSize: 14 }}>
             {fmt(item.unitPrice * item.quantity)}
           </Text>
         </View>
 
-        {item.flavourName && (
-          <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12, marginTop: 2 }}>
-            Flavor: {item.flavourName}
-          </Text>
-        )}
+        <Text
+          style={{
+            color: '#6B7280',
+            fontFamily: FONTS.regular,
+            fontSize: 12,
+            marginTop: 2,
+          }}
+        >
+          {fmt(item.unitPrice)} x {item.quantity}
+        </Text>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 10 }}>
-          <Pressable onPress={onDecrease} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-            <Ionicons name="remove-circle-outline" size={22} color="#8A8A8A" />
-          </Pressable>
-          <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, minWidth: 16, textAlign: 'center' }}>
-            {item.quantity}
-          </Text>
-          <Pressable onPress={onIncrease} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-            <Ionicons name="add-circle" size={22} color={COLORS.primary} />
-          </Pressable>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 4,
+          }}
+        >
+          {item.flavourName ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="document-text-outline" size={12} color="#6B7280" />
+              <Text
+                style={{
+                  color: '#6B7280',
+                  fontFamily: FONTS.medium,
+                  fontSize: 11,
+                }}
+              >
+                {item.flavourName}
+              </Text>
+            </View>
+          ) : (
+            <View />
+          )}
+
+          {/* Stepper pill [ - 2 + ] */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#F3F4F6',
+              borderRadius: 9999,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              gap: 8,
+            }}
+          >
+            <Pressable
+              onPress={onDecrease}
+              hitSlop={6}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            >
+              <Ionicons name="remove" size={14} color="#111827" />
+            </Pressable>
+            <Text
+              style={{
+                color: '#111827',
+                fontFamily: FONTS.bold,
+                fontSize: 12,
+                minWidth: 14,
+                textAlign: 'center',
+              }}
+            >
+              {item.quantity}
+            </Text>
+            <Pressable
+              onPress={onIncrease}
+              hitSlop={6}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            >
+              <Ionicons name="add" size={14} color="#111827" />
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>
@@ -391,106 +482,377 @@ function CartItemRow({
 
 // ─── Right Panel: Cart ────────────────────────────────────────────────────────
 function CartPanel({ receiptNumber }: { receiptNumber: string }) {
+  const queryClient = useQueryClient();
   const {
     items,
-    orderType,
+    paymentMethod,
     customerName,
-    tableRef,
+    customerPhone,
     subtotal,
     total,
     discountAmount,
-    setOrderType,
+    setPaymentMethod,
     setCustomerName,
+    setCustomerPhone,
     updateQuantity,
+    clearCart,
   } = useCartStore();
+
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   const sub = subtotal();
   const tot = total();
 
+  const handlePlaceOrder = async () => {
+    if (items.length === 0) {
+      useToastStore
+        .getState()
+        .showToast('Cart is empty. Please add items to place an order.', 'error');
+      return;
+    }
+
+    if (paymentMethod === 'credit') {
+      if (!customerName.trim()) {
+        useToastStore.getState().showToast('Customer Name is required for Credit orders.', 'error');
+        return;
+      }
+      if (!customerPhone.trim()) {
+        useToastStore
+          .getState()
+          .showToast('Customer Phone Number is required for Credit orders.', 'error');
+        return;
+      }
+    }
+
+    try {
+      setIsSubmittingOrder(true);
+      const orderRes = await api.post<any>('/orders', {
+        orderType: 'dine_in',
+        paymentMethod,
+        customerName: customerName.trim() || null,
+        customerPhone: customerPhone.trim() || null,
+        subtotal: sub,
+        discountAmount,
+        totalAmount: tot,
+        items: items.map((i) => ({
+          menuItemId: i.menuItemId,
+          menuItemName: i.menuItemName,
+          flavourId: i.flavourId,
+          flavourName: i.flavourName,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          lineTotal: i.unitPrice * i.quantity,
+          notes: i.notes,
+        })),
+      });
+
+      const orderNum = orderRes?.orderNumber ? `#${orderRes.orderNumber}` : '';
+      useToastStore.getState().showToast(`Order ${orderNum} placed successfully!`, 'success');
+      clearCart();
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['menu'] });
+    } catch (err: any) {
+      useToastStore.getState().showToast(err.message || 'Failed to place order', 'error');
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
   return (
     <View
       style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: 24,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 32,
         flex: 1,
-        borderWidth: 1,
-        borderColor: COLORS.borderAlpha50,
+        borderWidth: 1.5,
+        borderColor: '#044E35',
         marginBottom: 80,
+        padding: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 20,
-        elevation: 6,
-        height: "100%",
-        minHeight: "100%"
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
+        height: '100%',
+        minHeight: '100%',
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primaryAlpha10, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="receipt-outline" size={18} color={COLORS.primary} />
-          </View>
-          <View>
-            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, lineHeight: 18 }}>
-              Order Receipt
-            </Text>
-            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12 }}>
-              #{receiptNumber}
-            </Text>
-          </View>
+      {/* Header Bar */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingBottom: 12,
+        }}
+      >
+        <Pressable
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            backgroundColor: '#044E35',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+        </Pressable>
+
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ color: '#111827', fontFamily: FONTS.bold, fontSize: 16 }}>
+            Purchase Receipt
+          </Text>
+          <Text
+            style={{
+              color: '#6B7280',
+              fontFamily: FONTS.semiBold,
+              fontSize: 13,
+              marginTop: 1,
+            }}
+          >
+            #{receiptNumber}
+          </Text>
         </View>
-        <Pressable style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="options-outline" size={16} color={COLORS.primary} />
+
+        <Pressable
+          onPress={clearCart}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            borderWidth: 1.5,
+            borderColor: 'red',
+            alignItems: 'center',
+            backgroundColor: '#FFFFFF',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="trash" size={18} color="red" />
         </Pressable>
       </View>
 
-      <View style={{ paddingHorizontal: 20, flex: 1, paddingTop: 12 }}>
-        <OrderTypeTabs value={orderType} onChange={setOrderType} />
-
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.medium, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-              Customer
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.surfaceAlpha50, gap: 8 }}>
-              <Ionicons name="person-outline" size={16} color="#8A8A8A" />
-              <TextInput
-                value={customerName}
-                onChangeText={setCustomerName}
-                placeholder="Name"
-                placeholderTextColor="#A0A0A0"
-                style={{ flex: 1, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 12, padding: 0 }}
-              />
-            </View>
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.medium, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-              Table
-            </Text>
-            <Pressable style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.surfaceAlpha50 }}>
-              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 12 }} numberOfLines={1}>
-                {tableRef || 'Select'}
+      {/* Payment Method Selector Pills (Cash / Online / Credit) */}
+      <View
+        style={{
+          flexDirection: 'row',
+          backgroundColor: '#FFFFFF',
+          borderRadius: 9999,
+          borderWidth: 1.5,
+          borderColor: '#044E35',
+          padding: 3,
+          marginTop: 8,
+        }}
+      >
+        {[
+          { key: 'cash', label: 'Cash' },
+          { key: 'upi', label: 'Online' },
+          { key: 'credit', label: 'Credit' },
+        ].map((mode) => {
+          const isSelected = paymentMethod === mode.key;
+          return (
+            <Pressable
+              key={mode.key}
+              onPress={() => setPaymentMethod(mode.key as any)}
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                borderRadius: 9999,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: isSelected ? '#044E35' : 'transparent',
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: FONTS.bold,
+                  fontSize: 12,
+                  color: isSelected ? '#FFFFFF' : '#6B7280',
+                }}
+              >
+                {mode.label}
               </Text>
-              <Ionicons name="chevron-down" size={14} color="#8A8A8A" />
             </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Customer Inputs (Name & Phone) */}
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+        <View style={{ flex: 1 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 4,
+              paddingHorizontal: 4,
+            }}
+          >
+            <Text
+              style={{
+                color: '#6B7280',
+                fontFamily: FONTS.medium,
+                fontSize: 11,
+              }}
+            >
+              Customer name
+            </Text>
+            {paymentMethod === 'credit' && (
+              <Text
+                style={{
+                  color: '#EF4444',
+                  fontFamily: FONTS.bold,
+                  fontSize: 10,
+                }}
+              >
+                * Req
+              </Text>
+            )}
+          </View>
+          <View
+            style={{
+              borderWidth: 1.5,
+              borderColor: paymentMethod === 'credit' && !customerName ? '#EF4444' : '#044E35',
+              borderRadius: 9999,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              backgroundColor: '#FFFFFF',
+            }}
+          >
+            <TextInput
+              value={customerName}
+              onChangeText={setCustomerName}
+              placeholder="Name"
+              placeholderTextColor="#9CA3AF"
+              style={{
+                color: '#111827',
+                fontFamily: FONTS.bold,
+                fontSize: 12,
+                padding: 0,
+              }}
+            />
           </View>
         </View>
 
-        <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, marginTop: 16, marginBottom: 4 }}>
-          Items ({items.length})
-        </Text>
-
-        {items.length === 0 ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.surfaceAlpha60, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-              <Ionicons name="cart-outline" size={32} color="#8A8A8A" />
-            </View>
-            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.medium, fontSize: 14 }}>
-              Your order is empty
+        <View style={{ flex: 1 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 4,
+              paddingHorizontal: 4,
+            }}
+          >
+            <Text
+              style={{
+                color: '#6B7280',
+                fontFamily: FONTS.medium,
+                fontSize: 11,
+              }}
+            >
+              Phone Number
             </Text>
-            <Text style={{ color: COLORS.textMutedAlpha60, fontFamily: FONTS.regular, fontSize: 12, marginTop: 2, textAlign: 'center' }}>
-              Select items from the menu to build an order
+            {paymentMethod === 'credit' && (
+              <Text
+                style={{
+                  color: '#EF4444',
+                  fontFamily: FONTS.bold,
+                  fontSize: 10,
+                }}
+              >
+                * Req
+              </Text>
+            )}
+          </View>
+          <View
+            style={{
+              borderWidth: 1.5,
+              borderColor: paymentMethod === 'credit' && !customerPhone ? '#EF4444' : '#044E35',
+              borderRadius: 9999,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              backgroundColor: '#FFFFFF',
+            }}
+          >
+            <TextInput
+              value={customerPhone}
+              onChangeText={setCustomerPhone}
+              keyboardType="phone-pad"
+              placeholder="Phone"
+              placeholderTextColor="#9CA3AF"
+              style={{
+                color: '#111827',
+                fontFamily: FONTS.bold,
+                fontSize: 12,
+                padding: 0,
+              }}
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Order List Container */}
+      <Text
+        style={{
+          color: '#6B7280',
+          fontFamily: FONTS.medium,
+          fontSize: 12,
+          marginTop: 14,
+          marginBottom: 6,
+        }}
+      >
+        Order list
+      </Text>
+
+      <View
+        style={{
+          flex: 1,
+          borderWidth: 1.5,
+          borderColor: '#044E35',
+          borderRadius: 24,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          backgroundColor: '#FFFFFF',
+        }}
+      >
+        {items.length === 0 ? (
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 30,
+            }}
+          >
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: '#F7F7F2',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 8,
+              }}
+            >
+              <Ionicons name="cart-outline" size={28} color="#044E35" />
+            </View>
+            <Text style={{ color: '#111827', fontFamily: FONTS.bold, fontSize: 14 }}>
+              Your order list is empty
+            </Text>
+            <Text
+              style={{
+                color: '#6B7280',
+                fontFamily: FONTS.regular,
+                fontSize: 11,
+                marginTop: 2,
+                textAlign: 'center',
+              }}
+            >
+              Tap items from the menu to build an order
             </Text>
           </View>
         ) : (
@@ -509,65 +871,87 @@ function CartPanel({ receiptNumber }: { receiptNumber: string }) {
             ))}
           </ScrollView>
         )}
+      </View>
 
-        <View style={{ borderTopWidth: 1, borderTopColor: COLORS.borderAlpha50, paddingTop: 12, marginTop: 8 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12 }}>Subtotal</Text>
-            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.semiBold, fontSize: 12 }}>
-              {fmt(sub)}
-            </Text>
-          </View>
-
-          {discountAmount > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12 }}>Discount</Text>
-              <Text style={{ color: COLORS.success, fontFamily: FONTS.semiBold, fontSize: 12 }}>
-                − {fmt(discountAmount)}
-              </Text>
-            </View>
-          )}
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4, borderTopWidth: 1, borderStyle: 'dashed', borderTopColor: COLORS.borderAlpha50, marginTop: 4 }}>
-            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14 }}>Total Payable</Text>
-            <Text style={{ color: COLORS.primary, fontFamily: FONTS.bold, fontSize: 16 }}>
+      {/* Payment Details */}
+      <View>
+        <View style={{ gap: 2 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBlock: 6,
+              paddingInline: 6,
+            }}
+          >
+            <Text style={{ color: '#111827', fontFamily: FONTS.bold, fontSize: 13 }}>Total</Text>
+            <Text
+              style={{
+                color: COLORS.primary,
+                fontFamily: FONTS.bold,
+                fontSize: 15,
+              }}
+            >
               {fmt(tot)}
             </Text>
           </View>
         </View>
       </View>
 
+      {/* Place Order Button */}
       <Pressable
-        disabled={items.length === 0}
+        disabled={items.length === 0 || isSubmittingOrder}
+        onPress={handlePlaceOrder}
         style={({ pressed }) => ({
-          marginHorizontal: 20,
-          marginBottom: 20,
-          marginTop: 16,
+          marginTop: 10,
           borderRadius: 9999,
+          backgroundColor: COLORS.primary,
+          paddingVertical: 5,
+          paddingHorizontal: 6,
+          height: 52,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingHorizontal: 20,
-          paddingVertical: 14,
-          backgroundColor: items.length === 0 ? "red" : "blue",
-          opacity: pressed ? 0.85 : 1,
-          shadowColor: items.length === 0 ? 'transparent' : COLORS.primary,
+          opacity: pressed || isSubmittingOrder ? 0.88 : 1,
+          shadowColor: COLORS.primary,
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
+          shadowOpacity: 0.25,
           shadowRadius: 8,
           elevation: items.length === 0 ? 0 : 4,
-          borderColor: COLORS.primary
-
         })}
       >
-        <Text style={{ color: COLORS.primary, fontFamily: FONTS.bold, fontSize: 16, textAlign: "center" }}>
-          Place Order
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={{ color: COLORS.white, fontFamily: FONTS.bold, fontSize: 16 }}>
-            {fmt(tot)}
-          </Text>
-          <Ionicons name="arrow-forward-circle" size={24} color={COLORS.white} />
-        </View>
+        {isSubmittingOrder ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={COLORS.white} />
+          </View>
+        ) : (
+          <View
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              width: '100%',
+              justifyContent: 'center',
+              backgroundColor: COLORS.primary,
+              opacity: items.length === 0 ? 0.8 : 1,
+              padding: 8,
+              paddingInline: 16,
+              borderRadius: 20,
+            }}
+          >
+            <Text
+              style={{
+                color: COLORS.white,
+                fontFamily: FONTS.bold,
+                fontSize: 12,
+                textAlign: 'center',
+              }}
+            >
+              Place Order
+            </Text>
+          </View>
+        )}
       </Pressable>
     </View>
   );
@@ -589,7 +973,9 @@ function AddMenuItemModal({
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
   const [description, setDescription] = useState('');
-  const [ingredients, setIngredients] = useState<Array<{ inventoryItemId: string; quantity: string }>>([]);
+  const [ingredients, setIngredients] = useState<
+    Array<{ inventoryItemId: string; quantity: string }>
+  >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Query inventory stock items
@@ -606,13 +992,20 @@ function AddMenuItemModal({
 
   const addIngredientRow = () => {
     if (!stockItems || stockItems.length === 0) {
-      Alert.alert('No Inventory Items', 'Please add inventory items first in the Inventory tab before linking ingredients.');
+      Alert.alert(
+        'No Inventory Items',
+        'Please add inventory items first in the Inventory tab before linking ingredients.',
+      );
       return;
     }
     setIngredients([...ingredients, { inventoryItemId: stockItems[0].id, quantity: '' }]);
   };
 
-  const updateIngredient = (index: number, field: 'inventoryItemId' | 'quantity', value: string) => {
+  const updateIngredient = (
+    index: number,
+    field: 'inventoryItemId' | 'quantity',
+    value: string,
+  ) => {
     const copy = [...ingredients];
     copy[index][field] = value;
     setIngredients(copy);
@@ -675,12 +1068,47 @@ function AddMenuItemModal({
     <Modal visible={visible} animationType="slide" transparent>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        }}
       >
-        <View style={{ backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '85%' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40, marginBottom: 16, paddingBottom: 12 }}>
-            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 18 }}>Add Menu Item</Text>
-            <Pressable onPress={() => { onClose(); resetForm(); }}>
+        <View
+          style={{
+            backgroundColor: COLORS.white,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            padding: 24,
+            maxHeight: '85%',
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.borderAlpha40,
+              marginBottom: 16,
+              paddingBottom: 12,
+            }}
+          >
+            <Text
+              style={{
+                color: COLORS.textPrimary,
+                fontFamily: FONTS.bold,
+                fontSize: 18,
+              }}
+            >
+              Add Menu Item
+            </Text>
+            <Pressable
+              onPress={() => {
+                onClose();
+                resetForm();
+              }}
+            >
               <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </Pressable>
           </View>
@@ -688,7 +1116,14 @@ function AddMenuItemModal({
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Item Name */}
             <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.medium, fontSize: 12, marginBottom: 6 }}>
+              <Text
+                style={{
+                  color: COLORS.textPrimary,
+                  fontFamily: FONTS.medium,
+                  fontSize: 12,
+                  marginBottom: 6,
+                }}
+              >
                 Item Name *
               </Text>
               <TextInput
@@ -696,16 +1131,36 @@ function AddMenuItemModal({
                 onChangeText={setName}
                 placeholder="e.g. Mango Special Smoothie"
                 placeholderTextColor={COLORS.textMuted}
-                style={{ borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14 }}
+                style={{
+                  borderWidth: 1,
+                  borderColor: COLORS.borderAlpha60,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  color: COLORS.textPrimary,
+                  fontFamily: FONTS.regular,
+                  fontSize: 14,
+                }}
               />
             </View>
 
             {/* Category selection */}
             <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.medium, fontSize: 12, marginBottom: 6 }}>
+              <Text
+                style={{
+                  color: COLORS.textPrimary,
+                  fontFamily: FONTS.medium,
+                  fontSize: 12,
+                  marginBottom: 6,
+                }}
+              >
                 Category *
               </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ flexDirection: 'row' }}
+              >
                 {categories.map((cat) => (
                   <Pressable
                     key={cat.id}
@@ -716,7 +1171,8 @@ function AddMenuItemModal({
                       borderRadius: 12,
                       borderWidth: 1,
                       marginRight: 8,
-                      backgroundColor: selectedCategoryId === cat.id ? COLORS.primary : COLORS.white,
+                      backgroundColor:
+                        selectedCategoryId === cat.id ? COLORS.primary : COLORS.white,
                       borderColor: selectedCategoryId === cat.id ? COLORS.primary : COLORS.border,
                     }}
                   >
@@ -736,7 +1192,14 @@ function AddMenuItemModal({
 
             {/* Selling Price */}
             <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.medium, fontSize: 12, marginBottom: 6 }}>
+              <Text
+                style={{
+                  color: COLORS.textPrimary,
+                  fontFamily: FONTS.medium,
+                  fontSize: 12,
+                  marginBottom: 6,
+                }}
+              >
                 Selling Price (₹) *
               </Text>
               <TextInput
@@ -745,13 +1208,29 @@ function AddMenuItemModal({
                 keyboardType="numeric"
                 placeholder="e.g. 140"
                 placeholderTextColor={COLORS.textMuted}
-                style={{ borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14 }}
+                style={{
+                  borderWidth: 1,
+                  borderColor: COLORS.borderAlpha60,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  color: COLORS.textPrimary,
+                  fontFamily: FONTS.regular,
+                  fontSize: 14,
+                }}
               />
             </View>
 
             {/* Description */}
             <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.medium, fontSize: 12, marginBottom: 6 }}>
+              <Text
+                style={{
+                  color: COLORS.textPrimary,
+                  fontFamily: FONTS.medium,
+                  fontSize: 12,
+                  marginBottom: 6,
+                }}
+              >
                 Description (Optional)
               </Text>
               <TextInput
@@ -759,34 +1238,94 @@ function AddMenuItemModal({
                 onChangeText={setDescription}
                 placeholder="e.g. Made with fresh pulp & whole milk"
                 placeholderTextColor={COLORS.textMuted}
-                style={{ borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14 }}
+                style={{
+                  borderWidth: 1,
+                  borderColor: COLORS.borderAlpha60,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  color: COLORS.textPrimary,
+                  fontFamily: FONTS.regular,
+                  fontSize: 14,
+                }}
               />
             </View>
 
             {/* Inventory Ingredients Section */}
-            <View style={{ marginBottom: 20, borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 16, padding: 14, backgroundColor: COLORS.surfaceAlpha50 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View
+              style={{
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: COLORS.borderAlpha60,
+                borderRadius: 16,
+                padding: 14,
+                backgroundColor: COLORS.surfaceAlpha50,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 12,
+                }}
+              >
                 <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14 }}>
+                  <Text
+                    style={{
+                      color: COLORS.textPrimary,
+                      fontFamily: FONTS.bold,
+                      fontSize: 14,
+                    }}
+                  >
                     Inventory Used & Recipe
                   </Text>
-                  <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 11 }}>
+                  <Text
+                    style={{
+                      color: COLORS.textMuted,
+                      fontFamily: FONTS.regular,
+                      fontSize: 11,
+                    }}
+                  >
                     Select inventory ingredients used per serving
                   </Text>
                 </View>
                 <Pressable
                   onPress={addIngredientRow}
-                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primaryAlpha10, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, gap: 4 }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: COLORS.primaryAlpha10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 10,
+                    gap: 4,
+                  }}
                 >
                   <Ionicons name="add" size={16} color={COLORS.primary} />
-                  <Text style={{ color: COLORS.primary, fontFamily: FONTS.semiBold, fontSize: 12 }}>
+                  <Text
+                    style={{
+                      color: COLORS.primary,
+                      fontFamily: FONTS.semiBold,
+                      fontSize: 12,
+                    }}
+                  >
                     Add Ingredient
                   </Text>
                 </Pressable>
               </View>
 
               {ingredients.length === 0 ? (
-                <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginVertical: 8 }}>
+                <Text
+                  style={{
+                    color: COLORS.textMuted,
+                    fontFamily: FONTS.regular,
+                    fontSize: 12,
+                    fontStyle: 'italic',
+                    textAlign: 'center',
+                    marginVertical: 8,
+                  }}
+                >
                   No inventory ingredients added yet. Tap "+ Add Ingredient" above.
                 </Text>
               ) : (
@@ -804,8 +1343,21 @@ function AddMenuItemModal({
                         marginBottom: 10,
                       }}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.semiBold, fontSize: 12 }}>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: COLORS.textPrimary,
+                            fontFamily: FONTS.semiBold,
+                            fontSize: 12,
+                          }}
+                        >
                           Ingredient #{idx + 1}
                         </Text>
                         <Pressable onPress={() => removeIngredient(idx)}>
@@ -814,10 +1366,21 @@ function AddMenuItemModal({
                       </View>
 
                       {/* Select inventory item pill scroll */}
-                      <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 11, marginBottom: 4 }}>
+                      <Text
+                        style={{
+                          color: COLORS.textMuted,
+                          fontFamily: FONTS.regular,
+                          fontSize: 11,
+                          marginBottom: 4,
+                        }}
+                      >
                         Select Inventory Item:
                       </Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginBottom: 10 }}
+                      >
                         {stockItems?.map((s) => (
                           <Pressable
                             key={s.id}
@@ -828,15 +1391,18 @@ function AddMenuItemModal({
                               borderRadius: 10,
                               borderWidth: 1,
                               marginRight: 6,
-                              backgroundColor: ing.inventoryItemId === s.id ? COLORS.primary : COLORS.white,
-                              borderColor: ing.inventoryItemId === s.id ? COLORS.primary : COLORS.border,
+                              backgroundColor:
+                                ing.inventoryItemId === s.id ? COLORS.primary : COLORS.white,
+                              borderColor:
+                                ing.inventoryItemId === s.id ? COLORS.primary : COLORS.border,
                             }}
                           >
                             <Text
                               style={{
                                 fontSize: 11,
                                 fontFamily: FONTS.medium,
-                                color: ing.inventoryItemId === s.id ? COLORS.white : COLORS.textPrimary,
+                                color:
+                                  ing.inventoryItemId === s.id ? COLORS.white : COLORS.textPrimary,
                               }}
                             >
                               {s.name} ({s.unit})
@@ -846,7 +1412,14 @@ function AddMenuItemModal({
                       </ScrollView>
 
                       {/* Amount used input */}
-                      <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 11, marginBottom: 4 }}>
+                      <Text
+                        style={{
+                          color: COLORS.textMuted,
+                          fontFamily: FONTS.regular,
+                          fontSize: 11,
+                          marginBottom: 4,
+                        }}
+                      >
                         Amount Used ({selectedStock?.unit || 'unit'} per item):
                       </Text>
                       <TextInput
@@ -887,7 +1460,13 @@ function AddMenuItemModal({
               {isSubmitting ? (
                 <ActivityIndicator color={COLORS.white} />
               ) : (
-                <Text style={{ color: COLORS.white, fontFamily: FONTS.bold, fontSize: 15 }}>
+                <Text
+                  style={{
+                    color: COLORS.white,
+                    fontFamily: FONTS.bold,
+                    fontSize: 15,
+                  }}
+                >
                   Save Menu Item
                 </Text>
               )}
@@ -913,7 +1492,11 @@ export default function FOHScreen() {
   const [search, setSearch] = useState('');
   const [addMenuModalVisible, setAddMenuModalVisible] = useState(false);
 
-  const { data: menuData, isLoading, refetch: refetchMenu } = useQuery<MenuWithCategories[]>({
+  const {
+    data: menuData,
+    isLoading,
+    refetch: refetchMenu,
+  } = useQuery<MenuWithCategories[]>({
     queryKey: ['menu'],
     queryFn: () => api.get('/menu'),
     staleTime: 1000 * 60 * 5,
@@ -930,12 +1513,11 @@ export default function FOHScreen() {
     }
   }, [menuData]);
 
-  const activeSection = menuData?.find(
-    (s: MenuWithCategories) => s.category.id === activeCategoryId
-  ) ?? menuData?.[0];
+  const activeSection =
+    menuData?.find((s: MenuWithCategories) => s.category.id === activeCategoryId) ?? menuData?.[0];
 
   const filteredItems = (activeSection?.items ?? []).filter((item: MenuItem) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
+    item.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   function handleAddItem(item: MenuItem) {
@@ -1007,21 +1589,29 @@ export default function FOHScreen() {
       >
         {isLoading
           ? [1, 2, 3].map((i) => (
-            <View
-              key={i}
-              style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)', borderRadius: 24, marginRight: 12, minWidth: 145, height: 96, borderWidth: 1, borderColor: COLORS.borderAlpha40 }}
-            />
-          ))
+              <View
+                key={i}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: 24,
+                  marginRight: 12,
+                  minWidth: 145,
+                  height: 96,
+                  borderWidth: 1,
+                  borderColor: COLORS.borderAlpha40,
+                }}
+              />
+            ))
           : menuData?.map((section: MenuWithCategories) => (
-            <CategoryCard
-              key={section.category.id}
-              name={section.category.name}
-              itemCount={section.items.length}
-              isActive={activeCategoryId === section.category.id}
-              needsRestock={section.needsRestock}
-              onPress={() => setActiveCategoryId(section.category.id)}
-            />
-          ))}
+              <CategoryCard
+                key={section.category.id}
+                name={section.category.name}
+                itemCount={section.items.length}
+                isActive={activeCategoryId === section.category.id}
+                needsRestock={section.needsRestock}
+                onPress={() => setActiveCategoryId(section.category.id)}
+              />
+            ))}
       </ScrollView>
 
       {/* Menu Item Grid */}
@@ -1030,18 +1620,45 @@ export default function FOHScreen() {
         keyExtractor={(i) => i.id}
         numColumns={isTablet ? 4 : 2}
         contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 60 }}
-        renderItem={({ item }) => (
-          <MenuItemCard item={item} onAdd={handleAddItem} />
-        )}
+        renderItem={({ item }) => <MenuItemCard item={item} onAdd={handleAddItem} />}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
-            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.surfaceAlpha60, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+          <View
+            style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 80,
+            }}
+          >
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: COLORS.surfaceAlpha60,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 12,
+              }}
+            >
               <Ionicons name="ice-cream-outline" size={40} color={COLORS.primary} />
             </View>
-            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 16 }}>
+            <Text
+              style={{
+                color: COLORS.textPrimary,
+                fontFamily: FONTS.bold,
+                fontSize: 16,
+              }}
+            >
               {isLoading ? 'Loading Menu...' : 'No Shakes Found'}
             </Text>
-            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12, marginTop: 4 }}>
+            <Text
+              style={{
+                color: COLORS.textMuted,
+                fontFamily: FONTS.regular,
+                fontSize: 12,
+                marginTop: 4,
+              }}
+            >
               {isLoading ? 'Fetching delicious items...' : 'Try adjusting your search'}
             </Text>
           </View>
@@ -1058,8 +1675,8 @@ export default function FOHScreen() {
       <TopLogoHeader />
 
       {/* Block interactive content until navigation context is fully mounted */}
-      {isNavReady && (
-        isTablet ? (
+      {isNavReady &&
+        (isTablet ? (
           <View style={{ flex: 1, flexDirection: 'row', padding: 16, gap: 16 }}>
             <View style={{ flex: 0.65 }}>{MenuPanel}</View>
             <View style={{ flex: 0.35 }}>
@@ -1068,8 +1685,7 @@ export default function FOHScreen() {
           </View>
         ) : (
           <View style={{ flex: 1 }}>{MenuPanel}</View>
-        )
-      )}
+        ))}
 
       {/* Add Menu Item Modal */}
       <AddMenuItemModal

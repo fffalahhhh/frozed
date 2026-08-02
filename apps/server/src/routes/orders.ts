@@ -8,27 +8,20 @@ import {
   makingCosts,
   menuItems,
   users,
+  inventoryItems,
 } from '../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql, ilike } from 'drizzle-orm';
 
 export const ordersRouter = new Hono();
 
 // Helper: compute item cost from recipes + making costs
-async function computeItemCost(
-  menuItemId: string,
-  flavourId: string | null
-): Promise<number> {
-  const recipeRows = await db
-    .select()
-    .from(recipes)
-    .where(eq(recipes.menuItemId, menuItemId));
+async function computeItemCost(menuItemId: string, flavourId: string | null): Promise<number> {
+  const recipeRows = await db.select().from(recipes).where(eq(recipes.menuItemId, menuItemId));
 
-  const relevant = recipeRows.filter(
-    (r) => r.flavourId === null || r.flavourId === flavourId
-  );
+  const relevant = recipeRows.filter((r) => r.flavourId === null || r.flavourId === flavourId);
   const ingredientCost = relevant.reduce(
     (sum, r) => sum + parseFloat(r.quantity) * parseFloat(r.costPerUnit),
-    0
+    0,
   );
 
   const makingRows = await db
@@ -51,37 +44,56 @@ ordersRouter.get('/', async (c) => {
 
 // POST /orders — create new order
 ordersRouter.post('/', async (c) => {
-  const { cashierId: reqCashierId, tableRef, orderType, customerName, items: cartItems, notes } =
-    await c.req.json();
+  const {
+    cashierId: reqCashierId,
+    tableRef,
+    orderType,
+    customerName,
+    customerPhone,
+    paymentMethod,
+    items: cartItems,
+    discountAmount: reqDiscount,
+    notes,
+  } = await c.req.json();
 
-  // Resolve valid cashier ID
+  if (!Array.isArray(cartItems) || cartItems.length === 0) {
+    return c.json({ success: false, error: 'Cart items are required' }, 400);
+  }
+
+  // Resolve valid cashier ID or auto-create fallback cashier
   let cashierId = reqCashierId;
   if (!cashierId || cashierId === '00000000-0000-0000-0000-000000000000') {
     const firstUser = await db.query.users.findFirst();
-    cashierId = firstUser?.id;
-  }
-
-  if (!cashierId) {
-    return c.json({ success: false, error: 'No user found for cashierId' }, 400);
+    if (firstUser) {
+      cashierId = firstUser.id;
+    } else {
+      const [newUser] = await db
+        .insert(users)
+        .values({ name: 'Cashier', email: 'cashier@frozenshake.com', role: 'cashier' })
+        .returning();
+      cashierId = newUser.id;
+    }
   }
 
   let subtotal = 0;
-  const processedItems: typeof orderItems.$inferInsert[] = [];
+  const processedItems: (typeof orderItems.$inferInsert)[] = [];
 
   for (const ci of cartItems) {
     const menuItem = await db.query.menuItems.findFirst({
       where: eq(menuItems.id, ci.menuItemId),
     });
-    if (!menuItem) continue;
 
-    const unitPrice = parseFloat(menuItem.sellingPrice);
-    const itemCost = await computeItemCost(ci.menuItemId, ci.flavourId ?? null);
+    const itemName = menuItem ? menuItem.name : ci.menuItemName || 'Item';
+    const unitPrice = menuItem
+      ? parseFloat(menuItem.sellingPrice)
+      : parseFloat(String(ci.unitPrice || 0));
+    const itemCost = menuItem ? await computeItemCost(ci.menuItemId, ci.flavourId ?? null) : 0;
     const lineTotal = unitPrice * ci.quantity;
     subtotal += lineTotal;
 
     processedItems.push({
       menuItemId: ci.menuItemId,
-      menuItemName: menuItem.name,
+      menuItemName: itemName,
       flavourId: ci.flavourId ?? null,
       flavourName: ci.flavourName ?? null,
       quantity: ci.quantity,
@@ -91,7 +103,30 @@ ordersRouter.post('/', async (c) => {
       notes: ci.notes ?? null,
       orderId: '',
     });
+
+    // Auto-deduct inventory ingredient stock if recipes exist
+    if (menuItem) {
+      const itemRecipes = await db
+        .select()
+        .from(recipes)
+        .where(eq(recipes.menuItemId, menuItem.id));
+
+      for (const rec of itemRecipes) {
+        const totalQtyNeeded = parseFloat(rec.quantity) * ci.quantity;
+        await db
+          .update(inventoryItems)
+          .set({
+            currentStock: sql`${inventoryItems.currentStock} - ${totalQtyNeeded}`,
+            updatedAt: new Date(),
+          })
+          .where(ilike(inventoryItems.name, rec.ingredientName));
+      }
+    }
   }
+
+  const discountVal = parseFloat(String(reqDiscount || 0));
+  const totalVal = Math.max(0, subtotal - discountVal);
+  const statusVal = paymentMethod === 'credit' ? 'open' : 'paid';
 
   const [order] = await db
     .insert(orders)
@@ -99,12 +134,15 @@ ordersRouter.post('/', async (c) => {
       cashierId,
       tableRef: tableRef ?? null,
       orderType: orderType ?? 'dine_in',
-      customerName: customerName ?? null,
-      status: 'open',
+      customerName: customerName ? String(customerName).trim() : null,
+      customerPhone: customerPhone ? String(customerPhone).trim() : null,
+      status: statusVal,
+      paymentMethod: paymentMethod ?? 'cash',
       subtotal: subtotal.toFixed(2),
-      discountAmount: '0',
-      totalAmount: subtotal.toFixed(2),
+      discountAmount: discountVal.toFixed(2),
+      totalAmount: totalVal.toFixed(2),
       notes: notes ?? null,
+      paidAt: paymentMethod && paymentMethod !== 'credit' ? new Date() : null,
     })
     .returning();
 
@@ -140,11 +178,7 @@ ordersRouter.get('/:id', async (c) => {
 ordersRouter.patch('/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
-  const [updated] = await db
-    .update(orders)
-    .set(body)
-    .where(eq(orders.id, id))
-    .returning();
+  const [updated] = await db.update(orders).set(body).where(eq(orders.id, id)).returning();
   return c.json({ success: true, data: updated });
 });
 
@@ -158,15 +192,9 @@ ordersRouter.post('/:id/bill', async (c) => {
 
   const billNumber = `BILL-${order.orderNumber.toString().padStart(5, '0')}`;
 
-  const [bill] = await db
-    .insert(bills)
-    .values({ orderId: id, billNumber })
-    .returning();
+  const [bill] = await db.insert(bills).values({ orderId: id, billNumber }).returning();
 
-  await db
-    .update(orders)
-    .set({ status: 'billed' })
-    .where(eq(orders.id, id));
+  await db.update(orders).set({ status: 'billed' }).where(eq(orders.id, id));
 
   return c.json({ success: true, data: { bill, billNumber } });
 });

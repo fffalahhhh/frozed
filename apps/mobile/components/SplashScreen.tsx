@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { View, Animated, StyleSheet, StatusBar, Easing } from "react-native";
+import React, { useEffect, useRef } from 'react';
+import { View, Animated, StyleSheet, StatusBar, Easing } from 'react-native';
 
 export default function SplashScreen({ onDone }: { onDone?: () => void }) {
   const translateY = useRef(new Animated.Value(0)).current;
@@ -42,7 +42,7 @@ export default function SplashScreen({ onDone }: { onDone?: () => void }) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Animated.Image
-        source={require("../assets/logo.png")}
+        source={require('../assets/logo.png')}
         resizeMode="contain"
         style={[
           styles.logo,
@@ -59,9 +59,9 @@ export default function SplashScreen({ onDone }: { onDone?: () => void }) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 99999,
   },
   logo: {

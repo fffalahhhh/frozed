@@ -10,11 +10,14 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "mobile": "turbo run dev --filter=mobile",
     "server": "turbo run dev --filter=server",
     "postinstall": "node scripts/patch-navigation-context.js"
   },
   "devDependencies": {
+    "prettier": "^3.9.6",
     "turbo": "^2.0.0",
     "typescript": "^5.5.4"
   },
@@ -22,7 +25,6 @@
     "drizzle-orm": "^0.45.2",
     "typescript": "^5.5.4"
   },
-
   "engines": {
     "node": ">=20"
   },

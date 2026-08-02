@@ -47,12 +47,8 @@
           "name": "bills_order_id_orders_id_fk",
           "tableFrom": "bills",
           "tableTo": "orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -62,9 +58,7 @@
         "bills_order_id_unique": {
           "name": "bills_order_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "order_id"
-          ]
+          "columns": ["order_id"]
         }
       },
       "policies": {},
@@ -199,12 +193,8 @@
           "name": "inventory_adjustments_inventory_item_id_inventory_items_id_fk",
           "tableFrom": "inventory_adjustments",
           "tableTo": "inventory_items",
-          "columnsFrom": [
-            "inventory_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["inventory_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -212,12 +202,8 @@
           "name": "inventory_adjustments_user_id_users_id_fk",
           "tableFrom": "inventory_adjustments",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -286,9 +272,7 @@
         "inventory_items_name_unique": {
           "name": "inventory_items_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -331,12 +315,8 @@
           "name": "making_costs_menu_item_id_menu_items_id_fk",
           "tableFrom": "making_costs",
           "tableTo": "menu_items",
-          "columnsFrom": [
-            "menu_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["menu_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -377,12 +357,8 @@
           "name": "menu_item_flavours_menu_item_id_menu_items_id_fk",
           "tableFrom": "menu_item_flavours",
           "tableTo": "menu_items",
-          "columnsFrom": [
-            "menu_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["menu_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -390,12 +366,8 @@
           "name": "menu_item_flavours_flavour_id_flavours_id_fk",
           "tableFrom": "menu_item_flavours",
           "tableTo": "flavours",
-          "columnsFrom": [
-            "flavour_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["flavour_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -475,12 +447,8 @@
           "name": "menu_items_category_id_categories_id_fk",
           "tableFrom": "menu_items",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -571,12 +539,8 @@
           "name": "order_items_order_id_orders_id_fk",
           "tableFrom": "order_items",
           "tableTo": "orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -584,12 +548,8 @@
           "name": "order_items_menu_item_id_menu_items_id_fk",
           "tableFrom": "order_items",
           "tableTo": "menu_items",
-          "columnsFrom": [
-            "menu_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["menu_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -597,12 +557,8 @@
           "name": "order_items_flavour_id_flavours_id_fk",
           "tableFrom": "order_items",
           "tableTo": "flavours",
-          "columnsFrom": [
-            "flavour_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["flavour_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -718,12 +674,8 @@
           "name": "orders_cashier_id_users_id_fk",
           "tableFrom": "orders",
           "tableTo": "users",
-          "columnsFrom": [
-            "cashier_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["cashier_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -788,12 +740,8 @@
           "name": "recipes_menu_item_id_menu_items_id_fk",
           "tableFrom": "recipes",
           "tableTo": "menu_items",
-          "columnsFrom": [
-            "menu_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["menu_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -801,12 +749,8 @@
           "name": "recipes_flavour_id_flavours_id_fk",
           "tableFrom": "recipes",
           "tableTo": "flavours",
-          "columnsFrom": [
-            "flavour_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["flavour_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -872,12 +816,8 @@
           "name": "shop_expenses_recorded_by_users_id_fk",
           "tableFrom": "shop_expenses",
           "tableTo": "users",
-          "columnsFrom": [
-            "recorded_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["recorded_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -934,9 +874,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -948,48 +886,27 @@
     "public.inventory_adjustment_type": {
       "name": "inventory_adjustment_type",
       "schema": "public",
-      "values": [
-        "restock",
-        "manual_correction",
-        "waste"
-      ]
+      "values": ["restock", "manual_correction", "waste"]
     },
     "public.order_status": {
       "name": "order_status",
       "schema": "public",
-      "values": [
-        "open",
-        "billed",
-        "paid",
-        "voided"
-      ]
+      "values": ["open", "billed", "paid", "voided"]
     },
     "public.order_type": {
       "name": "order_type",
       "schema": "public",
-      "values": [
-        "dine_in",
-        "take_away",
-        "order_online"
-      ]
+      "values": ["dine_in", "take_away", "order_online"]
     },
     "public.payment_method": {
       "name": "payment_method",
       "schema": "public",
-      "values": [
-        "cash",
-        "upi",
-        "card"
-      ]
+      "values": ["cash", "upi", "card"]
     },
     "public.user_role": {
       "name": "user_role",
       "schema": "public",
-      "values": [
-        "cashier",
-        "manager",
-        "admin"
-      ]
+      "values": ["cashier", "manager", "admin"]
     }
   },
   "schemas": {},

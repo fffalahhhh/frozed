@@ -16,24 +16,11 @@ import { relations } from 'drizzle-orm';
 
 export const userRoleEnum = pgEnum('user_role', ['cashier', 'manager', 'admin']);
 
-export const orderStatusEnum = pgEnum('order_status', [
-  'open',
-  'billed',
-  'paid',
-  'voided',
-]);
+export const orderStatusEnum = pgEnum('order_status', ['open', 'billed', 'paid', 'voided']);
 
-export const paymentMethodEnum = pgEnum('payment_method', [
-  'cash',
-  'upi',
-  'card',
-]);
+export const paymentMethodEnum = pgEnum('payment_method', ['cash', 'upi', 'card', 'credit']);
 
-export const orderTypeEnum = pgEnum('order_type', [
-  'dine_in',
-  'take_away',
-  'order_online',
-]);
+export const orderTypeEnum = pgEnum('order_type', ['dine_in', 'take_away', 'order_online']);
 
 export const inventoryAdjustmentTypeEnum = pgEnum('inventory_adjustment_type', [
   'restock',
@@ -96,9 +83,7 @@ export const menuItemFlavours = pgTable('menu_item_flavours', {
     .notNull()
     .references(() => flavours.id),
   // upcharge for exotic flavours (0 for standard)
-  extraCost: numeric('extra_cost', { precision: 10, scale: 2 })
-    .notNull()
-    .default('0'),
+  extraCost: numeric('extra_cost', { precision: 10, scale: 2 }).notNull().default('0'),
 });
 
 // ─── Recipes (ingredient cost per menu item / flavour) ────────────────────────
@@ -133,12 +118,8 @@ export const inventoryItems = pgTable('inventory_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull().unique(),
   unit: text('unit').notNull(),
-  currentStock: numeric('current_stock', { precision: 10, scale: 3 })
-    .notNull()
-    .default('0'),
-  reorderLevel: numeric('reorder_level', { precision: 10, scale: 3 })
-    .notNull()
-    .default('0'),
+  currentStock: numeric('current_stock', { precision: 10, scale: 3 }).notNull().default('0'),
+  reorderLevel: numeric('reorder_level', { precision: 10, scale: 3 }).notNull().default('0'),
   costPerUnit: numeric('cost_per_unit', { precision: 10, scale: 4 }).notNull(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -170,15 +151,12 @@ export const orders = pgTable('orders', {
   tableRef: text('table_ref'), // "Table 3", "Takeaway", null
   orderType: orderTypeEnum('order_type').notNull().default('dine_in'),
   customerName: text('customer_name'),
+  customerPhone: text('customer_phone'),
   status: orderStatusEnum('status').notNull().default('open'),
   paymentMethod: paymentMethodEnum('payment_method'),
   subtotal: numeric('subtotal', { precision: 10, scale: 2 }).notNull().default('0'),
-  discountAmount: numeric('discount_amount', { precision: 10, scale: 2 })
-    .notNull()
-    .default('0'),
-  totalAmount: numeric('total_amount', { precision: 10, scale: 2 })
-    .notNull()
-    .default('0'),
+  discountAmount: numeric('discount_amount', { precision: 10, scale: 2 }).notNull().default('0'),
+  totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull().default('0'),
   notes: text('notes'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   paidAt: timestamp('paid_at'),
@@ -255,19 +233,16 @@ export const recipesRelations = relations(recipes, ({ one }) => ({
   }),
 }));
 
-export const menuItemFlavoursRelations = relations(
-  menuItemFlavours,
-  ({ one }) => ({
-    menuItem: one(menuItems, {
-      fields: [menuItemFlavours.menuItemId],
-      references: [menuItems.id],
-    }),
-    flavour: one(flavours, {
-      fields: [menuItemFlavours.flavourId],
-      references: [flavours.id],
-    }),
-  })
-);
+export const menuItemFlavoursRelations = relations(menuItemFlavours, ({ one }) => ({
+  menuItem: one(menuItems, {
+    fields: [menuItemFlavours.menuItemId],
+    references: [menuItems.id],
+  }),
+  flavour: one(flavours, {
+    fields: [menuItemFlavours.flavourId],
+    references: [flavours.id],
+  }),
+}));
 
 export const flavoursRelations = relations(flavours, ({ one, many }) => ({
   baseFlavour: one(flavours, {
@@ -296,19 +271,16 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   }),
 }));
 
-export const inventoryAdjustmentsRelations = relations(
-  inventoryAdjustments,
-  ({ one }) => ({
-    item: one(inventoryItems, {
-      fields: [inventoryAdjustments.inventoryItemId],
-      references: [inventoryItems.id],
-    }),
-    user: one(users, {
-      fields: [inventoryAdjustments.userId],
-      references: [users.id],
-    }),
-  })
-);
+export const inventoryAdjustmentsRelations = relations(inventoryAdjustments, ({ one }) => ({
+  item: one(inventoryItems, {
+    fields: [inventoryAdjustments.inventoryItemId],
+    references: [inventoryItems.id],
+  }),
+  user: one(users, {
+    fields: [inventoryAdjustments.userId],
+    references: [users.id],
+  }),
+}));
 
 export const shopExpensesRelations = relations(shopExpenses, ({ one }) => ({
   recordedByUser: one(users, {

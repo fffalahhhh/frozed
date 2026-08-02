@@ -3,9 +3,7 @@ import {
   NavigationContext as CoreNavigationContext,
   NavigationContainerRefContext as CoreContainerContext,
 } from '@react-navigation/core';
-import {
-  NavigationContext as NativeNavigationContext,
-} from '@react-navigation/native';
+import { NavigationContext as NativeNavigationContext } from '@react-navigation/native';
 
 const dummyNavigation: any = {
   addListener: () => () => {},

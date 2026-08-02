@@ -36,7 +36,9 @@ function AddMenuItemModal({
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
   const [description, setDescription] = useState('');
-  const [ingredients, setIngredients] = useState<Array<{ inventoryItemId: string; quantity: string }>>([]);
+  const [ingredients, setIngredients] = useState<
+    Array<{ inventoryItemId: string; quantity: string }>
+  >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: stockItems } = useQuery<any[]>({
@@ -52,13 +54,20 @@ function AddMenuItemModal({
 
   const addIngredientRow = () => {
     if (!stockItems || stockItems.length === 0) {
-      Alert.alert('No Inventory Items', 'Please add inventory items first in the Inventory tab before linking ingredients.');
+      Alert.alert(
+        'No Inventory Items',
+        'Please add inventory items first in the Inventory tab before linking ingredients.',
+      );
       return;
     }
     setIngredients([...ingredients, { inventoryItemId: stockItems[0].id, quantity: '' }]);
   };
 
-  const updateIngredient = (index: number, field: 'inventoryItemId' | 'quantity', value: string) => {
+  const updateIngredient = (
+    index: number,
+    field: 'inventoryItemId' | 'quantity',
+    value: string,
+  ) => {
     const copy = [...ingredients];
     copy[index][field] = value;
     setIngredients(copy);
@@ -126,7 +135,12 @@ function AddMenuItemModal({
         <View className="bg-white rounded-t-3xl p-6 max-h-[85%]">
           <View className="flex-row items-center justify-between pb-3 border-b border-border/40 mb-4">
             <Text className="text-text-primary font-sans-bold text-xl">Add New Menu Item</Text>
-            <TouchableOpacity onPress={() => { onClose(); resetForm(); }}>
+            <TouchableOpacity
+              onPress={() => {
+                onClose();
+                resetForm();
+              }}
+            >
               <Ionicons name="close" size={24} color="#1A1A1A" />
             </TouchableOpacity>
           </View>
@@ -157,7 +171,11 @@ function AddMenuItemModal({
                         ? 'bg-primary border-primary'
                         : 'bg-white border-border'
                     }`}
-                    style={selectedCategoryId === cat.id ? { backgroundColor: '#1B4332', borderColor: '#1B4332' } : {}}
+                    style={
+                      selectedCategoryId === cat.id
+                        ? { backgroundColor: '#1B4332', borderColor: '#1B4332' }
+                        : {}
+                    }
                   >
                     <Text
                       className={`font-sans-medium text-xs ${
@@ -173,7 +191,9 @@ function AddMenuItemModal({
 
             {/* Selling Price */}
             <View className="mb-4">
-              <Text className="text-text-primary font-sans-medium text-xs mb-1.5">Selling Price (₹) *</Text>
+              <Text className="text-text-primary font-sans-medium text-xs mb-1.5">
+                Selling Price (₹) *
+              </Text>
               <TextInput
                 value={sellingPrice}
                 onChangeText={setSellingPrice}
@@ -186,7 +206,9 @@ function AddMenuItemModal({
 
             {/* Description */}
             <View className="mb-4">
-              <Text className="text-text-primary font-sans-medium text-xs mb-1.5">Description (Optional)</Text>
+              <Text className="text-text-primary font-sans-medium text-xs mb-1.5">
+                Description (Optional)
+              </Text>
               <TextInput
                 value={description}
                 onChangeText={setDescription}
@@ -200,15 +222,24 @@ function AddMenuItemModal({
             <View className="mb-5 border border-border/60 rounded-2xl p-3.5 bg-surface/50">
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-1 pr-2">
-                  <Text className="text-text-primary font-sans-bold text-sm">Inventory Used & Recipe</Text>
-                  <Text className="text-text-muted font-sans text-[11px]">Select inventory ingredients used per item</Text>
+                  <Text className="text-text-primary font-sans-bold text-sm">
+                    Inventory Used & Recipe
+                  </Text>
+                  <Text className="text-text-muted font-sans text-[11px]">
+                    Select inventory ingredients used per item
+                  </Text>
                 </View>
                 <TouchableOpacity
                   onPress={addIngredientRow}
                   className="flex-row items-center bg-primary/10 px-2.5 py-1.5 rounded-lg gap-1"
                 >
                   <Ionicons name="add" size={16} color="#1B4332" />
-                  <Text className="text-primary font-sans-semibold text-xs" style={{ color: '#1B4332' }}>Add Ingredient</Text>
+                  <Text
+                    className="text-primary font-sans-semibold text-xs"
+                    style={{ color: '#1B4332' }}
+                  >
+                    Add Ingredient
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -233,8 +264,14 @@ function AddMenuItemModal({
                         </TouchableOpacity>
                       </View>
 
-                      <Text className="text-text-muted font-sans text-[11px] mb-1">Select Inventory Item:</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2.5">
+                      <Text className="text-text-muted font-sans text-[11px] mb-1">
+                        Select Inventory Item:
+                      </Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        className="mb-2.5"
+                      >
                         {stockItems?.map((s) => (
                           <TouchableOpacity
                             key={s.id}
@@ -244,7 +281,11 @@ function AddMenuItemModal({
                                 ? 'bg-primary border-primary'
                                 : 'bg-white border-border'
                             }`}
-                            style={ing.inventoryItemId === s.id ? { backgroundColor: '#1B4332', borderColor: '#1B4332' } : {}}
+                            style={
+                              ing.inventoryItemId === s.id
+                                ? { backgroundColor: '#1B4332', borderColor: '#1B4332' }
+                                : {}
+                            }
                           >
                             <Text
                               className={`text-[11px] font-sans-medium ${
@@ -302,7 +343,11 @@ export default function MenuManagementScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data: menuData, isLoading, refetch } = useQuery<MenuWithCategories[]>({
+  const {
+    data: menuData,
+    isLoading,
+    refetch,
+  } = useQuery<MenuWithCategories[]>({
     queryKey: ['menu'],
     queryFn: () => api.get('/menu'),
   });
@@ -344,30 +389,28 @@ export default function MenuManagementScreen() {
   };
 
   const handleDeleteItem = (item: MenuItem) => {
-    Alert.alert(
-      'Delete Menu Item',
-      `Are you sure you want to delete "${item.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeletingId(item.id);
-              await api.delete(`/menu/items/${item.id}`);
-              await queryClient.invalidateQueries({ queryKey: ['menu'] });
-              refetch();
-              useToastStore.getState().showToast(`"${item.name}" has been deleted.`, 'success');
-            } catch (err: any) {
-              useToastStore.getState().showToast(err.message || 'Failed to delete menu item', 'error');
-            } finally {
-              setDeletingId(null);
-            }
-          },
+    Alert.alert('Delete Menu Item', `Are you sure you want to delete "${item.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setDeletingId(item.id);
+            await api.delete(`/menu/items/${item.id}`);
+            await queryClient.invalidateQueries({ queryKey: ['menu'] });
+            refetch();
+            useToastStore.getState().showToast(`"${item.name}" has been deleted.`, 'success');
+          } catch (err: any) {
+            useToastStore
+              .getState()
+              .showToast(err.message || 'Failed to delete menu item', 'error');
+          } finally {
+            setDeletingId(null);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -376,7 +419,9 @@ export default function MenuManagementScreen() {
       <View className="flex-row items-center justify-between pb-4 border-b border-border/40 mb-3">
         <View>
           <Text className="text-text-primary font-sans-bold text-2xl">Menu Items</Text>
-          <Text className="text-text-muted font-sans text-xs mt-0.5">Manage items & ingredient recipes</Text>
+          <Text className="text-text-muted font-sans text-xs mt-0.5">
+            Manage items & ingredient recipes
+          </Text>
         </View>
 
         <View className="flex-row items-center gap-2">
@@ -416,15 +461,27 @@ export default function MenuManagementScreen() {
       </View>
 
       {/* Category Filter Pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4 flex-row max-h-10">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="mb-4 flex-row max-h-10"
+      >
         <TouchableOpacity
           onPress={() => setActiveCategoryFilter('ALL')}
           className={`px-4 py-2 rounded-xl border mr-2 ${
-            activeCategoryFilter === 'ALL' ? 'bg-primary border-primary' : 'bg-white border-border/60'
+            activeCategoryFilter === 'ALL'
+              ? 'bg-primary border-primary'
+              : 'bg-white border-border/60'
           }`}
-          style={activeCategoryFilter === 'ALL' ? { backgroundColor: '#1B4332', borderColor: '#1B4332' } : {}}
+          style={
+            activeCategoryFilter === 'ALL'
+              ? { backgroundColor: '#1B4332', borderColor: '#1B4332' }
+              : {}
+          }
         >
-          <Text className={`font-sans-medium text-xs ${activeCategoryFilter === 'ALL' ? 'text-white' : 'text-text-primary'}`}>
+          <Text
+            className={`font-sans-medium text-xs ${activeCategoryFilter === 'ALL' ? 'text-white' : 'text-text-primary'}`}
+          >
             All Categories
           </Text>
         </TouchableOpacity>
@@ -434,11 +491,19 @@ export default function MenuManagementScreen() {
             key={cat.id}
             onPress={() => setActiveCategoryFilter(cat.id)}
             className={`px-4 py-2 rounded-xl border mr-2 ${
-              activeCategoryFilter === cat.id ? 'bg-primary border-primary' : 'bg-white border-border/60'
+              activeCategoryFilter === cat.id
+                ? 'bg-primary border-primary'
+                : 'bg-white border-border/60'
             }`}
-            style={activeCategoryFilter === cat.id ? { backgroundColor: '#1B4332', borderColor: '#1B4332' } : {}}
+            style={
+              activeCategoryFilter === cat.id
+                ? { backgroundColor: '#1B4332', borderColor: '#1B4332' }
+                : {}
+            }
           >
-            <Text className={`font-sans-medium text-xs ${activeCategoryFilter === cat.id ? 'text-white' : 'text-text-primary'}`}>
+            <Text
+              className={`font-sans-medium text-xs ${activeCategoryFilter === cat.id ? 'text-white' : 'text-text-primary'}`}
+            >
               {cat.name}
             </Text>
           </TouchableOpacity>
@@ -470,24 +535,35 @@ export default function MenuManagementScreen() {
                 <View className="flex-row items-start justify-between mb-2">
                   <View className="flex-1 pr-2">
                     <View className="flex-row items-center gap-2 flex-wrap">
-                      <Text className="text-text-primary font-sans-bold text-base">{item.name}</Text>
+                      <Text className="text-text-primary font-sans-bold text-base">
+                        {item.name}
+                      </Text>
                       <View className="bg-surface border border-border/60 rounded-full px-2.5 py-0.5">
-                        <Text className="text-text-muted text-[10px] font-sans-medium">{item.categoryName}</Text>
+                        <Text className="text-text-muted text-[10px] font-sans-medium">
+                          {item.categoryName}
+                        </Text>
                       </View>
                     </View>
                     {item.description ? (
-                      <Text className="text-text-muted font-sans text-xs mt-1">{item.description}</Text>
+                      <Text className="text-text-muted font-sans text-xs mt-1">
+                        {item.description}
+                      </Text>
                     ) : null}
                   </View>
 
                   <View className="items-end gap-1">
-                    <Text className="text-primary font-sans-bold text-base" style={{ color: '#1B4332' }}>
+                    <Text
+                      className="text-primary font-sans-bold text-base"
+                      style={{ color: '#1B4332' }}
+                    >
                       {fmt(item.sellingPrice)}
                     </Text>
                     <TouchableOpacity
                       onPress={() => handleToggleAvailability(item)}
                       className={`px-2 py-0.5 rounded-full border ${
-                        item.isAvailable ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
+                        item.isAvailable
+                          ? 'bg-emerald-50 border-emerald-200'
+                          : 'bg-rose-50 border-rose-200'
                       }`}
                     >
                       <Text
@@ -506,7 +582,9 @@ export default function MenuManagementScreen() {
                   <View className="flex-row items-center justify-between mb-1.5">
                     <View className="flex-row items-center gap-1.5">
                       <Ionicons name="nutrition-outline" size={14} color="#1B4332" />
-                      <Text className="text-text-primary font-sans-bold text-xs">Ingredients Used:</Text>
+                      <Text className="text-text-primary font-sans-bold text-xs">
+                        Ingredients Used:
+                      </Text>
                     </View>
                     <Text className="text-text-muted font-sans text-[10px]">
                       {item.recipes && item.recipes.length > 0
@@ -522,8 +600,13 @@ export default function MenuManagementScreen() {
                           key={idx}
                           className="bg-white border border-border/80 rounded-xl px-2.5 py-1.5 flex-row items-center gap-1"
                         >
-                          <Text className="text-text-primary font-sans-semibold text-xs">{rec.ingredientName}:</Text>
-                          <Text className="text-primary font-sans-bold text-xs" style={{ color: '#1B4332' }}>
+                          <Text className="text-text-primary font-sans-semibold text-xs">
+                            {rec.ingredientName}:
+                          </Text>
+                          <Text
+                            className="text-primary font-sans-bold text-xs"
+                            style={{ color: '#1B4332' }}
+                          >
                             {rec.quantity} {rec.unit}
                           </Text>
                         </View>
@@ -548,7 +631,9 @@ export default function MenuManagementScreen() {
                     ) : (
                       <>
                         <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                        <Text className="text-rose-600 font-sans-semibold text-xs">Delete Item</Text>
+                        <Text className="text-rose-600 font-sans-semibold text-xs">
+                          Delete Item
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -558,7 +643,9 @@ export default function MenuManagementScreen() {
           ) : (
             <View className="items-center justify-center py-20">
               <Ionicons name="restaurant-outline" size={48} color="#8A8A8A" />
-              <Text className="text-text-muted font-sans-medium text-sm mt-2">No menu items found</Text>
+              <Text className="text-text-muted font-sans-medium text-sm mt-2">
+                No menu items found
+              </Text>
             </View>
           )}
         </ScrollView>

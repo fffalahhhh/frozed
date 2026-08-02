@@ -1,11 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import {
-  categories,
-  menuItems,
-  inventoryItems,
-  recipes,
-} from '../db/schema.js';
+import { categories, menuItems, inventoryItems, recipes } from '../db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 
 export const menuRouter = new Hono();
@@ -31,14 +26,12 @@ menuRouter.get('/', async (c) => {
   const needsRestockNames = new Set(
     stockItems
       .filter((s) => parseFloat(s.currentStock) <= parseFloat(s.reorderLevel))
-      .map((s) => s.name.toLowerCase())
+      .map((s) => s.name.toLowerCase()),
   );
 
   const result = cats.map((cat) => {
     const catItems = items.filter((i) => i.categoryId === cat.id);
-    const needsRestock = catItems.some((item) =>
-      needsRestockNames.has(item.name.toLowerCase())
-    );
+    const needsRestock = catItems.some((item) => needsRestockNames.has(item.name.toLowerCase()));
     return {
       category: cat,
       items: catItems.map((item) => ({
@@ -131,11 +124,7 @@ menuRouter.post('/items', async (c) => {
 menuRouter.put('/items/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
-  const [item] = await db
-    .update(menuItems)
-    .set(body)
-    .where(eq(menuItems.id, id))
-    .returning();
+  const [item] = await db.update(menuItems).set(body).where(eq(menuItems.id, id)).returning();
   return c.json({ success: true, data: item });
 });
 
