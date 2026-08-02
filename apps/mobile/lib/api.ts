@@ -1,8 +1,30 @@
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// Mac LAN IP allows physical devices and simulators to connect to backend
-const DEFAULT_HOST = 'http://192.168.31.84:3000';
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_HOST;
+// Dynamically resolve host IP from Expo Metro server (e.g. 10.129.92.128)
+function getBaseUrl(): string {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    Constants.manifest2?.extra?.expoGo?.developer?.manifest?.debuggerHost ||
+    (Constants as any).manifest?.debuggerHost;
+
+  if (hostUri) {
+    const hostIp = hostUri.split(':')[0];
+    return `http://${hostIp}:3000`;
+  }
+
+  // Fallback for Android emulator / iOS simulator / standalone default
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000';
+  }
+  return 'http://localhost:3000';
+}
+
+const BASE_URL = getBaseUrl();
 
 // Fallback seed data if backend API is not running locally
 const FALLBACK_MENU = [
@@ -90,7 +112,7 @@ async function request<T>(
 ): Promise<T> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     const res = await fetch(`${BASE_URL}${path}`, {
       ...options,

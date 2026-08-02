@@ -4,16 +4,16 @@ import {
   Text,
   ScrollView,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   Image,
   useWindowDimensions,
-  SafeAreaView,
   StatusBar,
   FlatList,
-  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { useRootNavigationState } from 'expo-router';
 import { api } from '../../lib/api';
 import { useCartStore } from '../../store/cart';
 import type { MenuWithCategories, MenuItem, OrderType } from '@frozen-shake/shared';
@@ -21,14 +21,48 @@ import type { MenuWithCategories, MenuItem, OrderType } from '@frozen-shake/shar
 // ─── Format currency ─────────────────────────────────────────────────────────
 const fmt = (n: number | string) => `₹${parseFloat(String(n)).toFixed(0)}`;
 
+// ─── Color & Style Constants ──────────────────────────────────────────────────
+const COLORS = {
+  primary: '#1B4332',
+  primaryAlpha40: 'rgba(27, 67, 50, 0.4)',
+  primaryAlpha20: 'rgba(27, 67, 50, 0.2)',
+  primaryAlpha10: 'rgba(27, 67, 50, 0.1)',
+  surface: '#FFFFFF',
+  surfaceAlpha80: 'rgba(255, 255, 255, 0.8)',
+  surfaceAlpha60: 'rgba(255, 255, 255, 0.6)',
+  surfaceAlpha50: 'rgba(255, 255, 255, 0.5)',
+  surfaceAlpha40: 'rgba(255, 255, 255, 0.4)',
+  border: '#E8E2D9',
+  borderAlpha60: 'rgba(232, 226, 217, 0.6)',
+  borderAlpha50: 'rgba(232, 226, 217, 0.5)',
+  borderAlpha40: 'rgba(232, 226, 217, 0.4)',
+  textPrimary: '#1A1A1A',
+  textMuted: '#8A8A8A',
+  textMutedAlpha60: 'rgba(138, 138, 138, 0.6)',
+  textLight: '#B0B0B0',
+  warning: '#F97316',
+  warningAlpha10: 'rgba(249, 115, 22, 0.1)',
+  warningAlpha30: 'rgba(249, 115, 22, 0.3)',
+  success: '#1B4332',
+  successBg: '#E8F5EE',
+  white: '#FFFFFF',
+};
+
+const FONTS = {
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semiBold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+};
+
 // ─── Top Center Logo Header ──────────────────────────────────────────────────
 function TopLogoHeader() {
   return (
-    <SafeAreaView className="bg-white border-b border-border/40">
-      <View className="items-center justify-center py-2">
+    <SafeAreaView style={{ backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40 }}>
+      <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 8 }}>
         <Image
           source={require('../../assets/logo.png')}
-          className="w-16 h-16"
+          style={{ width: 64, height: 64 }}
           resizeMode="contain"
         />
       </View>
@@ -51,14 +85,22 @@ function CategoryCard({
   onPress: () => void;
 }) {
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
-      className={`rounded-3xl px-4 py-3.5 mr-3 min-w-[145px] h-[96px] justify-between border ${isActive
-        ? 'bg-primary border-primary shadow-lg shadow-primary/30'
-        : 'bg-white/90 border-border/60 shadow-sm'
-        }`}
-      activeOpacity={0.85}
-      style={
+      style={({ pressed }) => [
+        {
+          borderRadius: 24,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          marginRight: 12,
+          minWidth: 145,
+          height: 96,
+          justifyContent: 'space-between',
+          borderWidth: 1,
+          backgroundColor: isActive ? COLORS.primary : 'rgba(255, 255, 255, 0.9)',
+          borderColor: isActive ? COLORS.primary : COLORS.borderAlpha60,
+          opacity: pressed ? 0.85 : 1,
+        },
         isActive
           ? {
             shadowColor: '#1B4332',
@@ -73,30 +115,43 @@ function CategoryCard({
             shadowOpacity: 0.04,
             shadowRadius: 6,
             elevation: 2,
-          }
-      }
+          },
+      ]}
     >
       {/* Badge */}
       {needsRestock ? (
-        <View className="self-start bg-warning/10 border border-warning/30 rounded-full px-2.5 py-0.5 flex-row items-center gap-1">
-          <Ionicons name="alert-circle" size={12} color="#F97316" />
-          <Text className="text-warning text-[10px] font-sans-semibold">
+        <View style={{ alignSelf: 'flex-start', backgroundColor: COLORS.warningAlpha10, borderWidth: 1, borderColor: COLORS.warningAlpha30, borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Ionicons name="alert-circle" size={12} color={COLORS.warning} />
+          <Text style={{ color: COLORS.warning, fontSize: 10, fontFamily: FONTS.semiBold }}>
             Re-stock
           </Text>
         </View>
       ) : (
         <View
-          className={`self-start rounded-full px-2.5 py-0.5 flex-row items-center gap-1 ${isActive ? 'bg-white/20' : 'bg-success-bg border border-primary/10'
-            }`}
+          style={{
+            alignSelf: 'flex-start',
+            borderRadius: 9999,
+            paddingHorizontal: 10,
+            paddingVertical: 2,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            backgroundColor: isActive ? 'rgba(255, 255, 255, 0.2)' : COLORS.successBg,
+            borderWidth: isActive ? 0 : 1,
+            borderColor: COLORS.primaryAlpha10,
+          }}
         >
           <Ionicons
             name="checkmark-circle"
             size={12}
-            color={isActive ? '#FFFFFF' : '#1B4332'}
+            color={isActive ? COLORS.white : COLORS.primary}
           />
           <Text
-            className={`text-[10px] font-sans-semibold ${isActive ? 'text-white' : 'text-primary'
-              }`}
+            style={{
+              fontSize: 10,
+              fontFamily: FONTS.semiBold,
+              color: isActive ? COLORS.white : COLORS.primary,
+            }}
           >
             Available
           </Text>
@@ -106,20 +161,28 @@ function CategoryCard({
       {/* Title & Count */}
       <View>
         <Text
-          className={`font-sans-bold text-base leading-tight ${isActive ? 'text-white' : 'text-text-primary'
-            }`}
+          style={{
+            fontFamily: FONTS.bold,
+            fontSize: 16,
+            lineHeight: 20,
+            color: isActive ? COLORS.white : COLORS.textPrimary,
+          }}
           numberOfLines={1}
         >
           {name}
         </Text>
         <Text
-          className={`font-sans text-xs mt-0.5 ${isActive ? 'text-white/75' : 'text-text-muted'
-            }`}
+          style={{
+            fontFamily: FONTS.regular,
+            fontSize: 12,
+            marginTop: 2,
+            color: isActive ? 'rgba(255, 255, 255, 0.75)' : COLORS.textMuted,
+          }}
         >
           {itemCount} Items
         </Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -132,55 +195,78 @@ function MenuItemCard({
   onAdd: (item: MenuItem) => void;
 }) {
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={() => onAdd(item)}
-      className="bg-white/95 rounded-3xl p-3.5 m-1.5 flex-1 min-w-[140px] max-w-[185px] border border-border/50 justify-between"
-      activeOpacity={0.85}
-      style={{
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 3,
-      }}
+      style={({ pressed }) => [
+        {
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: 24,
+          padding: 14,
+          margin: 6,
+          flex: 1,
+          minWidth: 140,
+          maxWidth: 185,
+          borderWidth: 1,
+          borderColor: COLORS.borderAlpha50,
+          justifyContent: 'space-between',
+          opacity: pressed ? 0.85 : 1,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 10,
+          elevation: 3,
+        },
+      ]}
     >
       {/* Item Image or Graphic */}
-      <View className="items-center justify-center h-24 mb-2 bg-surface/40 rounded-2xl p-2">
+      <View style={{ alignItems: 'center', justifyContent: 'center', height: 96, marginBottom: 8, backgroundColor: COLORS.surfaceAlpha40, borderRadius: 16, padding: 8 }}>
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
-            className="w-20 h-20"
+            style={{ width: 80, height: 80 }}
             resizeMode="contain"
           />
         ) : (
-          <Ionicons name="nutrition-outline" size={44} color="#1B4332" />
+          <Ionicons name="nutrition-outline" size={44} color={COLORS.primary} />
         )}
       </View>
 
       {/* Item Name & Price */}
       <View>
         <Text
-          className="text-text-primary font-sans-bold text-sm leading-snug"
+          style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, lineHeight: 18 }}
           numberOfLines={2}
         >
           {item.name}
         </Text>
 
-        <View className="flex-row items-center justify-between mt-2">
-          <Text className="text-primary font-sans-bold text-base">
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+          <Text style={{ color: COLORS.primary, fontFamily: FONTS.bold, fontSize: 16 }}>
             {fmt(item.sellingPrice)}
           </Text>
 
-          <TouchableOpacity
+          <Pressable
             onPress={() => onAdd(item)}
-            className="w-8 h-8 rounded-full bg-primary items-center justify-center shadow-md shadow-primary/40"
-            activeOpacity={0.7}
+            style={({ pressed }) => ({
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: COLORS.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.7 : 1,
+              shadowColor: COLORS.primary,
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.4,
+              shadowRadius: 4,
+              elevation: 4,
+            })}
           >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+            <Ionicons name="add" size={20} color={COLORS.white} />
+          </Pressable>
         </View>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -199,27 +285,43 @@ function OrderTypeTabs({
   onChange: (t: OrderType) => void;
 }) {
   return (
-    <View className="flex-row bg-surface/80 rounded-2xl p-1 gap-1 border border-border/40">
+    <View style={{ flexDirection: 'row', backgroundColor: COLORS.surfaceAlpha80, borderRadius: 16, padding: 4, gap: 4, borderWidth: 1, borderColor: COLORS.borderAlpha40 }}>
       {ORDER_TYPES.map((t) => (
-        <TouchableOpacity
+        <Pressable
           key={t.key}
           onPress={() => onChange(t.key)}
-          className={`flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5 ${value === t.key ? 'bg-primary shadow-sm' : 'bg-transparent'
-            }`}
-          activeOpacity={0.8}
+          style={({ pressed }) => ({
+            flex: 1,
+            paddingVertical: 8,
+            borderRadius: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            backgroundColor: value === t.key ? COLORS.primary : 'transparent',
+            opacity: pressed ? 0.8 : 1,
+            shadowColor: value === t.key ? '#000' : 'transparent',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: value === t.key ? 0.1 : 0,
+            shadowRadius: 2,
+            elevation: value === t.key ? 2 : 0,
+          })}
         >
           <Ionicons
             name={t.icon}
             size={15}
-            color={value === t.key ? '#FFFFFF' : '#8A8A8A'}
+            color={value === t.key ? COLORS.white : '#8A8A8A'}
           />
           <Text
-            className={`font-sans-semibold text-xs ${value === t.key ? 'text-white' : 'text-text-muted'
-              }`}
+            style={{
+              fontFamily: FONTS.semiBold,
+              fontSize: 12,
+              color: value === t.key ? COLORS.white : COLORS.textMuted,
+            }}
           >
             {t.label}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       ))}
     </View>
   );
@@ -236,45 +338,45 @@ function CartItemRow({
   onDecrease: () => void;
 }) {
   return (
-    <View className="flex-row items-center gap-3 py-3 border-b border-border/40">
-      <View className="w-12 h-12 rounded-2xl bg-surface/60 items-center justify-center border border-border/40">
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40 }}>
+      <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: COLORS.surfaceAlpha60, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.borderAlpha40 }}>
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
-            className="w-9 h-9"
+            style={{ width: 36, height: 36 }}
             resizeMode="contain"
           />
         ) : (
-          <Ionicons name="cafe-outline" size={24} color="#1B4332" />
+          <Ionicons name="cafe-outline" size={24} color={COLORS.primary} />
         )}
       </View>
 
-      <View className="flex-1">
-        <View className="flex-row justify-between items-start">
-          <Text className="text-text-primary font-sans-bold text-sm flex-1 pr-1" numberOfLines={1}>
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, flex: 1, paddingRight: 4 }} numberOfLines={1}>
             {item.menuItemName}
           </Text>
-          <Text className="text-primary font-sans-bold text-sm">
+          <Text style={{ color: COLORS.primary, fontFamily: FONTS.bold, fontSize: 14 }}>
             {fmt(item.unitPrice * item.quantity)}
           </Text>
         </View>
 
         {item.flavourName && (
-          <Text className="text-text-muted font-sans text-xs mt-0.5">
+          <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12, marginTop: 2 }}>
             Flavor: {item.flavourName}
           </Text>
         )}
 
-        <View className="flex-row items-center mt-2 gap-2.5">
-          <TouchableOpacity onPress={onDecrease} activeOpacity={0.7}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 10 }}>
+          <Pressable onPress={onDecrease} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
             <Ionicons name="remove-circle-outline" size={22} color="#8A8A8A" />
-          </TouchableOpacity>
-          <Text className="text-text-primary font-sans-bold text-sm min-w-[16px] text-center">
+          </Pressable>
+          <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, minWidth: 16, textAlign: 'center' }}>
             {item.quantity}
           </Text>
-          <TouchableOpacity onPress={onIncrease} activeOpacity={0.7}>
-            <Ionicons name="add-circle" size={22} color="#1B4332" />
-          </TouchableOpacity>
+          <Pressable onPress={onIncrease} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+            <Ionicons name="add-circle" size={22} color={COLORS.primary} />
+          </Pressable>
         </View>
       </View>
     </View>
@@ -301,8 +403,13 @@ function CartPanel({ receiptNumber }: { receiptNumber: string }) {
 
   return (
     <View
-      className="bg-white/95 rounded-3xl flex-1 border border-border/50 mb-20"
       style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 24,
+        flex: 1,
+        borderWidth: 1,
+        borderColor: COLORS.borderAlpha50,
+        marginBottom: 80,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.08,
@@ -310,76 +417,76 @@ function CartPanel({ receiptNumber }: { receiptNumber: string }) {
         elevation: 6,
       }}
     >
-      <View className="flex-row items-center justify-between px-5 pt-4 pb-3 border-b border-border/40">
-        <View className="flex-row items-center gap-2">
-          <View className="w-8 h-8 rounded-full bg-primary/10 items-center justify-center">
-            <Ionicons name="receipt-outline" size={18} color="#1B4332" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primaryAlpha10, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="receipt-outline" size={18} color={COLORS.primary} />
           </View>
           <View>
-            <Text className="text-text-primary font-sans-bold text-sm leading-tight">
+            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, lineHeight: 18 }}>
               Order Receipt
             </Text>
-            <Text className="text-text-muted font-sans text-xs">
+            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12 }}>
               #{receiptNumber}
             </Text>
           </View>
         </View>
-        <TouchableOpacity className="w-8 h-8 rounded-full bg-surface items-center justify-center">
-          <Ionicons name="options-outline" size={16} color="#1B4332" />
-        </TouchableOpacity>
+        <Pressable style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="options-outline" size={16} color={COLORS.primary} />
+        </Pressable>
       </View>
 
-      <View className="px-5 flex-1 pt-3">
+      <View style={{ paddingHorizontal: 20, flex: 1, paddingTop: 12 }}>
         <OrderTypeTabs value={orderType} onChange={setOrderType} />
 
-        <View className="flex-row gap-3 mt-3">
-          <View className="flex-1">
-            <Text className="text-text-muted font-sans-medium text-[11px] uppercase tracking-wider mb-1">
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.medium, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
               Customer
             </Text>
-            <View className="flex-row items-center border border-border/60 rounded-2xl px-3 py-2 bg-surface/50 gap-2">
+            <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.surfaceAlpha50, gap: 8 }}>
               <Ionicons name="person-outline" size={16} color="#8A8A8A" />
               <TextInput
                 value={customerName}
                 onChangeText={setCustomerName}
                 placeholder="Name"
                 placeholderTextColor="#A0A0A0"
-                className="flex-1 text-text-primary font-sans text-xs p-0"
+                style={{ flex: 1, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 12, padding: 0 }}
               />
             </View>
           </View>
 
-          <View className="flex-1">
-            <Text className="text-text-muted font-sans-medium text-[11px] uppercase tracking-wider mb-1">
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.medium, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
               Table
             </Text>
-            <TouchableOpacity className="flex-row items-center justify-between border border-border/60 rounded-2xl px-3 py-2 bg-surface/50">
-              <Text className="text-text-primary font-sans text-xs" numberOfLines={1}>
+            <Pressable style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.surfaceAlpha50 }}>
+              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 12 }} numberOfLines={1}>
                 {tableRef || 'Select'}
               </Text>
               <Ionicons name="chevron-down" size={14} color="#8A8A8A" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
 
-        <Text className="text-text-primary font-sans-bold text-sm mt-4 mb-1">
+        <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14, marginTop: 16, marginBottom: 4 }}>
           Items ({items.length})
         </Text>
 
         {items.length === 0 ? (
-          <View className="flex-1 items-center justify-center py-10">
-            <View className="w-16 h-16 rounded-full bg-surface/60 items-center justify-center mb-3">
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.surfaceAlpha60, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
               <Ionicons name="cart-outline" size={32} color="#8A8A8A" />
             </View>
-            <Text className="text-text-muted font-sans-medium text-sm">
+            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.medium, fontSize: 14 }}>
               Your order is empty
             </Text>
-            <Text className="text-text-muted/60 font-sans text-xs mt-0.5 text-center">
+            <Text style={{ color: COLORS.textMutedAlpha60, fontFamily: FONTS.regular, fontSize: 12, marginTop: 2, textAlign: 'center' }}>
               Select items from the menu to build an order
             </Text>
           </View>
         ) : (
-          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
             {items.map((item) => (
               <CartItemRow
                 key={`${item.menuItemId}-${item.flavourId}`}
@@ -395,50 +502,65 @@ function CartPanel({ receiptNumber }: { receiptNumber: string }) {
           </ScrollView>
         )}
 
-        <View className="border-t border-border/50 pt-3 mt-2">
-          <View className="flex-row justify-between mb-1.5">
-            <Text className="text-text-muted font-sans text-xs">Subtotal</Text>
-            <Text className="text-text-primary font-sans-semibold text-xs">
+        <View style={{ borderTopWidth: 1, borderTopColor: COLORS.borderAlpha50, paddingTop: 12, marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12 }}>Subtotal</Text>
+            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.semiBold, fontSize: 12 }}>
               {fmt(sub)}
             </Text>
           </View>
 
           {discountAmount > 0 && (
-            <View className="flex-row justify-between mb-1.5">
-              <Text className="text-text-muted font-sans text-xs">Discount</Text>
-              <Text className="text-success font-sans-semibold text-xs">
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12 }}>Discount</Text>
+              <Text style={{ color: COLORS.success, fontFamily: FONTS.semiBold, fontSize: 12 }}>
                 − {fmt(discountAmount)}
               </Text>
             </View>
           )}
 
-          <View className="flex-row justify-between pt-1 border-t border-dashed border-border/50 mt-1">
-            <Text className="text-text-primary font-sans-bold text-sm">Total Payable</Text>
-            <Text className="text-primary font-sans-bold text-base">
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4, borderTopWidth: 1, borderStyle: 'dashed', borderTopColor: COLORS.borderAlpha50, marginTop: 4 }}>
+            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14 }}>Total Payable</Text>
+            <Text style={{ color: COLORS.primary, fontFamily: FONTS.bold, fontSize: 16 }}>
               {fmt(tot)}
             </Text>
           </View>
         </View>
       </View>
 
-      <TouchableOpacity
+      <Pressable
         disabled={items.length === 0}
-        className={`mx-5 mb-5 mt-4 rounded-full flex-row items-center justify-between px-5 py-3.5 ${items.length === 0
-          ? 'bg-primary/40'
-          : 'bg-primary shadow-lg shadow-primary/30'
-          }`}
-        activeOpacity={0.85}
+        style={({ pressed }) => ({
+          marginHorizontal: 20,
+          marginBottom: 20,
+          marginTop: 16,
+          borderRadius: 9999,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          backgroundColor: items.length === 0 ? "red" : "blue",
+          opacity: pressed ? 0.85 : 1,
+          shadowColor: items.length === 0 ? 'transparent' : COLORS.primary,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: items.length === 0 ? 0 : 4,
+          borderColor: COLORS.primary
+
+        })}
       >
-        <Text className="text-white font-sans-bold text-base">
+        <Text style={{ color: COLORS.primary, fontFamily: FONTS.bold, fontSize: 16, textAlign: "center" }}>
           Place Order
         </Text>
-        <View className="flex-row items-center gap-2">
-          <Text className="text-white font-sans-bold text-base">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ color: COLORS.white, fontFamily: FONTS.bold, fontSize: 16 }}>
             {fmt(tot)}
           </Text>
-          <Ionicons name="arrow-forward-circle" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-forward-circle" size={24} color={COLORS.white} />
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
@@ -447,6 +569,10 @@ function CartPanel({ receiptNumber }: { receiptNumber: string }) {
 export default function FOHScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+
+  // Wait for Expo Router's navigation container to be fully initialized
+  const rootState = useRootNavigationState();
+  const isNavReady = !!rootState?.key;
 
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -490,21 +616,21 @@ export default function FOHScreen() {
   const receiptNumber = String(Math.floor(Math.random() * 90000) + 10000);
 
   const MenuPanel = (
-    <View className="flex-1 pb-24">
+    <View style={{ flex: 1, paddingBottom: 96 }}>
       {/* Search Bar */}
-      <View className="flex-row items-center bg-white/90 border border-border/60 rounded-3xl px-4 py-3 mx-4 mt-3 mb-4 gap-2.5 shadow-sm">
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.9)', borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 12, marginHorizontal: 16, marginTop: 12, marginBottom: 16, gap: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
         <Ionicons name="search-outline" size={20} color="#8A8A8A" />
         <TextInput
           value={search}
           onChangeText={setSearch}
           placeholder="Search fruit shakes, juices..."
           placeholderTextColor="#8A8A8A"
-          className="flex-1 text-text-primary font-sans text-sm p-0"
+          style={{ flex: 1, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14, padding: 0 }}
         />
         {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
+          <Pressable onPress={() => setSearch('')}>
             <Ionicons name="close-circle" size={18} color="#8A8A8A" />
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
 
@@ -512,14 +638,14 @@ export default function FOHScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="px-4 mb-4"
+        style={{ paddingLeft: 16, marginBottom: 16 }}
         contentContainerStyle={{ paddingRight: 16 }}
       >
         {isLoading
           ? [1, 2, 3].map((i) => (
             <View
               key={i}
-              className="bg-white/60 rounded-3xl mr-3 min-w-[145px] h-[96px] border border-border/40"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)', borderRadius: 24, marginRight: 12, minWidth: 145, height: 96, borderWidth: 1, borderColor: COLORS.borderAlpha40 }}
             />
           ))
           : menuData?.map((section: MenuWithCategories) => (
@@ -544,14 +670,14 @@ export default function FOHScreen() {
           <MenuItemCard item={item} onAdd={handleAddItem} />
         )}
         ListEmptyComponent={
-          <View className="items-center justify-center py-20">
-            <View className="w-20 h-20 rounded-full bg-surface/60 items-center justify-center mb-3">
-              <Ionicons name="ice-cream-outline" size={40} color="#1B4332" />
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.surfaceAlpha60, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+              <Ionicons name="ice-cream-outline" size={40} color={COLORS.primary} />
             </View>
-            <Text className="text-text-primary font-sans-bold text-base">
+            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 16 }}>
               {isLoading ? 'Loading Menu...' : 'No Shakes Found'}
             </Text>
-            <Text className="text-text-muted font-sans text-xs mt-1">
+            <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12, marginTop: 4 }}>
               {isLoading ? 'Fetching delicious items...' : 'Try adjusting your search'}
             </Text>
           </View>
@@ -561,22 +687,24 @@ export default function FOHScreen() {
   );
 
   return (
-    <View className="flex-1 bg-white">
+    <View style={{ flex: 1, backgroundColor: COLORS.white }}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Logo placed at the top side */}
       <TopLogoHeader />
 
-      {/* Main Content Layout */}
-      {isTablet ? (
-        <View className="flex-1 flex-row p-4 gap-4">
-          <View style={{ flex: 0.65 }}>{MenuPanel}</View>
-          <View style={{ flex: 0.35 }}>
-            <CartPanel receiptNumber={receiptNumber} />
+      {/* Block interactive content until navigation context is fully mounted */}
+      {isNavReady && (
+        isTablet ? (
+          <View style={{ flex: 1, flexDirection: 'row', padding: 16, gap: 16 }}>
+            <View style={{ flex: 0.65 }}>{MenuPanel}</View>
+            <View style={{ flex: 0.35 }}>
+              <CartPanel receiptNumber={receiptNumber} />
+            </View>
           </View>
-        </View>
-      ) : (
-        <View className="flex-1">{MenuPanel}</View>
+        ) : (
+          <View style={{ flex: 1 }}>{MenuPanel}</View>
+        )
       )}
     </View>
   );

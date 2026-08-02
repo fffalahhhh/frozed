@@ -72,7 +72,10 @@ export const useCartStore = create<CartState>((set, get) => ({
     }));
   },
 
-  setOrderType: (type) => set({ orderType: type }),
+  setOrderType: (type) => {
+    console.log("HYE THERE")
+    set({ orderType: type })
+  },
   setCustomerName: (name) => set({ customerName: name }),
   setTableRef: (ref) => set({ tableRef: ref }),
   setDiscount: (amount) => set({ discountAmount: amount }),

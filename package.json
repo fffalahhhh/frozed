@@ -11,7 +11,8 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "mobile": "turbo run dev --filter=mobile",
-    "server": "turbo run dev --filter=server"
+    "server": "turbo run dev --filter=server",
+    "postinstall": "node scripts/patch-navigation-context.js"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

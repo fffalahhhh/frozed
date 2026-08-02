@@ -1,48 +1,85 @@
-import { useTheme } from "@react-navigation/native";
-import {
-  Icon,
-  Label,
-  NativeTabs,
-} from "expo-router/unstable-native-tabs";
+import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
-  const theme = useTheme();
-
   return (
-    <NativeTabs
-      tintColor="#1B4332"
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E8E2D9',
+          height: Platform.OS === 'ios' ? 70 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+          paddingTop: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 10,
+          elevation: 8,
+        },
+        tabBarActiveTintColor: '#1B4332',
+        tabBarInactiveTintColor: '#9ca3af',
+        tabBarLabelStyle: {
+          fontFamily: 'Inter_600SemiBold',
+          fontSize: 11,
+          marginTop: 2,
+        },
+      }}
     >
-      <NativeTabs.Trigger name="index">
-        <Label>Orders</Label>
-        <Icon
-          sf="fork.knife"
-          androidSrc={require("../../assets/icon.png")}
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Orders',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'fast-food' : 'fast-food-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+          }}
         />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="history">
-        <Label>History</Label>
-        <Icon
-          sf="doc.plaintext"
-          androidSrc={require("../../assets/icon.png")}
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: 'History',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'receipt' : 'receipt-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+          }}
         />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="inventory">
-        <Label>Inventory</Label>
-        <Icon
-          sf="shippingbox"
-          androidSrc={require("../../assets/icon.png")}
+        <Tabs.Screen
+          name="inventory"
+          options={{
+            title: 'Inventory',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'cube' : 'cube-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+          }}
         />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="analytics">
-        <Label>Analytics</Label>
-        <Icon
-          sf="chart.bar.fill"
-          androidSrc={require("../../assets/icon.png")}
+        <Tabs.Screen
+          name="analytics"
+          options={{
+            title: 'Analytics',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'stats-chart' : 'stats-chart-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+          }}
         />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    </Tabs>
   );
 }
