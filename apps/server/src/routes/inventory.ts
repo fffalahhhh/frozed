@@ -16,6 +16,30 @@ inventoryRouter.get('/', async (c) => {
   return c.json({ success: true, data: withAlert });
 });
 
+// POST /inventory — create new inventory item
+inventoryRouter.post('/', async (c) => {
+  const body = await c.req.json();
+  const { name, unit, currentStock, reorderLevel, costPerUnit } = body;
+
+  if (!name || !unit || currentStock === undefined || currentStock === null) {
+    return c.json({ success: false, error: 'Name, unit, and current stock are required' }, 400);
+  }
+
+  const [newItem] = await db
+    .insert(inventoryItems)
+    .values({
+      name: String(name).trim(),
+      unit: String(unit).trim(),
+      currentStock: String(currentStock),
+      reorderLevel: String(reorderLevel ?? '0'),
+      costPerUnit: String(costPerUnit ?? '0'),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  return c.json({ success: true, data: newItem }, 201);
+});
+
 // PATCH /inventory/:id — edit stock level or cost
 inventoryRouter.patch('/:id', async (c) => {
   const id = c.req.param('id');

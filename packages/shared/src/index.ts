@@ -35,6 +35,14 @@ export interface Flavour {
   baseFlavourId: string | null;
 }
 
+export interface RecipeItem {
+  id?: string;
+  ingredientName: string;
+  unit: string;
+  quantity: string | number;
+  costPerUnit?: string | number;
+}
+
 export interface MenuItem {
   id: string;
   categoryId: string;
@@ -44,6 +52,7 @@ export interface MenuItem {
   sellingPrice: string; // numeric as string for precision
   isAvailable: boolean;
   flavours?: MenuItemFlavour[];
+  recipes?: RecipeItem[];
 }
 
 export interface MenuItemFlavour {
@@ -117,6 +126,27 @@ export interface InventoryItem {
   reorderLevel: string;
   costPerUnit: string;
   updatedAt: string;
+}
+
+export interface CreateInventoryItemPayload {
+  name: string;
+  unit: string;
+  currentStock: string | number;
+  reorderLevel?: string | number;
+  costPerUnit?: string | number;
+}
+
+export interface MenuItemIngredientPayload {
+  inventoryItemId: string;
+  quantity: string | number;
+}
+
+export interface CreateMenuItemPayload {
+  categoryId: string;
+  name: string;
+  description?: string | null;
+  sellingPrice: string | number;
+  ingredients?: MenuItemIngredientPayload[];
 }
 
 // ─── Expenses ────────────────────────────────────────────────────────────────

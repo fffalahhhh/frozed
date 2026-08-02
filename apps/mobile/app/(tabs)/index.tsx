@@ -9,13 +9,19 @@ import {
   useWindowDimensions,
   StatusBar,
   FlatList,
+  Modal,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useRootNavigationState } from 'expo-router';
 import { api } from '../../lib/api';
 import { useCartStore } from '../../store/cart';
+import { useToastStore } from '../../store/toast';
 import type { MenuWithCategories, MenuItem, OrderType } from '@frozen-shake/shared';
 
 // ─── Format currency ─────────────────────────────────────────────────────────
@@ -415,6 +421,8 @@ function CartPanel({ receiptNumber }: { receiptNumber: string }) {
         shadowOpacity: 0.08,
         shadowRadius: 20,
         elevation: 6,
+        height: "100%",
+        minHeight: "100%"
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40 }}>
@@ -565,10 +573,337 @@ function CartPanel({ receiptNumber }: { receiptNumber: string }) {
   );
 }
 
+// ─── Add Menu Item Modal ──────────────────────────────────────────────────────
+function AddMenuItemModal({
+  visible,
+  onClose,
+  categories,
+  onSuccess,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  categories: Array<{ id: string; name: string }>;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [sellingPrice, setSellingPrice] = useState('');
+  const [description, setDescription] = useState('');
+  const [ingredients, setIngredients] = useState<Array<{ inventoryItemId: string; quantity: string }>>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Query inventory stock items
+  const { data: stockItems } = useQuery<any[]>({
+    queryKey: ['inventory-stock'],
+    queryFn: () => api.get('/inventory'),
+  });
+
+  React.useEffect(() => {
+    if (categories && categories.length > 0 && !selectedCategoryId) {
+      setSelectedCategoryId(categories[0].id);
+    }
+  }, [categories]);
+
+  const addIngredientRow = () => {
+    if (!stockItems || stockItems.length === 0) {
+      Alert.alert('No Inventory Items', 'Please add inventory items first in the Inventory tab before linking ingredients.');
+      return;
+    }
+    setIngredients([...ingredients, { inventoryItemId: stockItems[0].id, quantity: '' }]);
+  };
+
+  const updateIngredient = (index: number, field: 'inventoryItemId' | 'quantity', value: string) => {
+    const copy = [...ingredients];
+    copy[index][field] = value;
+    setIngredients(copy);
+  };
+
+  const removeIngredient = (index: number) => {
+    setIngredients(ingredients.filter((_, i) => i !== index));
+  };
+
+  const resetForm = () => {
+    setName('');
+    setSellingPrice('');
+    setDescription('');
+    setIngredients([]);
+  };
+
+  const handleSaveMenuItem = async () => {
+    if (!name.trim()) {
+      useToastStore.getState().showToast('Please enter a menu item name', 'error');
+      return;
+    }
+    if (!selectedCategoryId) {
+      useToastStore.getState().showToast('Please select a category', 'error');
+      return;
+    }
+    if (!sellingPrice.trim() || isNaN(Number(sellingPrice))) {
+      useToastStore.getState().showToast('Please enter a valid selling price', 'error');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const formattedIngredients = ingredients
+        .filter((ing) => ing.inventoryItemId && ing.quantity && !isNaN(Number(ing.quantity)))
+        .map((ing) => ({
+          inventoryItemId: ing.inventoryItemId,
+          quantity: Number(ing.quantity),
+        }));
+
+      await api.post('/menu/items', {
+        categoryId: selectedCategoryId,
+        name: name.trim(),
+        description: description.trim() || null,
+        sellingPrice: Number(sellingPrice),
+        ingredients: formattedIngredients,
+      });
+
+      useToastStore.getState().showToast('Menu item created successfully!', 'success');
+      resetForm();
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      useToastStore.getState().showToast(err.message || 'Failed to create menu item', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      >
+        <View style={{ backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '85%' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: COLORS.borderAlpha40, marginBottom: 16, paddingBottom: 12 }}>
+            <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 18 }}>Add Menu Item</Text>
+            <Pressable onPress={() => { onClose(); resetForm(); }}>
+              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+            </Pressable>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Item Name */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.medium, fontSize: 12, marginBottom: 6 }}>
+                Item Name *
+              </Text>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="e.g. Mango Special Smoothie"
+                placeholderTextColor={COLORS.textMuted}
+                style={{ borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14 }}
+              />
+            </View>
+
+            {/* Category selection */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.medium, fontSize: 12, marginBottom: 6 }}>
+                Category *
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                {categories.map((cat) => (
+                  <Pressable
+                    key={cat.id}
+                    onPress={() => setSelectedCategoryId(cat.id)}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      marginRight: 8,
+                      backgroundColor: selectedCategoryId === cat.id ? COLORS.primary : COLORS.white,
+                      borderColor: selectedCategoryId === cat.id ? COLORS.primary : COLORS.border,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: FONTS.medium,
+                        fontSize: 12,
+                        color: selectedCategoryId === cat.id ? COLORS.white : COLORS.textPrimary,
+                      }}
+                    >
+                      {cat.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Selling Price */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.medium, fontSize: 12, marginBottom: 6 }}>
+                Selling Price (₹) *
+              </Text>
+              <TextInput
+                value={sellingPrice}
+                onChangeText={setSellingPrice}
+                keyboardType="numeric"
+                placeholder="e.g. 140"
+                placeholderTextColor={COLORS.textMuted}
+                style={{ borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14 }}
+              />
+            </View>
+
+            {/* Description */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.medium, fontSize: 12, marginBottom: 6 }}>
+                Description (Optional)
+              </Text>
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder="e.g. Made with fresh pulp & whole milk"
+                placeholderTextColor={COLORS.textMuted}
+                style={{ borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14 }}
+              />
+            </View>
+
+            {/* Inventory Ingredients Section */}
+            <View style={{ marginBottom: 20, borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 16, padding: 14, backgroundColor: COLORS.surfaceAlpha50 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.bold, fontSize: 14 }}>
+                    Inventory Used & Recipe
+                  </Text>
+                  <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 11 }}>
+                    Select inventory ingredients used per serving
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={addIngredientRow}
+                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primaryAlpha10, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, gap: 4 }}
+                >
+                  <Ionicons name="add" size={16} color={COLORS.primary} />
+                  <Text style={{ color: COLORS.primary, fontFamily: FONTS.semiBold, fontSize: 12 }}>
+                    Add Ingredient
+                  </Text>
+                </Pressable>
+              </View>
+
+              {ingredients.length === 0 ? (
+                <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginVertical: 8 }}>
+                  No inventory ingredients added yet. Tap "+ Add Ingredient" above.
+                </Text>
+              ) : (
+                ingredients.map((ing, idx) => {
+                  const selectedStock = stockItems?.find((s) => s.id === ing.inventoryItemId);
+                  return (
+                    <View
+                      key={idx}
+                      style={{
+                        backgroundColor: COLORS.white,
+                        borderWidth: 1,
+                        borderColor: COLORS.borderAlpha60,
+                        borderRadius: 12,
+                        padding: 12,
+                        marginBottom: 10,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <Text style={{ color: COLORS.textPrimary, fontFamily: FONTS.semiBold, fontSize: 12 }}>
+                          Ingredient #{idx + 1}
+                        </Text>
+                        <Pressable onPress={() => removeIngredient(idx)}>
+                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                        </Pressable>
+                      </View>
+
+                      {/* Select inventory item pill scroll */}
+                      <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 11, marginBottom: 4 }}>
+                        Select Inventory Item:
+                      </Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                        {stockItems?.map((s) => (
+                          <Pressable
+                            key={s.id}
+                            onPress={() => updateIngredient(idx, 'inventoryItemId', s.id)}
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 10,
+                              borderWidth: 1,
+                              marginRight: 6,
+                              backgroundColor: ing.inventoryItemId === s.id ? COLORS.primary : COLORS.white,
+                              borderColor: ing.inventoryItemId === s.id ? COLORS.primary : COLORS.border,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontFamily: FONTS.medium,
+                                color: ing.inventoryItemId === s.id ? COLORS.white : COLORS.textPrimary,
+                              }}
+                            >
+                              {s.name} ({s.unit})
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+
+                      {/* Amount used input */}
+                      <Text style={{ color: COLORS.textMuted, fontFamily: FONTS.regular, fontSize: 11, marginBottom: 4 }}>
+                        Amount Used ({selectedStock?.unit || 'unit'} per item):
+                      </Text>
+                      <TextInput
+                        value={ing.quantity}
+                        onChangeText={(val) => updateIngredient(idx, 'quantity', val)}
+                        keyboardType="numeric"
+                        placeholder={`e.g. 200 ${selectedStock?.unit || ''}`}
+                        placeholderTextColor={COLORS.textMuted}
+                        style={{
+                          borderWidth: 1,
+                          borderColor: COLORS.borderAlpha60,
+                          borderRadius: 8,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          fontSize: 13,
+                          color: COLORS.textPrimary,
+                          backgroundColor: COLORS.white,
+                        }}
+                      />
+                    </View>
+                  );
+                })
+              )}
+            </View>
+
+            {/* Save Button */}
+            <Pressable
+              onPress={handleSaveMenuItem}
+              disabled={isSubmitting}
+              style={{
+                backgroundColor: COLORS.primary,
+                borderRadius: 16,
+                paddingVertical: 14,
+                alignItems: 'center',
+                marginBottom: 24,
+              }}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <Text style={{ color: COLORS.white, fontFamily: FONTS.bold, fontSize: 15 }}>
+                  Save Menu Item
+                </Text>
+              )}
+            </Pressable>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── Main FOH Screen ──────────────────────────────────────────────────────────
 export default function FOHScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+  const queryClient = useQueryClient();
 
   // Wait for Expo Router's navigation container to be fully initialized
   const rootState = useRootNavigationState();
@@ -576,12 +911,15 @@ export default function FOHScreen() {
 
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [addMenuModalVisible, setAddMenuModalVisible] = useState(false);
 
-  const { data: menuData, isLoading } = useQuery<MenuWithCategories[]>({
+  const { data: menuData, isLoading, refetch: refetchMenu } = useQuery<MenuWithCategories[]>({
     queryKey: ['menu'],
     queryFn: () => api.get('/menu'),
     staleTime: 1000 * 60 * 5,
   });
+
+  const categoriesList = menuData?.map((m) => ({ id: m.category.id, name: m.category.name })) ?? [];
 
   const addItem = useCartStore((s) => s.addItem);
 
@@ -617,22 +955,48 @@ export default function FOHScreen() {
 
   const MenuPanel = (
     <View style={{ flex: 1, paddingBottom: 96 }}>
-      {/* Search Bar */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.9)', borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 12, marginHorizontal: 16, marginTop: 12, marginBottom: 16, gap: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
-        <Ionicons name="search-outline" size={20} color="#8A8A8A" />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search fruit shakes, juices..."
-          placeholderTextColor="#8A8A8A"
-          style={{ flex: 1, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14, padding: 0 }}
-        />
-        {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={18} color="#8A8A8A" />
-          </Pressable>
-        )}
-      </View>
+      {/* Search Bar & Add Item Button */}
+      {/* <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 12, marginBottom: 16, gap: 10 }}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.9)', borderWidth: 1, borderColor: COLORS.borderAlpha60, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10, gap: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
+          <Ionicons name="search-outline" size={20} color="#8A8A8A" />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search fruit shakes, juices..."
+            placeholderTextColor="#8A8A8A"
+            style={{ flex: 1, color: COLORS.textPrimary, fontFamily: FONTS.regular, fontSize: 14, padding: 0 }}
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color="#8A8A8A" />
+            </Pressable>
+          )}
+        </View>
+
+        <Pressable
+          onPress={() => setAddMenuModalVisible(true)}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: COLORS.primary,
+            borderRadius: 24,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            gap: 6,
+            opacity: pressed ? 0.85 : 1,
+            shadowColor: '#1B4332',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 2,
+          })}
+        >
+          <Ionicons name="add-circle-outline" size={18} color={COLORS.white} />
+          <Text style={{ color: COLORS.white, fontFamily: FONTS.bold, fontSize: 13 }}>
+            Add Item
+          </Text>
+        </Pressable>
+      </View> */}
 
       {/* Category Pills */}
       <ScrollView
@@ -706,6 +1070,17 @@ export default function FOHScreen() {
           <View style={{ flex: 1 }}>{MenuPanel}</View>
         )
       )}
+
+      {/* Add Menu Item Modal */}
+      <AddMenuItemModal
+        visible={addMenuModalVisible}
+        onClose={() => setAddMenuModalVisible(false)}
+        categories={categoriesList}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['menu'] });
+          refetchMenu();
+        }}
+      />
     </View>
   );
 }

@@ -12,6 +12,7 @@ import {
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import AnimatedSplashScreen from '../components/SplashScreen';
+import { ToastBanner } from '../components/Toast';
 import '../global.css';
 
 ExpoSplashScreen.preventAutoHideAsync();
@@ -47,6 +48,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
+          <ToastBanner />
           <Stack screenOptions={{ headerShown: false }} />
           {showSplash && (
             <AnimatedSplashScreen onDone={() => setShowSplash(false)} />

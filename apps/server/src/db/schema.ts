@@ -248,6 +248,13 @@ export const menuItemsRelations = relations(menuItems, ({ one, many }) => ({
   makingCosts: many(makingCosts),
 }));
 
+export const recipesRelations = relations(recipes, ({ one }) => ({
+  menuItem: one(menuItems, {
+    fields: [recipes.menuItemId],
+    references: [menuItems.id],
+  }),
+}));
+
 export const menuItemFlavoursRelations = relations(
   menuItemFlavours,
   ({ one }) => ({
