@@ -7,22 +7,21 @@ export const menuRouter = new Hono();
 
 // GET /menu — full menu grouped by category with flavours
 menuRouter.get('/', async (c) => {
-  const cats = await db.query.categories.findMany({
-    orderBy: (t, { asc }) => [asc(t.sortOrder)],
-  });
-
-  const items = await db.query.menuItems.findMany({
-    where: eq(menuItems.isDeleted, false),
-    with: {
-      flavours: {
-        with: { flavour: true },
+  // Fetch categories, items, and inventory stock all in parallel
+  const [cats, items, stockItems] = await Promise.all([
+    db.query.categories.findMany({
+      orderBy: (t, { asc }) => [asc(t.sortOrder)],
+    }),
+    db.query.menuItems.findMany({
+      where: eq(menuItems.isDeleted, false),
+      with: {
+        flavours: { with: { flavour: true } },
+        recipes: true,
       },
-      recipes: true,
-    },
-  });
+    }),
+    db.select().from(inventoryItems),
+  ]);
 
-  // Check restock alerts — items whose ingredients are below reorder level
-  const stockItems = await db.select().from(inventoryItems);
   const needsRestockNames = new Set(
     stockItems
       .filter((s) => parseFloat(s.currentStock) <= parseFloat(s.reorderLevel))
@@ -81,50 +80,98 @@ menuRouter.post('/items', async (c) => {
     return c.json({ success: false, error: 'Category, name, and selling price are required' }, 400);
   }
 
-  const [item] = await db
-    .insert(menuItems)
-    .values({
-      categoryId,
-      name: String(name).trim(),
-      description: description ? String(description).trim() : null,
-      sellingPrice: String(sellingPrice),
-      isAvailable: isAvailable ?? true,
-    })
-    .returning();
+  // Insert menu item and fetch inventory items for ingredients in parallel
+  const invIds: string[] = Array.isArray(ingredients)
+    ? ingredients.map((ing: any) => ing.inventoryItemId).filter(Boolean)
+    : [];
 
-  if (Array.isArray(ingredients) && ingredients.length > 0) {
-    const invIds = ingredients.map((ing: any) => ing.inventoryItemId).filter(Boolean);
-    if (invIds.length > 0) {
-      const inventoryList = await db
-        .select()
-        .from(inventoryItems)
-        .where(inArray(inventoryItems.id, invIds));
+  const [[item], inventoryList] = await Promise.all([
+    db
+      .insert(menuItems)
+      .values({
+        categoryId,
+        name: String(name).trim(),
+        description: description ? String(description).trim() : null,
+        sellingPrice: String(sellingPrice),
+        isAvailable: isAvailable ?? true,
+      })
+      .returning(),
+    invIds.length > 0
+      ? db.select().from(inventoryItems).where(inArray(inventoryItems.id, invIds))
+      : Promise.resolve([]),
+  ]);
 
-      const invMap = new Map(inventoryList.map((inv) => [inv.id, inv]));
+  if (inventoryList.length > 0 && Array.isArray(ingredients) && ingredients.length > 0) {
+    const invMap = new Map(inventoryList.map((inv) => [inv.id, inv]));
+    const recipeRows = ingredients
+      .filter((ing: any) => invMap.get(ing.inventoryItemId) && ing.quantity)
+      .map((ing: any) => {
+        const inv = invMap.get(ing.inventoryItemId)!;
+        return {
+          menuItemId: item.id,
+          ingredientName: inv.name,
+          unit: inv.unit,
+          quantity: String(ing.quantity),
+          costPerUnit: String(inv.costPerUnit),
+        };
+      });
 
-      for (const ing of ingredients) {
-        const inv = invMap.get(ing.inventoryItemId);
-        if (inv && ing.quantity) {
-          await db.insert(recipes).values({
-            menuItemId: item.id,
-            ingredientName: inv.name,
-            unit: inv.unit,
-            quantity: String(ing.quantity),
-            costPerUnit: String(inv.costPerUnit),
-          });
-        }
-      }
+    if (recipeRows.length > 0) {
+      await db.insert(recipes).values(recipeRows);
     }
   }
 
   return c.json({ success: true, data: item }, 201);
 });
 
-// PUT /menu/items/:id — update
+// PUT /menu/items/:id — full update
 menuRouter.put('/items/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
   const [item] = await db.update(menuItems).set(body).where(eq(menuItems.id, id)).returning();
+  return c.json({ success: true, data: item });
+});
+
+// PATCH /menu/items/:id — partial update (name, price, description, category, ingredients)
+menuRouter.patch('/items/:id', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  const { isAvailable: _a, isDeleted: _d, ingredients, ...safe } = body;
+
+  // If ingredients provided: update item + delete old recipes in parallel, then re-insert
+  if (Array.isArray(ingredients)) {
+    const invIds = ingredients.map((ing: any) => ing.inventoryItemId).filter(Boolean);
+
+    const [[item], , inventoryList] = await Promise.all([
+      db.update(menuItems).set(safe).where(eq(menuItems.id, id)).returning(),
+      db.delete(recipes).where(eq(recipes.menuItemId, id)),
+      invIds.length > 0
+        ? db.select().from(inventoryItems).where(inArray(inventoryItems.id, invIds))
+        : Promise.resolve([]),
+    ]);
+
+    if (inventoryList.length > 0 && ingredients.length > 0) {
+      const invMap = new Map(inventoryList.map((inv) => [inv.id, inv]));
+      const rows = ingredients
+        .filter((ing: any) => invMap.get(ing.inventoryItemId) && ing.quantity)
+        .map((ing: any) => {
+          const inv = invMap.get(ing.inventoryItemId)!;
+          return {
+            menuItemId: id,
+            ingredientName: inv.name,
+            unit: inv.unit,
+            quantity: String(ing.quantity),
+            costPerUnit: String(inv.costPerUnit),
+          };
+        });
+      if (rows.length > 0) await db.insert(recipes).values(rows);
+    }
+
+    return c.json({ success: true, data: item });
+  }
+
+  // No ingredient changes — simple field update
+  const [item] = await db.update(menuItems).set(safe).where(eq(menuItems.id, id)).returning();
   return c.json({ success: true, data: item });
 });
 
@@ -137,10 +184,9 @@ menuRouter.patch('/items/:id/toggle', async (c) => {
     return c.json({ success: true, data: { id, isAvailable: true } });
   }
 
-  const current = await db.query.menuItems.findFirst({
-    where: eq(menuItems.id, id),
-  });
+  const current = await db.query.menuItems.findFirst({ where: eq(menuItems.id, id) });
   if (!current) return c.json({ success: false, error: 'Not found' }, 404);
+
   const [updated] = await db
     .update(menuItems)
     .set({ isAvailable: !current.isAvailable })
@@ -149,13 +195,12 @@ menuRouter.patch('/items/:id/toggle', async (c) => {
   return c.json({ success: true, data: updated });
 });
 
-// DELETE /menu/items/:id — delete menu item
+// DELETE /menu/items/:id — soft delete
 menuRouter.delete('/items/:id', async (c) => {
   const id = c.req.param('id');
   if (!IS_UUID.test(id)) {
     return c.json({ success: true, data: { id } });
   }
-
   const [updated] = await db
     .update(menuItems)
     .set({ isDeleted: true })

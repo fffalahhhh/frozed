@@ -27,6 +27,18 @@ app.use(
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (c) => c.json({ ok: true, app: 'Frozen Shake API' }));
 
+// ─── Global Error Handler ─────────────────────────────────────────────────────
+app.onError((err, c) => {
+  console.error(`[API Error] ${c.req.method} ${c.req.url}:`, err.message);
+  return c.json(
+    {
+      success: false,
+      error: err.message || 'Server processing error',
+    },
+    500,
+  );
+});
+
 // ─── Better-Auth handler ──────────────────────────────────────────────────────
 app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 

@@ -1,4 +1,4 @@
-import { migrate } from 'drizzle-orm/neon-http/migrator';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { db } from './index.js';
 import 'dotenv/config';
 

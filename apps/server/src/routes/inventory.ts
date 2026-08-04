@@ -51,6 +51,13 @@ inventoryRouter.patch('/:id', async (c) => {
   return c.json({ success: true, data: updated });
 });
 
+// DELETE /inventory/:id — remove an inventory item
+inventoryRouter.delete('/:id', async (c) => {
+  const id = c.req.param('id');
+  await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+  return c.json({ success: true, data: { id } });
+});
+
 // POST /inventory/adjust — log an adjustment (restock / waste / correction)
 inventoryRouter.post('/adjust', async (c) => {
   const { inventoryItemId, userId: reqUserId, type, quantityDelta, note } = await c.req.json();
@@ -65,19 +72,20 @@ inventoryRouter.post('/adjust', async (c) => {
     return c.json({ success: false, error: 'No user found' }, 400);
   }
 
-  // Update stock quantity
-  await db
-    .update(inventoryItems)
-    .set({
-      currentStock: sql`${inventoryItems.currentStock} + ${quantityDelta}`,
-      updatedAt: new Date(),
-    })
-    .where(eq(inventoryItems.id, inventoryItemId));
-
-  const [adjustment] = await db
-    .insert(inventoryAdjustments)
-    .values({ inventoryItemId, userId, type, quantityDelta, note })
-    .returning();
+  // Run stock update + adjustment insert in parallel
+  const [, [adjustment]] = await Promise.all([
+    db
+      .update(inventoryItems)
+      .set({
+        currentStock: sql`${inventoryItems.currentStock} + ${quantityDelta}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(inventoryItems.id, inventoryItemId)),
+    db
+      .insert(inventoryAdjustments)
+      .values({ inventoryItemId, userId, type, quantityDelta, note })
+      .returning(),
+  ]);
 
   return c.json({ success: true, data: adjustment }, 201);
 });

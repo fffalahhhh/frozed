@@ -10,39 +10,102 @@ import {
   users,
   inventoryItems,
 } from '../db/schema.js';
-import { eq, desc, sql, ilike } from 'drizzle-orm';
+import { eq, desc, sql, ilike, inArray } from 'drizzle-orm';
 
 export const ordersRouter = new Hono();
 
-// Helper: compute item cost from recipes + making costs
-async function computeItemCost(menuItemId: string, flavourId: string | null): Promise<number> {
-  const recipeRows = await db.select().from(recipes).where(eq(recipes.menuItemId, menuItemId));
+// ─── Background job: deduct inventory stock ───────────────────────────────────
+// Runs after the response has been sent — never blocks the request.
+async function deductInventoryAsync(
+  cartItems: { menuItemId: string; quantity: number }[],
+  allRecipes: { menuItemId: string; ingredientName: string; quantity: string }[],
+) {
+  try {
+    const recipesByItem = new Map<string, typeof allRecipes>();
+    for (const r of allRecipes) {
+      if (!recipesByItem.has(r.menuItemId)) recipesByItem.set(r.menuItemId, []);
+      recipesByItem.get(r.menuItemId)!.push(r);
+    }
 
-  const relevant = recipeRows.filter((r) => r.flavourId === null || r.flavourId === flavourId);
-  const ingredientCost = relevant.reduce(
-    (sum, r) => sum + parseFloat(r.quantity) * parseFloat(r.costPerUnit),
-    0,
-  );
-
-  const makingRows = await db
-    .select()
-    .from(makingCosts)
-    .where(eq(makingCosts.menuItemId, menuItemId));
-  const making = makingRows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
-
-  return ingredientCost + making;
+    const updates: Promise<unknown>[] = [];
+    for (const ci of cartItems) {
+      const recs = recipesByItem.get(ci.menuItemId) ?? [];
+      for (const rec of recs) {
+        const totalQtyNeeded = parseFloat(rec.quantity) * ci.quantity;
+        updates.push(
+          db
+            .update(inventoryItems)
+            .set({
+              currentStock: sql`${inventoryItems.currentStock} - ${totalQtyNeeded}`,
+              updatedAt: new Date(),
+            })
+            .where(ilike(inventoryItems.name, rec.ingredientName)),
+        );
+      }
+    }
+    await Promise.all(updates);
+  } catch (err) {
+    console.error('[orders] Background inventory deduction failed:', err);
+  }
 }
 
-// GET /orders — list all orders
+// ─── Background job: patch itemCost on order items ───────────────────────────
+// Runs after the response has been sent — never blocks the request.
+async function patchItemCostsAsync(
+  orderId: string,
+  cartItems: { menuItemId: string; flavourId?: string | null }[],
+  allRecipes: { menuItemId: string; flavourId: string | null; quantity: string; costPerUnit: string }[],
+  allMakingCosts: { menuItemId: string; amount: string }[],
+) {
+  try {
+    const recipesByItem = new Map<string, typeof allRecipes>();
+    for (const r of allRecipes) {
+      if (!recipesByItem.has(r.menuItemId)) recipesByItem.set(r.menuItemId, []);
+      recipesByItem.get(r.menuItemId)!.push(r);
+    }
+
+    const makingByItem = new Map<string, number>();
+    for (const m of allMakingCosts) {
+      makingByItem.set(m.menuItemId, (makingByItem.get(m.menuItemId) ?? 0) + parseFloat(m.amount));
+    }
+
+    const patches: Promise<unknown>[] = [];
+    for (const ci of cartItems) {
+      const relevant = (recipesByItem.get(ci.menuItemId) ?? []).filter(
+        (r) => r.flavourId === null || r.flavourId === (ci.flavourId ?? null),
+      );
+      const ingredientCost = relevant.reduce(
+        (sum, r) => sum + parseFloat(r.quantity) * parseFloat(r.costPerUnit),
+        0,
+      );
+      const making = makingByItem.get(ci.menuItemId) ?? 0;
+      const cost = (ingredientCost + making).toFixed(2);
+
+      patches.push(
+        db
+          .update(orderItems)
+          .set({ itemCost: cost })
+          .where(eq(orderItems.orderId, orderId) && eq(orderItems.menuItemId, ci.menuItemId)),
+      );
+    }
+    await Promise.all(patches);
+  } catch (err) {
+    console.error('[orders] Background cost patch failed:', err);
+  }
+}
+
+// ─── GET /orders — list recent orders (paginated) ────────────────────────────
 ordersRouter.get('/', async (c) => {
+  const limit = Math.min(parseInt(c.req.query('limit') ?? '100'), 500);
   const list = await db.query.orders.findMany({
     orderBy: [desc(orders.createdAt)],
+    limit,
     with: { items: true, cashier: true, bill: true },
   });
   return c.json({ success: true, data: list });
 });
 
-// POST /orders — create new order
+// ─── POST /orders — create new order (fast path) ─────────────────────────────
 ordersRouter.post('/', async (c) => {
   const {
     cashierId: reqCashierId,
@@ -60,34 +123,40 @@ ordersRouter.post('/', async (c) => {
     return c.json({ success: false, error: 'Cart items are required' }, 400);
   }
 
-  // Resolve valid cashier ID or auto-create fallback cashier
-  let cashierId = reqCashierId;
-  if (!cashierId || cashierId === '00000000-0000-0000-0000-000000000000') {
-    const firstUser = await db.query.users.findFirst();
-    if (firstUser) {
-      cashierId = firstUser.id;
-    } else {
+  // ── 1. Resolve cashier + fetch all menu items in parallel ─────────────────
+  const menuItemIds = [...new Set(cartItems.map((ci: any) => ci.menuItemId))];
+
+  const [cashierResult, fetchedMenuItems] = await Promise.all([
+    // Cashier resolution
+    (async () => {
+      if (reqCashierId && reqCashierId !== '00000000-0000-0000-0000-000000000000') {
+        return reqCashierId as string;
+      }
+      const firstUser = await db.query.users.findFirst();
+      if (firstUser) return firstUser.id;
       const [newUser] = await db
         .insert(users)
         .values({ name: 'Cashier', email: 'cashier@frozenshake.com', role: 'cashier' })
         .returning();
-      cashierId = newUser.id;
-    }
-  }
+      return newUser.id;
+    })(),
+    // Single batch fetch for all menu items
+    db.select().from(menuItems).where(inArray(menuItems.id, menuItemIds)),
+  ]);
 
+  const cashierId = cashierResult;
+  const menuItemMap = new Map(fetchedMenuItems.map((m) => [m.id, m]));
+
+  // ── 2. Build order items using only client-provided prices (zero DB calls) ─
   let subtotal = 0;
   const processedItems: (typeof orderItems.$inferInsert)[] = [];
 
   for (const ci of cartItems) {
-    const menuItem = await db.query.menuItems.findFirst({
-      where: eq(menuItems.id, ci.menuItemId),
-    });
-
+    const menuItem = menuItemMap.get(ci.menuItemId);
     const itemName = menuItem ? menuItem.name : ci.menuItemName || 'Item';
     const unitPrice = menuItem
       ? parseFloat(menuItem.sellingPrice)
       : parseFloat(String(ci.unitPrice || 0));
-    const itemCost = menuItem ? await computeItemCost(ci.menuItemId, ci.flavourId ?? null) : 0;
     const lineTotal = unitPrice * ci.quantity;
     subtotal += lineTotal;
 
@@ -98,36 +167,18 @@ ordersRouter.post('/', async (c) => {
       flavourName: ci.flavourName ?? null,
       quantity: ci.quantity,
       unitPrice: unitPrice.toFixed(2),
-      itemCost: itemCost.toFixed(2),
+      itemCost: '0.00', // patched in background after response
       lineTotal: lineTotal.toFixed(2),
       notes: ci.notes ?? null,
       orderId: '',
     });
-
-    // Auto-deduct inventory ingredient stock if recipes exist
-    if (menuItem) {
-      const itemRecipes = await db
-        .select()
-        .from(recipes)
-        .where(eq(recipes.menuItemId, menuItem.id));
-
-      for (const rec of itemRecipes) {
-        const totalQtyNeeded = parseFloat(rec.quantity) * ci.quantity;
-        await db
-          .update(inventoryItems)
-          .set({
-            currentStock: sql`${inventoryItems.currentStock} - ${totalQtyNeeded}`,
-            updatedAt: new Date(),
-          })
-          .where(ilike(inventoryItems.name, rec.ingredientName));
-      }
-    }
   }
 
   const discountVal = parseFloat(String(reqDiscount || 0));
   const totalVal = Math.max(0, subtotal - discountVal);
   const statusVal = paymentMethod === 'credit' ? 'open' : 'paid';
 
+  // ── 3. Insert order + items in parallel ───────────────────────────────────
   const [order] = await db
     .insert(orders)
     .values({
@@ -146,24 +197,37 @@ ordersRouter.post('/', async (c) => {
     })
     .returning();
 
-  const itemsWithOrderId = processedItems.map((i) => ({
-    ...i,
-    orderId: order.id,
-  }));
-
+  const itemsWithOrderId = processedItems.map((i) => ({ ...i, orderId: order.id }));
   if (itemsWithOrderId.length > 0) {
     await db.insert(orderItems).values(itemsWithOrderId);
   }
 
-  const full = await db.query.orders.findFirst({
-    where: eq(orders.id, order.id),
-    with: { items: true, cashier: true },
-  });
+  // ── 4. Respond immediately — kick off background jobs without awaiting ────
+  if (menuItemIds.length > 0) {
+    // Fetch recipes + making costs in parallel for background jobs
+    Promise.all([
+      db.select().from(recipes).where(inArray(recipes.menuItemId, menuItemIds)),
+      db.select().from(makingCosts).where(inArray(makingCosts.menuItemId, menuItemIds)),
+    ]).then(([allRecipes, allMakingCosts]) => {
+      deductInventoryAsync(cartItems, allRecipes);
+      patchItemCostsAsync(order.id, cartItems, allRecipes, allMakingCosts);
+    });
+  }
 
-  return c.json({ success: true, data: full }, 201);
+  // Return the order directly — no extra SELECT round-trip
+  return c.json(
+    {
+      success: true,
+      data: {
+        ...order,
+        items: itemsWithOrderId,
+      },
+    },
+    201,
+  );
 });
 
-// GET /orders/:id
+// ─── GET /orders/:id ──────────────────────────────────────────────────────────
 ordersRouter.get('/:id', async (c) => {
   const id = c.req.param('id');
   const order = await db.query.orders.findFirst({
@@ -174,7 +238,7 @@ ordersRouter.get('/:id', async (c) => {
   return c.json({ success: true, data: order });
 });
 
-// PATCH /orders/:id
+// ─── PATCH /orders/:id ────────────────────────────────────────────────────────
 ordersRouter.patch('/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
@@ -182,7 +246,7 @@ ordersRouter.patch('/:id', async (c) => {
   return c.json({ success: true, data: updated });
 });
 
-// POST /orders/:id/bill
+// ─── POST /orders/:id/bill ────────────────────────────────────────────────────
 ordersRouter.post('/:id/bill', async (c) => {
   const id = c.req.param('id');
   const order = await db.query.orders.findFirst({
@@ -199,7 +263,7 @@ ordersRouter.post('/:id/bill', async (c) => {
   return c.json({ success: true, data: { bill, billNumber } });
 });
 
-// POST /orders/:id/pay
+// ─── POST /orders/:id/pay ─────────────────────────────────────────────────────
 ordersRouter.post('/:id/pay', async (c) => {
   const id = c.req.param('id');
   const { paymentMethod } = await c.req.json();
