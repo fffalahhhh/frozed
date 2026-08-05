@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRootNavigationState } from 'expo-router';
 import { api } from '../../lib/api';
 import { useCartStore } from '../../store/cart';
+import { useToastStore } from '../../store/toast';
 import type { MenuWithCategories, MenuItem } from '@frozen-shake/shared';
 import { TopLogoHeader } from '../../components/common/TopLogoHeader';
 import { CategoryCard } from '../../components/pos/CategoryCard';
@@ -12,19 +13,18 @@ import { MenuItemCard } from '../../components/pos/MenuItemCard';
 import { CartPanel } from '../../components/pos/CartPanel';
 import { AddMenuItemModal } from '../../components/pos/AddMenuItemModal';
 
-// ─── Main FOH / POS Screen ──────────────────────────────────────────────────────────
+// ─── Main POS Screen ──────────────────────────────────────────────────────────
 export default function FOHScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const queryClient = useQueryClient();
 
-  // Wait for Expo Router's navigation container to be fully initialized
   const rootState = useRootNavigationState();
   const isNavReady = !!rootState?.key;
 
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('ALL');
   const [addMenuModalVisible, setAddMenuModalVisible] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const {
     data: menuData,
@@ -40,19 +40,19 @@ export default function FOHScreen() {
 
   const addItem = useCartStore((s) => s.addItem);
 
-  // Auto-select first category
-  React.useEffect(() => {
-    if (menuData && menuData.length > 0 && !activeCategoryId) {
-      setActiveCategoryId(menuData[0].category.id);
-    }
+  // Compute all menu items across all categories
+  const allItems: MenuItem[] = React.useMemo(() => {
+    if (!menuData) return [];
+    return menuData.flatMap((section) => section.items);
   }, [menuData]);
 
-  const activeSection =
-    menuData?.find((s: MenuWithCategories) => s.category.id === activeCategoryId) ?? menuData?.[0];
-
-  const filteredItems = (activeSection?.items ?? []).filter((item: MenuItem) =>
-    item.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  // Active items: if 'ALL', show all items; else filter by category
+  const currentItems: MenuItem[] = React.useMemo(() => {
+    if (!menuData) return [];
+    if (activeCategoryId === 'ALL') return allItems;
+    const activeSection = menuData.find((s) => s.category.id === activeCategoryId);
+    return activeSection?.items ?? [];
+  }, [menuData, activeCategoryId, allItems]);
 
   function handleAddItem(item: MenuItem) {
     addItem({
@@ -67,78 +67,114 @@ export default function FOHScreen() {
     });
   }
 
+  const handleManualRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      await queryClient.invalidateQueries({ queryKey: ['menu'] });
+      await refetchMenu();
+      useToastStore.getState().showToast('Menu updated!', 'success');
+    } catch (err: any) {
+      useToastStore.getState().showToast('Failed to refresh menu', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const receiptNumber = String(Math.floor(Math.random() * 90000) + 10000);
 
   const MenuPanel = (
-    <View className="flex-1 pb-24">
-      {/* Category Pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="pl-4 mb-4"
-        contentContainerStyle={{ paddingRight: 16 }}
-      >
-        {isLoading
-          ? [1, 2, 3].map((i) => (
+    <View className="flex-1 overflow-hidden">
+      {/* Category Cards Horizontal Scroll Section */}
+      <View className="pt-1 pb-2">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="pl-4"
+          contentContainerStyle={{ paddingRight: 16 }}
+        >
+          {isLoading ? (
+            [1, 2, 3, 4].map((i) => (
               <View
                 key={i}
-                className="bg-white/60 rounded-3xl mr-3 min-w-[145px] h-24 border border-border/40"
+                className="bg-white/80 rounded-[20px] mr-2.5 min-w-[135px] h-[86px] border border-[#E5E0D8]"
               />
             ))
-          : menuData?.map((section: MenuWithCategories) => (
+          ) : (
+            <>
+              {/* 'All' Category Option */}
               <CategoryCard
-                key={section.category.id}
-                name={section.category.name}
-                itemCount={section.items.length}
-                isActive={activeCategoryId === section.category.id}
-                needsRestock={section.needsRestock}
-                onPress={() => setActiveCategoryId(section.category.id)}
+                key="ALL"
+                name="All"
+                itemCount={allItems.length}
+                isActive={activeCategoryId === 'ALL'}
+                needsRestock={false}
+                onPress={() => setActiveCategoryId('ALL')}
               />
-            ))}
-      </ScrollView>
 
-      {/* Menu Item Grid */}
-      <FlatList
-        data={filteredItems}
-        keyExtractor={(i) => i.id}
-        numColumns={isTablet ? 4 : 2}
-        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 60 }}
-        renderItem={({ item }) => <MenuItemCard item={item} onAdd={handleAddItem} />}
-        ListEmptyComponent={
-          <View className="items-center justify-center py-20">
-            <View className="w-20 h-20 rounded-full bg-surface/60 items-center justify-center mb-3">
-              <Ionicons name="ice-cream-outline" size={40} color="#1B4332" />
+              {/* Individual Categories */}
+              {menuData?.map((section: MenuWithCategories) => (
+                <CategoryCard
+                  key={section.category.id}
+                  name={section.category.name}
+                  itemCount={section.items.length}
+                  isActive={activeCategoryId === section.category.id}
+                  needsRestock={section.needsRestock}
+                  onPress={() => setActiveCategoryId(section.category.id)}
+                />
+              ))}
+            </>
+          )}
+        </ScrollView>
+      </View>
+
+      {/* Menu Items Grid: Flex-bounded scroll area */}
+      <View className="flex-1 mt-1">
+        <FlatList
+          key={isTablet ? 'grid-4' : 'grid-2'}
+          data={currentItems}
+          keyExtractor={(i) => i.id}
+          numColumns={isTablet ? 4 : 2}
+          columnWrapperStyle={{ justifyContent: 'flex-start' }}
+          contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 40 }}
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => <MenuItemCard item={item} onAdd={handleAddItem} />}
+          ListEmptyComponent={
+            <View className="items-center justify-center py-20 w-full">
+              <View className="w-20 h-20 rounded-full bg-white items-center justify-center mb-3 shadow-sm border border-[#E5E0D8]">
+                <Ionicons name="ice-cream-outline" size={40} color="#0D4830" />
+              </View>
+              <Text className="text-gray-900 font-sans-bold text-base">
+                {isLoading ? 'Loading Menu...' : 'No Items Found'}
+              </Text>
+              <Text className="text-gray-500 font-sans text-xs mt-1">
+                {isLoading ? 'Fetching delicious items...' : 'No items in this category'}
+              </Text>
             </View>
-            <Text className="text-text-primary font-sans-bold text-base">
-              {isLoading ? 'Loading Menu...' : 'No Shakes Found'}
-            </Text>
-            <Text className="text-text-muted font-sans text-xs mt-1">
-              {isLoading ? 'Fetching delicious items...' : 'Try adjusting your search'}
-            </Text>
-          </View>
-        }
-      />
+          }
+        />
+      </View>
     </View>
   );
 
   return (
-    <View className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View className="flex-1 bg-[#F4F1EA]">
+      <StatusBar barStyle="dark-content" backgroundColor="#F4F1EA" />
 
-      {/* Top Logo Header */}
-      <TopLogoHeader />
+      {/* Top Header: Logo left, Live Date & Time, Top-Right Refresh Button */}
+      <TopLogoHeader onRefresh={handleManualRefresh} isRefreshing={isRefreshing} />
 
-      {/* Block interactive content until navigation context is fully mounted */}
+      {/* Main Content Area */}
       {isNavReady &&
         (isTablet ? (
-          <View className="flex-1 flex-row p-4">
-            <View className="w-[70%]">{MenuPanel}</View>
-            <View className="w-[30%]">
+          <View className="flex-1 flex-row p-4 gap-4">
+            <View className="flex-[0.68]">{MenuPanel}</View>
+            <View className="flex-[0.32]">
               <CartPanel receiptNumber={receiptNumber} />
             </View>
           </View>
         ) : (
-          <View className="flex-1">{MenuPanel}</View>
+          <View className="flex-1 mt-1 px-2">{MenuPanel}</View>
         ))}
 
       {/* Add Menu Item Modal */}

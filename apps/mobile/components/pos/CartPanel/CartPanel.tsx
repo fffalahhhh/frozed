@@ -28,7 +28,6 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     customerName,
     customerPhone,
     subtotal,
-    total,
     discountAmount,
     setPaymentMethod,
     setCustomerName,
@@ -44,8 +43,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
-  const sub = subtotal();
-  const tot = total();
+  const tot = subtotal();
 
   useEffect(() => {
     if (isSuccessOrder) {
@@ -95,7 +93,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         paymentMethod,
         customerName: customerName.trim() || null,
         customerPhone: customerPhone.trim() || null,
-        subtotal: sub,
+        subtotal: tot,
         discountAmount,
         totalAmount: tot,
         items: items.map((i) => ({
@@ -114,7 +112,6 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
       queryClient.invalidateQueries({ queryKey: ['menu'] });
 
-      // Trigger checkmark animation in place of toast
       setIsSubmittingOrder(false);
       setIsSuccessOrder(true);
 
@@ -129,28 +126,30 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
   };
 
   return (
-    <View className="bg-white rounded-[32px] flex-1 border-[1.5px] border-[#044E35] mb-20 p-4 shadow-md elevation-4 h-full min-h-full">
+    <View className="bg-white rounded-[32px] flex-1 border border-[#E5E0D8] p-5 shadow-sm elevation-2 h-full min-h-full justify-between">
       {/* Header Bar */}
-      <View className="flex-row items-center justify-between pb-3">
-        <Pressable className="w-[38px] h-[38px] rounded-full bg-[#044E35] items-center justify-center">
-          <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+      <View className="flex-row items-center justify-between pb-3 border-b border-[#E5E0D8]/60">
+        <Pressable className="w-10 h-10 rounded-full bg-[#0D4830] items-center justify-center">
+          <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
         </Pressable>
 
         <View className="items-center">
-          <Text className="text-gray-900 font-sans-bold text-base">Purchase Receipt</Text>
+          <Text className="text-gray-900 font-sans-bold text-base">Order</Text>
           <Text className="text-gray-500 font-sans-semibold text-xs mt-0.5">#{receiptNumber}</Text>
         </View>
 
+        {/* Clear Cart Trash Icon Button */}
         <Pressable
           onPress={clearCart}
-          className="w-[38px] h-[38px] rounded-full border-[1.5px] border-red-500 items-center justify-center bg-white"
+          className="w-10 h-10 rounded-full border border-red-200 bg-red-50 items-center justify-center"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
-          <Ionicons name="trash" size={18} color="red" />
+          <Ionicons name="trash-outline" size={18} color="#EF4444" />
         </Pressable>
       </View>
 
-      {/* Payment Method Selector Pills (Cash / Online / Credit) */}
-      <View className="flex-row bg-white rounded-full border-[1.5px] border-[#044E35] p-0.5 mt-2">
+      {/* Payment Type Selector Pills (Cash / Online / Credit) */}
+      <View className="flex-row bg-[#F4F1EA] rounded-full p-1 mt-3 border border-[#E5E0D8]">
         {[
           { key: 'cash', label: 'Cash' },
           { key: 'upi', label: 'Online' },
@@ -162,11 +161,11 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
               key={mode.key}
               onPress={() => setPaymentMethod(mode.key as any)}
               className={`flex-1 py-2 rounded-full items-center justify-center ${
-                isSelected ? 'bg-[#044E35]' : 'bg-transparent'
+                isSelected ? 'bg-[#0D4830]' : 'bg-transparent'
               }`}
             >
               <Text
-                className={`font-sans-bold text-xs ${isSelected ? 'text-white' : 'text-gray-500'}`}
+                className={`font-sans-bold text-xs ${isSelected ? 'text-white' : 'text-gray-600'}`}
               >
                 {mode.label}
               </Text>
@@ -175,18 +174,18 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         })}
       </View>
 
-      {/* Customer Inputs (Name & Phone) */}
-      <View className="flex-row gap-2.5 mt-3.5">
+      {/* Customer Name & Phone Number Inputs */}
+      <View className="flex-row gap-2.5 mt-3">
         <View className="flex-1">
-          <View className="flex-row items-center justify-between mb-1 px-1">
-            <Text className="text-gray-500 font-sans-medium text-[11px]">Customer name</Text>
+          <View className="flex-row items-center justify-between mb-1 pl-1 pr-1">
+            <Text className="text-gray-600 font-sans-medium text-xs">Customer name</Text>
             {paymentMethod === 'credit' && (
               <Text className="text-red-500 font-sans-bold text-[10px]">* Req</Text>
             )}
           </View>
           <View
-            className={`border-[1.5px] rounded-full px-3.5 py-2 bg-white ${
-              paymentMethod === 'credit' && !customerName ? 'border-red-500' : 'border-[#044E35]'
+            className={`border rounded-full px-3.5 py-1.5 bg-white ${
+              paymentMethod === 'credit' && !customerName ? 'border-red-500' : 'border-gray-300'
             }`}
           >
             <TextInput
@@ -200,15 +199,15 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         </View>
 
         <View className="flex-1">
-          <View className="flex-row items-center justify-between mb-1 px-1">
-            <Text className="text-gray-500 font-sans-medium text-[11px]">Phone Number</Text>
+          <View className="flex-row items-center justify-between mb-1 pl-1 pr-1">
+            <Text className="text-gray-600 font-sans-medium text-xs">Phone Number</Text>
             {paymentMethod === 'credit' && (
               <Text className="text-red-500 font-sans-bold text-[10px]">* Req</Text>
             )}
           </View>
           <View
-            className={`border-[1.5px] rounded-full px-3.5 py-2 bg-white ${
-              paymentMethod === 'credit' && !customerPhone ? 'border-red-500' : 'border-[#044E35]'
+            className={`border rounded-full px-3.5 py-1.5 bg-white ${
+              paymentMethod === 'credit' && !customerPhone ? 'border-red-500' : 'border-gray-300'
             }`}
           >
             <TextInput
@@ -223,14 +222,15 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         </View>
       </View>
 
-      {/* Order List Container */}
-      <Text className="text-gray-500 font-sans-medium text-xs mt-3.5 mb-1.5">Order list</Text>
+      {/* Order List Header */}
+      <Text className="text-gray-700 font-sans-medium text-xs mt-3 mb-1.5">Order list</Text>
 
-      <View className="flex-1 border-[1.5px] border-[#044E35] rounded-3xl px-3 py-2 bg-white">
+      {/* Full Height Order List Container */}
+      <View className="flex-1 border border-[#E5E0D8] rounded-[24px] px-3.5 py-2 bg-white overflow-hidden my-1">
         {items.length === 0 ? (
-          <View className="flex-1 items-center justify-center py-7">
-            <View className="w-14 h-14 rounded-full bg-[#F7F7F2] items-center justify-center mb-2">
-              <Ionicons name="cart-outline" size={28} color="#044E35" />
+          <View className="flex-1 items-center justify-center py-6">
+            <View className="w-14 h-14 rounded-full bg-[#F4F1EA] items-center justify-center mb-2">
+              <Ionicons name="cart-outline" size={28} color="#0D4830" />
             </View>
             <Text className="text-gray-900 font-sans-bold text-sm">Your order list is empty</Text>
             <Text className="text-gray-500 font-sans text-xs mt-0.5 text-center">
@@ -255,49 +255,58 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         )}
       </View>
 
-      {/* Payment Details */}
-      <View className="mt-1">
-        <View className="flex-row justify-between items-center py-1.5 px-1.5">
-          <Text className="text-gray-900 font-sans-bold text-sm">Total</Text>
-          <Text className="text-primary font-sans-bold text-base">{fmt(tot)}</Text>
+      {/* Footer Section: Total & Place Order Button */}
+      <View className="">
+        <View className="flex-row justify-between items-center py-1 mb-1">
+          <Text className="text-gray-900 font-sans-bold text-base">Total</Text>
+          <Text className="text-[#0D4830] font-sans-bold text-xl">{fmt(tot)}</Text>
         </View>
-      </View>
 
-      {/* Place Order Button */}
-      <Pressable
-        disabled={items.length === 0 || isSubmittingOrder || isSuccessOrder}
-        onPress={handlePlaceOrder}
-        className={`mt-2 rounded-full h-13 flex-row items-center justify-between shadow-md ${
-          isSuccessOrder ? 'bg-emerald-600 shadow-emerald-600/30' : 'bg-primary shadow-primary/25'
-        } ${items.length === 0 ? 'elevation-0 opacity-40' : 'elevation-4'}`}
-        style={({ pressed }) => ({
-          opacity: pressed || isSubmittingOrder ? 0.88 : 1,
-        })}
-      >
-        {isSubmittingOrder ? (
-          <View className="flex-1 items-center justify-center p-3 px-6">
-            <ActivityIndicator color="#FFFFFF" />
-          </View>
-        ) : isSuccessOrder ? (
-          <Animated.View
-            className="flex-row items-center w-full justify-center gap-2 p-3 px-6 rounded-2xl bg-emerald-600"
-            style={{
-              opacity: opacityAnim,
-            }}
-          >
-            <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
-            <Text className="text-white font-sans-bold text-sm text-center">Order Placed!</Text>
-          </Animated.View>
-        ) : (
-          <View
-            className={`flex-row items-center w-full justify-center bg-primary p-3 px-6 rounded-2xl ${
-              items.length === 0 ? 'opacity-80' : 'opacity-100'
-            }`}
-          >
-            <Text className="text-white font-sans-bold text-xs text-center">Place Order</Text>
-          </View>
-        )}
-      </Pressable>
+        {/* Place Order Button with Arrow Graphic & In-Button Checkmark */}
+        <Pressable
+          disabled={items.length === 0 || isSubmittingOrder || isSuccessOrder}
+          onPress={handlePlaceOrder}
+          className={`rounded-full h-14 flex-row items-center justify-between px-2 bg-[#0D4830] shadow-md shadow-[#0D4830]/30 ${
+            items.length === 0 ? 'opacity-70 elevation-0' : 'elevation-4'
+          }`}
+          style={({ pressed }) => ({
+            opacity: pressed || isSubmittingOrder ? 0.88 : 1,
+          })}
+        >
+          {isSubmittingOrder ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator color="#FFFFFF" />
+            </View>
+          ) : isSuccessOrder ? (
+            <Animated.View
+              className="flex-row items-center w-full justify-center gap-2"
+              style={{
+                opacity: opacityAnim,
+                transform: [{ scale: scaleAnim }],
+              }}
+            >
+              <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+              <Text className="text-white font-sans-bold text-base text-center">Order Placed!</Text>
+            </Animated.View>
+          ) : (
+            <View className="flex-row items-center justify-between w-full px-2">
+              <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center">
+                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+              </View>
+              <Text className="text-white font-sans-bold text-base">Place Order {fmt(tot)}</Text>
+              <View className="flex-row items-center opacity-60">
+                <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+                <Ionicons
+                  name="chevron-forward"
+                  size={14}
+                  color="#FFFFFF"
+                  style={{ marginLeft: -8 }}
+                />
+              </View>
+            </View>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }

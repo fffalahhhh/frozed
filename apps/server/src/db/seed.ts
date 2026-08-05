@@ -93,6 +93,7 @@ async function seed() {
         name: 'Signature Mango Shake',
         description: 'Rich thick mango shake topped with fruit chunks',
         sellingPrice: '120.00',
+        imageUrl: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400&q=80',
         isAvailable: true,
       },
       {
@@ -100,6 +101,7 @@ async function seed() {
         name: 'Double Chocolate Shake',
         description: 'Creamy chocolate shake made with real cocoa',
         sellingPrice: '140.00',
+        imageUrl: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=400&q=80',
         isAvailable: true,
       },
       {
@@ -107,6 +109,7 @@ async function seed() {
         name: 'Fresh Avocado Juice',
         description: 'Pure cold-pressed fresh avocado',
         sellingPrice: '110.00',
+        imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=400&q=80',
         isAvailable: true,
       },
     ])

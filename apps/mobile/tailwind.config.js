@@ -5,31 +5,28 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ── Brand ──────────────────────────────
         primary: {
-          DEFAULT: '#1B4332',
-          light: '#2D6A4F',
+          DEFAULT: '#0D4830',
+          light: '#1B5E43',
           50: '#E8F5EE',
           100: '#C6E6D4',
-          200: '#8ECFAA',
-          300: '#52B780',
-          400: '#2D9A5F',
-          500: '#1B7A48',
-          600: '#1B4332',
+          600: '#0D4830',
         },
-        // ── Surfaces ───────────────────────────
+        beige: {
+          DEFAULT: '#F4F1EA',
+          light: '#F8F6F0',
+          dark: '#EAE5D9',
+        },
         surface: '#FFFFFF',
         card: '#FFFFFF',
-        border: '#E8E2D9',
-        // ── Text ───────────────────────────────
+        border: '#E3DDD3',
         text: {
-          primary: '#1A1A1A',
-          muted: '#8A8A8A',
-          light: '#B0B0B0',
+          primary: '#111827',
+          muted: '#6B7280',
+          light: '#9CA3AF',
         },
-        // ── Status ─────────────────────────────
         success: {
-          DEFAULT: '#1B4332',
+          DEFAULT: '#0D4830',
           bg: '#E8F5EE',
         },
         warning: {
