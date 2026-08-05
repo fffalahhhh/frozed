@@ -13,8 +13,7 @@
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "mobile": "turbo run dev --filter=mobile",
-    "server": "turbo run dev --filter=server",
-    "release": "git add . && git commit -m \"release: new APK version [release]\" && git push origin main"
+    "server": "turbo run dev --filter=server"
   },
   "devDependencies": {
     "prettier": "^3.9.6",
