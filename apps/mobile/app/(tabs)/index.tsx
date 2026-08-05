@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, useWindowDimensions, StatusBar, FlatList } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,13 @@ export default function FOHScreen() {
   });
 
   const pendingPreOrdersCount = Array.isArray(preOrdersData) ? preOrdersData.length : 0;
+
+  // Auto-open pre-orders drawer whenever a new pre-order is saved
+  useEffect(() => {
+    if (pendingPreOrdersCount > 0) {
+      setShowPreOrders(true);
+    }
+  }, [pendingPreOrdersCount]);
 
   const categoriesList = menuData?.map((m) => ({ id: m.category.id, name: m.category.name })) ?? [];
 
@@ -99,31 +106,42 @@ export default function FOHScreen() {
   };
 
   async function handleProcessPreOrder(preOrder: any) {
-    try {
-      clearCart();
-      if (preOrder.customerName) setCustomerName(preOrder.customerName);
-      if (preOrder.customerPhone) setCustomerPhone(preOrder.customerPhone);
-      if (preOrder.paymentMethod) setPaymentMethod(preOrder.paymentMethod);
+    // Optimistic UI mutation: transfer items and remove card immediately in 0ms
+    clearCart();
+    if (preOrder.customerName) setCustomerName(preOrder.customerName);
+    if (preOrder.customerPhone) setCustomerPhone(preOrder.customerPhone);
+    if (preOrder.paymentMethod) setPaymentMethod(preOrder.paymentMethod);
 
-      if (Array.isArray(preOrder.items)) {
-        for (const item of preOrder.items) {
-          addItem({
-            menuItemId: item.menuItemId,
-            menuItemName: item.menuItemName,
-            imageUrl: item.imageUrl,
-            flavourId: item.flavourId || null,
-            flavourName: item.flavourName || null,
-            quantity: item.quantity || 1,
-            unitPrice: parseFloat(String(item.unitPrice || 0)),
-            notes: item.notes || null,
-          });
-        }
+    if (Array.isArray(preOrder.items)) {
+      for (const item of preOrder.items) {
+        addItem({
+          menuItemId: item.menuItemId,
+          menuItemName: item.menuItemName,
+          imageUrl: item.imageUrl,
+          flavourId: item.flavourId || null,
+          flavourName: item.flavourName || null,
+          quantity: item.quantity || 1,
+          unitPrice: parseFloat(String(item.unitPrice || 0)),
+          notes: item.notes || null,
+        });
       }
+    }
 
+    const previousPreOrders = queryClient.getQueryData<any[]>(['pre-orders']);
+    queryClient.setQueryData<any[]>(['pre-orders'], (old) =>
+      Array.isArray(old) ? old.filter((i) => i.id !== preOrder.id) : [],
+    );
+
+    useToastStore.getState().showToast('Pre-order loaded into Cart!', 'success');
+
+    // Silent background sync
+    try {
       await api.delete(`/pre-orders/${preOrder.id}`);
       queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
-      useToastStore.getState().showToast('Pre-order loaded into Cart!', 'success');
     } catch (err: any) {
+      if (previousPreOrders) {
+        queryClient.setQueryData(['pre-orders'], previousPreOrders);
+      }
       useToastStore.getState().showToast('Failed to process pre-order', 'error');
     }
   }

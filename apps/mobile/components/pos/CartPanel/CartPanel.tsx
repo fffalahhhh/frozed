@@ -78,8 +78,6 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     clearCart,
   } = useCartStore();
 
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-  const [isSubmittingPreOrder, setIsSubmittingPreOrder] = useState(false);
   const [isSuccessOrder, setIsSuccessOrder] = useState(false);
   const [showNamePopover, setShowNamePopover] = useState(false);
   const [showPhonePopover, setShowPhonePopover] = useState(false);
@@ -169,47 +167,73 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     setShowPhonePopover(false);
   };
 
+  // Zero-Latency Instant Save as Pre-Order (0ms)
   const handleSavePreOrder = async () => {
     if (items.length === 0) {
       useToastStore.getState().showToast('Cart is empty. Please add items first.', 'error');
       return;
     }
 
+    const tempId = `temp-${Date.now()}`;
+    const newPreOrder = {
+      id: tempId,
+      customerName: customerName.trim() || 'Walk-in Customer',
+      customerPhone: customerPhone.trim() || null,
+      paymentMethod,
+      subtotal: tot.toFixed(2),
+      totalAmount: tot.toFixed(2),
+      status: 'pending',
+      items: items.map((i) => ({
+        menuItemId: i.menuItemId,
+        menuItemName: i.menuItemName,
+        flavourId: i.flavourId,
+        flavourName: i.flavourName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        lineTotal: (i.unitPrice * i.quantity).toFixed(2),
+        notes: i.notes,
+      })),
+      createdAt: new Date().toISOString(),
+    };
+
+    // 1. Instant 0ms cache mutation across app
+    queryClient.setQueryData<any[]>(['pre-orders'], (old) => [newPreOrder, ...(old || [])]);
+
+    useToastStore.getState().showToast('Saved as Pre-Order!', 'success');
+    clearCart();
+
+    // 2. Silent background sync & reconcile
     try {
-      setIsSubmittingPreOrder(true);
-      await api.post('/pre-orders', {
-        customerName: customerName.trim() || 'Walk-in Customer',
-        customerPhone: customerPhone.trim() || null,
-        paymentMethod,
+      const res = await api.post<any>('/pre-orders', {
+        customerName: newPreOrder.customerName,
+        customerPhone: newPreOrder.customerPhone,
+        paymentMethod: newPreOrder.paymentMethod,
         subtotal: tot,
         totalAmount: tot,
-        items: items.map((i) => ({
-          menuItemId: i.menuItemId,
-          menuItemName: i.menuItemName,
-          flavourId: i.flavourId,
-          flavourName: i.flavourName,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          lineTotal: i.unitPrice * i.quantity,
-          notes: i.notes,
-        })),
+        items: newPreOrder.items,
       });
 
+      if (res && res.id) {
+        queryClient.setQueryData<any[]>(['pre-orders'], (old) =>
+          Array.isArray(old)
+            ? old.map((item) => (item.id === tempId ? res : item))
+            : [res],
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
-      setIsSubmittingPreOrder(false);
-      useToastStore.getState().showToast('Saved as Pre-Order!', 'success');
-      clearCart();
     } catch (err: any) {
-      setIsSubmittingPreOrder(false);
+      // Rollback on network failure
+      queryClient.setQueryData<any[]>(['pre-orders'], (old) =>
+        Array.isArray(old) ? old.filter((item) => item.id !== tempId) : [],
+      );
       useToastStore.getState().showToast(err.message || 'Failed to save pre-order', 'error');
     }
   };
 
+  // Zero-Latency Instant Confirm Order Submission (0ms)
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
-      useToastStore
-        .getState()
-        .showToast('Cart is empty. Please add items to place an order.', 'error');
+      useToastStore.getState().showToast('Cart is empty. Please add items to place an order.', 'error');
       return;
     }
 
@@ -219,24 +243,35 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         return;
       }
       if (!customerPhone.trim()) {
-        useToastStore
-          .getState()
-          .showToast('Customer Phone Number is required for Credit orders.', 'error');
+        useToastStore.getState().showToast('Customer Phone Number is required for Credit orders.', 'error');
         return;
       }
     }
 
+    // 1. Instant 0ms success animation
+    setIsSuccessOrder(true);
+
+    const currentCartItems = [...items];
+    const cName = customerName.trim();
+    const cPhone = customerPhone.trim();
+    const pMethod = paymentMethod;
+
+    setTimeout(() => {
+      setIsSuccessOrder(false);
+      clearCart();
+    }, 1800);
+
+    // 2. Silent background sync
     try {
-      setIsSubmittingOrder(true);
-      const orderRes = await api.post<any>('/orders', {
+      await api.post<any>('/orders', {
         orderType: 'dine_in',
-        paymentMethod,
-        customerName: customerName.trim() || null,
-        customerPhone: customerPhone.trim() || null,
+        paymentMethod: pMethod,
+        customerName: cName || null,
+        customerPhone: cPhone || null,
         subtotal: tot,
         discountAmount,
         totalAmount: tot,
-        items: items.map((i) => ({
+        items: currentCartItems.map((i) => ({
           menuItemId: i.menuItemId,
           menuItemName: i.menuItemName,
           flavourId: i.flavourId,
@@ -251,16 +286,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
       queryClient.invalidateQueries({ queryKey: ['menu'] });
-
-      setIsSubmittingOrder(false);
-      setIsSuccessOrder(true);
-
-      setTimeout(() => {
-        setIsSuccessOrder(false);
-        clearCart();
-      }, 1800);
     } catch (err: any) {
-      setIsSubmittingOrder(false);
       useToastStore.getState().showToast(err.message || 'Failed to place order', 'error');
     }
   };
@@ -305,7 +331,9 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
               }`}
             >
               <Text
-                className={`font-sans-bold text-xs ${isSelected ? 'text-white' : 'text-gray-600'}`}
+                className={`font-sans-bold text-xs ${
+                  isSelected ? 'text-white' : 'text-gray-600'
+                }`}
               >
                 {mode.label}
               </Text>
@@ -485,45 +513,35 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       </Pressable>
 
       {/* Footer Section: Total, Save as Pre-Order, & Confirm Order Button */}
-      <View>
+      <View className="pt-2 border-t border-[#E5E0D8]">
         <View className="flex-row justify-between items-center py-1 mb-1.5">
           <Text className="text-gray-900 font-sans-bold text-base">Total</Text>
           <Text className="text-[#0D4830] font-sans-bold text-xl">{fmt(tot)}</Text>
         </View>
 
-        {/* Save as Pre-Order Secondary Button */}
+        {/* Save as Pre-Order Secondary Button (Zero-latency optimistic action) */}
         <Pressable
-          disabled={items.length === 0 || isSubmittingPreOrder || isSubmittingOrder}
+          disabled={items.length === 0 || isSuccessOrder}
           onPress={handleSavePreOrder}
           className="w-full py-2 mb-2 rounded-full border border-[#0D4830] bg-[#F4F1EA] items-center justify-center flex-row gap-1.5"
           style={({ pressed }) => ({ opacity: pressed || items.length === 0 ? 0.6 : 1 })}
         >
-          {isSubmittingPreOrder ? (
-            <ActivityIndicator color="#0D4830" size="small" />
-          ) : (
-            <>
-              <Ionicons name="time-outline" size={15} color="#0D4830" />
-              <Text className="text-[#0D4830] font-sans-bold text-xs">Save as Pre-Order</Text>
-            </>
-          )}
+          <Ionicons name="time-outline" size={15} color="#0D4830" />
+          <Text className="text-[#0D4830] font-sans-bold text-xs">Save as Pre-Order</Text>
         </Pressable>
 
         {/* Place Order Button with Arrow Graphic & In-Button Checkmark */}
         <Pressable
-          disabled={items.length === 0 || isSubmittingOrder || isSuccessOrder}
+          disabled={items.length === 0 || isSuccessOrder}
           onPress={handlePlaceOrder}
           className={`rounded-full h-14 flex-row items-center justify-between px-2 bg-[#0D4830] shadow-md shadow-[#0D4830]/30 ${
             items.length === 0 ? 'opacity-70 elevation-0' : 'elevation-4'
           }`}
           style={({ pressed }) => ({
-            opacity: pressed || isSubmittingOrder ? 0.88 : 1,
+            opacity: pressed ? 0.88 : 1,
           })}
         >
-          {isSubmittingOrder ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator color="#FFFFFF" />
-            </View>
-          ) : isSuccessOrder ? (
+          {isSuccessOrder ? (
             <Animated.View
               className="flex-row items-center w-full justify-center gap-2"
               style={{
@@ -541,7 +559,9 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
               <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center">
                 <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
               </View>
-              <Text className="text-white font-sans-bold text-base">Confirm Order {fmt(tot)}</Text>
+              <Text className="text-white font-sans-bold text-base">
+                Confirm Order {fmt(tot)}
+              </Text>
               <View className="flex-row items-center opacity-60">
                 <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
                 <Ionicons

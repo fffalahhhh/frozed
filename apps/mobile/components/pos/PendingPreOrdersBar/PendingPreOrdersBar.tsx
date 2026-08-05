@@ -20,7 +20,7 @@ export function PendingPreOrdersBar({
   const { data: preOrdersList } = useQuery<any[]>({
     queryKey: ['pre-orders'],
     queryFn: () => api.get('/pre-orders'),
-    refetchInterval: 4000,
+    staleTime: 1000 * 5,
   });
 
   const activePreOrders = Array.isArray(preOrdersList) ? preOrdersList : [];
@@ -30,11 +30,22 @@ export function PendingPreOrdersBar({
   }
 
   const handleCancelPreOrder = async (id: string) => {
+    // Optimistic mutation: remove immediately in 0ms
+    const previousPreOrders = queryClient.getQueryData<any[]>(['pre-orders']);
+    queryClient.setQueryData<any[]>(['pre-orders'], (old) =>
+      Array.isArray(old) ? old.filter((item) => item.id !== id) : [],
+    );
+
+    useToastStore.getState().showToast('Pre-order cancelled', 'info');
+
+    // Silent background sync
     try {
       await api.delete(`/pre-orders/${id}`);
       queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
-      useToastStore.getState().showToast('Pre-order cancelled', 'info');
     } catch (err: any) {
+      if (previousPreOrders) {
+        queryClient.setQueryData(['pre-orders'], previousPreOrders);
+      }
       useToastStore.getState().showToast('Failed to cancel pre-order', 'error');
     }
   };

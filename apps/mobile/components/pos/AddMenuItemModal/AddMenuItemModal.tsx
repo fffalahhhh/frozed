@@ -36,7 +36,6 @@ export function AddMenuItemModal({
   const [ingredients, setIngredients] = useState<
     Array<{ inventoryItemId: string; quantity: string }>
   >([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Query inventory stock items
   const { data: stockItems } = useQuery<any[]>({
@@ -96,31 +95,36 @@ export function AddMenuItemModal({
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      const formattedIngredients = ingredients
-        .filter((ing) => ing.inventoryItemId && ing.quantity && !isNaN(Number(ing.quantity)))
-        .map((ing) => ({
-          inventoryItemId: ing.inventoryItemId,
-          quantity: Number(ing.quantity),
-        }));
+    const formattedIngredients = ingredients
+      .filter((ing) => ing.inventoryItemId && ing.quantity && !isNaN(Number(ing.quantity)))
+      .map((ing) => ({
+        inventoryItemId: ing.inventoryItemId,
+        quantity: Number(ing.quantity),
+      }));
 
+    const itemName = name.trim();
+    const itemDesc = description.trim() || null;
+    const priceNum = Number(sellingPrice);
+    const catId = selectedCategoryId;
+
+    // 1. Zero-latency optimistic UI update in 0ms: dismiss modal and notify immediately
+    useToastStore.getState().showToast('Menu item created successfully!', 'success');
+    resetForm();
+    onSuccess();
+    onClose();
+
+    // 2. Silent background sync
+    try {
       await api.post('/menu/items', {
-        categoryId: selectedCategoryId,
-        name: name.trim(),
-        description: description.trim() || null,
-        sellingPrice: Number(sellingPrice),
+        categoryId: catId,
+        name: itemName,
+        description: itemDesc,
+        sellingPrice: priceNum,
         ingredients: formattedIngredients,
       });
-
-      useToastStore.getState().showToast('Menu item created successfully!', 'success');
-      resetForm();
       onSuccess();
-      onClose();
     } catch (err: any) {
       useToastStore.getState().showToast(err.message || 'Failed to create menu item', 'error');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -253,7 +257,7 @@ export function AddMenuItemModal({
                       </View>
 
                       {/* Select inventory item pill scroll */}
-                      <Text className="text-text-muted font-sans text-[11px] mb-1">
+                      <Text className="text-[#8A8A8A] font-sans text-[11px] mb-1">
                         Select Inventory Item:
                       </Text>
                       <ScrollView
@@ -283,7 +287,7 @@ export function AddMenuItemModal({
                       </ScrollView>
 
                       {/* Amount used input */}
-                      <Text className="text-text-muted font-sans text-[11px] mb-1">
+                      <Text className="text-[#8A8A8A] font-sans text-[11px] mb-1">
                         Amount Used ({selectedStock?.unit || 'unit'} per item):
                       </Text>
                       <TextInput
@@ -303,14 +307,9 @@ export function AddMenuItemModal({
             {/* Save Button */}
             <Pressable
               onPress={handleSaveMenuItem}
-              disabled={isSubmitting}
               className="bg-primary rounded-2xl py-3.5 items-center mb-6"
             >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text className="text-white font-sans-bold text-sm">Save Menu Item</Text>
-              )}
+              <Text className="text-white font-sans-bold text-sm">Save Menu Item</Text>
             </Pressable>
           </ScrollView>
         </View>
