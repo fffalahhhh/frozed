@@ -2,6 +2,8 @@ name: Build & Publish Release APK
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -9,6 +11,8 @@ on:
 jobs:
   build-apk:
     name: Build Android APK
+    # Only run build if commit message contains '[release]' or 'release', or if a tag/workflow_dispatch was triggered
+    if: ${{ contains(github.event.head_commit.message, '[release]') || contains(github.event.head_commit.message, 'release') || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -45,16 +49,28 @@ jobs:
           cd apps/mobile/android
           ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
 
-      - name: Rename APK for Release
+      - name: Determine Version Tag
+        id: version
         run: |
-          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk frozen-shake-${{ github.ref_name }}.apk
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+          else
+            TAG_NAME="v1.0.${{ github.run_number }}"
+          fi
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+
+      - name: Prepare APK File
+        run: |
+          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk frozen-shake-${{ env.TAG_NAME }}.apk
 
       - name: Create GitHub Release & Upload APK
         uses: softprops/action-gh-release@v2
         with:
-          files: frozen-shake-${{ github.ref_name }}.apk
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ env.TAG_NAME }}
+          name: Release ${{ env.TAG_NAME }}
+          files: frozen-shake-${{ env.TAG_NAME }}.apk
           draft: false
           prerelease: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
