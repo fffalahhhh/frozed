@@ -11,8 +11,8 @@ import {
 } from '@expo-google-fonts/inter';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import AnimatedSplashScreen from '../components/SplashScreen';
-import { ToastBanner } from '../components/Toast';
+import AnimatedSplashScreen from '../components/common/SplashScreen';
+import { ToastBanner } from '../components/common/Toast';
 import '../global.css';
 
 ExpoSplashScreen.preventAutoHideAsync();
