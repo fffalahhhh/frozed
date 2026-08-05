@@ -17,7 +17,7 @@ import { fmt } from '../../common/constants';
 import { CartItemRow } from '../CartItemRow';
 
 export interface CartPanelProps {
-  receiptNumber: string;
+  receiptNumber?: string;
 }
 
 function HighlightMatch({ text, query }: { text: string; query: string }) {
@@ -83,12 +83,23 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
   const [showNamePopover, setShowNamePopover] = useState(false);
   const [showPhonePopover, setShowPhonePopover] = useState(false);
 
-  // Query previous orders to extract past customer history
+  // Query previous orders to extract past customer history & true next order number
   const { data: previousOrders } = useQuery<any[]>({
     queryKey: ['orders'],
     queryFn: () => api.get('/orders'),
     staleTime: 1000 * 60 * 2,
   });
+
+  // Calculate true next auto-incrementing order number from DB history
+  const trueOrderNumber = useMemo(() => {
+    if (!previousOrders || !Array.isArray(previousOrders) || previousOrders.length === 0) {
+      return '1';
+    }
+    const maxNum = Math.max(...previousOrders.map((o) => Number(o.orderNumber) || 0), 0);
+    return String(maxNum + 1);
+  }, [previousOrders]);
+
+  const activeOrderNum = receiptNumber || trueOrderNumber;
 
   // Extract unique past customers (Name & Phone pairs)
   const pastCustomers = useMemo(() => {
@@ -227,7 +238,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
 
         <View className="items-center">
           <Text className="text-gray-900 font-sans-bold text-base">Order</Text>
-          <Text className="text-gray-500 font-sans-semibold text-xs mt-0.5">#{receiptNumber}</Text>
+          <Text className="text-gray-500 font-sans-semibold text-xs mt-0.5">#{activeOrderNum}</Text>
         </View>
 
         {/* Clear Cart Trash Icon Button */}
@@ -467,7 +478,9 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
               }}
             >
               <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
-              <Text className="text-white font-sans-bold text-base text-center">Order Confirmed!</Text>
+              <Text className="text-white font-sans-bold text-base text-center">
+                Order Confirmed!
+              </Text>
             </Animated.View>
           ) : (
             <View className="flex-row items-center justify-between w-full px-2">

@@ -170,7 +170,7 @@ export default function FOHScreen() {
           <View className="flex-1 flex-row p-4 gap-4">
             <View className="flex-[0.68]">{MenuPanel}</View>
             <View className="flex-[0.32]">
-              <CartPanel receiptNumber={receiptNumber} />
+              <CartPanel />
             </View>
           </View>
         ) : (
