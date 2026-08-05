@@ -9,6 +9,7 @@ import {
   date,
   serial,
   pgEnum,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -288,3 +289,20 @@ export const shopExpensesRelations = relations(shopExpenses, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ─── Pre-Orders (Draft / Pending Orders) ─────────────────────────────────────
+
+export const preOrders = pgTable('pre_orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  preOrderNumber: serial('pre_order_number'),
+  customerName: text('customer_name'),
+  customerPhone: text('customer_phone'),
+  paymentMethod: text('payment_method').notNull().default('cash'),
+  items: jsonb('items').notNull(),
+  subtotal: numeric('subtotal', { precision: 10, scale: 2 }).notNull().default('0.00'),
+  totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull().default('0.00'),
+  status: text('status').notNull().default('pending'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+

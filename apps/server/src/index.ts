@@ -11,6 +11,7 @@ import { inventoryRouter } from './routes/inventory.js';
 import { expensesRouter } from './routes/expenses.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { syncRouter } from './routes/sync.js';
+import { preOrdersRouter } from './routes/preOrders.js';
 
 const app = new Hono();
 
@@ -49,6 +50,7 @@ app.route('/inventory', inventoryRouter);
 app.route('/expenses', expensesRouter);
 app.route('/analytics', analyticsRouter);
 app.route('/sync', syncRouter);
+app.route('/pre-orders', preOrdersRouter);
 
 // ─── Start server ─────────────────────────────────────────────────────────────
 const port = parseInt(process.env.PORT ?? '3000');

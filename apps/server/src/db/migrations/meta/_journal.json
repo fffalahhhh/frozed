@@ -8,6 +8,13 @@
       "when": 1785047690395,
       "tag": "0000_quick_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785966120971,
+      "tag": "0001_fair_gambit",
+      "breakpoints": true
     }
   ]
 }

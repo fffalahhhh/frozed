@@ -79,6 +79,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
   } = useCartStore();
 
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isSubmittingPreOrder, setIsSubmittingPreOrder] = useState(false);
   const [isSuccessOrder, setIsSuccessOrder] = useState(false);
   const [showNamePopover, setShowNamePopover] = useState(false);
   const [showPhonePopover, setShowPhonePopover] = useState(false);
@@ -166,6 +167,42 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     if (cust.phone) setCustomerPhone(cust.phone);
     setShowNamePopover(false);
     setShowPhonePopover(false);
+  };
+
+  const handleSavePreOrder = async () => {
+    if (items.length === 0) {
+      useToastStore.getState().showToast('Cart is empty. Please add items first.', 'error');
+      return;
+    }
+
+    try {
+      setIsSubmittingPreOrder(true);
+      await api.post('/pre-orders', {
+        customerName: customerName.trim() || 'Walk-in Customer',
+        customerPhone: customerPhone.trim() || null,
+        paymentMethod,
+        subtotal: tot,
+        totalAmount: tot,
+        items: items.map((i) => ({
+          menuItemId: i.menuItemId,
+          menuItemName: i.menuItemName,
+          flavourId: i.flavourId,
+          flavourName: i.flavourName,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          lineTotal: i.unitPrice * i.quantity,
+          notes: i.notes,
+        })),
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
+      setIsSubmittingPreOrder(false);
+      useToastStore.getState().showToast('Saved as Pre-Order!', 'success');
+      clearCart();
+    } catch (err: any) {
+      setIsSubmittingPreOrder(false);
+      useToastStore.getState().showToast(err.message || 'Failed to save pre-order', 'error');
+    }
   };
 
   const handlePlaceOrder = async () => {
@@ -447,12 +484,29 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         )}
       </Pressable>
 
-      {/* Footer Section: Total & Place Order Button */}
+      {/* Footer Section: Total, Save as Pre-Order, & Confirm Order Button */}
       <View>
-        <View className="flex-row justify-between items-center py-1 mb-1">
+        <View className="flex-row justify-between items-center py-1 mb-1.5">
           <Text className="text-gray-900 font-sans-bold text-base">Total</Text>
           <Text className="text-[#0D4830] font-sans-bold text-xl">{fmt(tot)}</Text>
         </View>
+
+        {/* Save as Pre-Order Secondary Button */}
+        <Pressable
+          disabled={items.length === 0 || isSubmittingPreOrder || isSubmittingOrder}
+          onPress={handleSavePreOrder}
+          className="w-full py-2 mb-2 rounded-full border border-[#0D4830] bg-[#F4F1EA] items-center justify-center flex-row gap-1.5"
+          style={({ pressed }) => ({ opacity: pressed || items.length === 0 ? 0.6 : 1 })}
+        >
+          {isSubmittingPreOrder ? (
+            <ActivityIndicator color="#0D4830" size="small" />
+          ) : (
+            <>
+              <Ionicons name="time-outline" size={15} color="#0D4830" />
+              <Text className="text-[#0D4830] font-sans-bold text-xs">Save as Pre-Order</Text>
+            </>
+          )}
+        </Pressable>
 
         {/* Place Order Button with Arrow Graphic & In-Button Checkmark */}
         <Pressable

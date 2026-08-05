@@ -12,6 +12,7 @@ import { CategoryCard } from '../../components/pos/CategoryCard';
 import { MenuItemCard } from '../../components/pos/MenuItemCard';
 import { CartPanel } from '../../components/pos/CartPanel';
 import { AddMenuItemModal } from '../../components/pos/AddMenuItemModal';
+import { PendingPreOrdersBar } from '../../components/pos/PendingPreOrdersBar/PendingPreOrdersBar';
 
 // ─── Main POS Screen ──────────────────────────────────────────────────────────
 export default function FOHScreen() {
@@ -25,6 +26,7 @@ export default function FOHScreen() {
   const [activeCategoryId, setActiveCategoryId] = useState<string>('ALL');
   const [addMenuModalVisible, setAddMenuModalVisible] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showPreOrders, setShowPreOrders] = useState(true);
 
   const {
     data: menuData,
@@ -36,9 +38,22 @@ export default function FOHScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
+  // Query pending pre-orders count for the top-right header toggle badge
+  const { data: preOrdersData } = useQuery<any[]>({
+    queryKey: ['pre-orders'],
+    queryFn: () => api.get('/pre-orders'),
+    staleTime: 1000 * 4,
+  });
+
+  const pendingPreOrdersCount = Array.isArray(preOrdersData) ? preOrdersData.length : 0;
+
   const categoriesList = menuData?.map((m) => ({ id: m.category.id, name: m.category.name })) ?? [];
 
   const addItem = useCartStore((s) => s.addItem);
+  const clearCart = useCartStore((s) => s.clearCart);
+  const setCustomerName = useCartStore((s) => s.setCustomerName);
+  const setCustomerPhone = useCartStore((s) => s.setCustomerPhone);
+  const setPaymentMethod = useCartStore((s) => s.setPaymentMethod);
 
   // Compute all menu items across all categories
   const allItems: MenuItem[] = React.useMemo(() => {
@@ -70,8 +85,11 @@ export default function FOHScreen() {
   const handleManualRefresh = async () => {
     try {
       setIsRefreshing(true);
-      await queryClient.invalidateQueries({ queryKey: ['menu'] });
-      await refetchMenu();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['menu'] }),
+        queryClient.invalidateQueries({ queryKey: ['orders'] }),
+        queryClient.invalidateQueries({ queryKey: ['pre-orders'] }),
+      ]);
       useToastStore.getState().showToast('Menu updated!', 'success');
     } catch (err: any) {
       useToastStore.getState().showToast('Failed to refresh menu', 'error');
@@ -80,7 +98,35 @@ export default function FOHScreen() {
     }
   };
 
-  const receiptNumber = String(Math.floor(Math.random() * 90000) + 10000);
+  async function handleProcessPreOrder(preOrder: any) {
+    try {
+      clearCart();
+      if (preOrder.customerName) setCustomerName(preOrder.customerName);
+      if (preOrder.customerPhone) setCustomerPhone(preOrder.customerPhone);
+      if (preOrder.paymentMethod) setPaymentMethod(preOrder.paymentMethod);
+
+      if (Array.isArray(preOrder.items)) {
+        for (const item of preOrder.items) {
+          addItem({
+            menuItemId: item.menuItemId,
+            menuItemName: item.menuItemName,
+            imageUrl: item.imageUrl,
+            flavourId: item.flavourId || null,
+            flavourName: item.flavourName || null,
+            quantity: item.quantity || 1,
+            unitPrice: parseFloat(String(item.unitPrice || 0)),
+            notes: item.notes || null,
+          });
+        }
+      }
+
+      await api.delete(`/pre-orders/${preOrder.id}`);
+      queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
+      useToastStore.getState().showToast('Pre-order loaded into Cart!', 'success');
+    } catch (err: any) {
+      useToastStore.getState().showToast('Failed to process pre-order', 'error');
+    }
+  }
 
   const MenuPanel = (
     <View className="flex-1 overflow-hidden">
@@ -89,14 +135,14 @@ export default function FOHScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="pl-4"
+          className="pl-1"
           contentContainerStyle={{ paddingRight: 16 }}
         >
           {isLoading ? (
             [1, 2, 3, 4].map((i) => (
               <View
                 key={i}
-                className="bg-white/80 rounded-[20px] mr-2.5 min-w-[135px] h-[86px] border border-[#E5E0D8]"
+                className="bg-white/80 rounded-[18px] mr-2 min-w-[125px] h-[84px] border border-[#E5E0D8]"
               />
             ))
           ) : (
@@ -135,7 +181,6 @@ export default function FOHScreen() {
           keyExtractor={(i) => i.id}
           numColumns={isTablet ? 4 : 2}
           columnWrapperStyle={{ justifyContent: 'flex-start' }}
-          contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 40 }}
           className="flex-1"
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => <MenuItemCard item={item} onAdd={handleAddItem} />}
@@ -161,20 +206,45 @@ export default function FOHScreen() {
     <View className="flex-1 bg-[#F4F1EA]">
       <StatusBar barStyle="dark-content" backgroundColor="#F4F1EA" />
 
-      {/* Top Header: Logo left, Live Date & Time, Top-Right Refresh Button */}
-      <TopLogoHeader onRefresh={handleManualRefresh} isRefreshing={isRefreshing} />
+      {/* Top Header: Logo left, Live Date & Time, Top-Right Pre-Orders Toggle & Refresh Button */}
+      <TopLogoHeader
+        onRefresh={handleManualRefresh}
+        isRefreshing={isRefreshing}
+        pendingCount={pendingPreOrdersCount}
+        showPreOrders={showPreOrders}
+        onTogglePreOrders={() => setShowPreOrders((prev) => !prev)}
+      />
 
       {/* Main Content Area */}
       {isNavReady &&
         (isTablet ? (
           <View className="flex-1 flex-row p-4 gap-4">
-            <View className="flex-[0.68]">{MenuPanel}</View>
-            <View className="flex-[0.32]">
+            <View className="flex-1">{MenuPanel}</View>
+
+            {/* Vertical Pending Pre-Orders Panel attached to the LEFT side of Cart Panel */}
+            {showPreOrders && pendingPreOrdersCount > 0 && (
+              <PendingPreOrdersBar
+                visible={showPreOrders}
+                onProcessPreOrder={handleProcessPreOrder}
+              />
+            )}
+
+            <View className="w-[30%]">
               <CartPanel />
             </View>
           </View>
         ) : (
-          <View className="flex-1 mt-1 px-2">{MenuPanel}</View>
+          <View className="flex-1 mt-1 px-2">
+            {MenuPanel}
+            {showPreOrders && pendingPreOrdersCount > 0 && (
+              <View className="mt-2">
+                <PendingPreOrdersBar
+                  visible={showPreOrders}
+                  onProcessPreOrder={handleProcessPreOrder}
+                />
+              </View>
+            )}
+          </View>
         ))}
 
       {/* Add Menu Item Modal */}
@@ -184,7 +254,6 @@ export default function FOHScreen() {
         categories={categoriesList}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['menu'] });
-          refetchMenu();
         }}
       />
     </View>
