@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartStore } from '../../../store/cart';
-import { FONTS, fmt } from '../../common/constants';
+import { fmt } from '../../common/constants';
 
 export interface CartItemRowProps {
   item: ReturnType<typeof useCartStore.getState>['items'][0];
@@ -12,33 +12,13 @@ export interface CartItemRowProps {
 
 export function CartItemRow({ item, onIncrease, onDecrease }: CartItemRowProps) {
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-      }}
-    >
+    <View className="flex-row items-center gap-3 py-2.5 border-b border-gray-100">
       {/* Soft rounded image/icon container */}
-      <View
-        style={{
-          width: 60,
-          height: 60,
-          borderRadius: 16,
-          backgroundColor: '#F7F7F2',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 1,
-          borderColor: '#EFEFE8',
-        }}
-      >
+      <View className="w-15 h-15 rounded-2xl bg-[#F7F7F2] items-center justify-center border border-[#EFEFE8]">
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
-            style={{ width: 44, height: 44 }}
+            className="w-11 h-11"
             resizeMode="contain"
           />
         ) : (
@@ -47,60 +27,25 @@ export function CartItemRow({ item, onIncrease, onDecrease }: CartItemRowProps) 
       </View>
 
       {/* Item info */}
-      <View style={{ flex: 1 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-          }}
-        >
-          <Text
-            style={{
-              color: '#111827',
-              fontFamily: FONTS.bold,
-              fontSize: 14,
-              flex: 1,
-              paddingRight: 6,
-            }}
-            numberOfLines={1}
-          >
+      <View className="flex-1">
+        <View className="flex-row justify-between items-start">
+          <Text className="text-gray-900 font-sans-bold text-sm flex-1 pr-1.5" numberOfLines={1}>
             {item.menuItemName}
           </Text>
-          <Text style={{ color: '#111827', fontFamily: FONTS.bold, fontSize: 14 }}>
+          <Text className="text-gray-900 font-sans-bold text-sm">
             {fmt(item.unitPrice * item.quantity)}
           </Text>
         </View>
 
-        <Text
-          style={{
-            color: '#6B7280',
-            fontFamily: FONTS.regular,
-            fontSize: 12,
-            marginTop: 2,
-          }}
-        >
+        <Text className="text-gray-500 font-sans text-xs mt-0.5">
           {fmt(item.unitPrice)} x {item.quantity}
         </Text>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 4,
-          }}
-        >
+        <View className="flex-row items-center justify-between mt-1">
           {item.flavourName ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View className="flex-row items-center gap-1">
               <Ionicons name="document-text-outline" size={12} color="#6B7280" />
-              <Text
-                style={{
-                  color: '#6B7280',
-                  fontFamily: FONTS.medium,
-                  fontSize: 11,
-                }}
-              >
+              <Text className="text-gray-500 font-sans-medium text-[11px]">
                 {item.flavourName}
               </Text>
             </View>
@@ -109,17 +54,7 @@ export function CartItemRow({ item, onIncrease, onDecrease }: CartItemRowProps) 
           )}
 
           {/* Stepper pill [ - 2 + ] */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#F3F4F6',
-              borderRadius: 9999,
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-              gap: 8,
-            }}
-          >
+          <View className="flex-row items-center bg-gray-100 rounded-full px-2 py-0.5 gap-2">
             <Pressable
               onPress={onDecrease}
               hitSlop={6}
@@ -127,15 +62,7 @@ export function CartItemRow({ item, onIncrease, onDecrease }: CartItemRowProps) 
             >
               <Ionicons name="remove" size={14} color="#111827" />
             </Pressable>
-            <Text
-              style={{
-                color: '#111827',
-                fontFamily: FONTS.bold,
-                fontSize: 12,
-                minWidth: 14,
-                textAlign: 'center',
-              }}
-            >
+            <Text className="text-gray-900 font-sans-bold text-xs min-w-[14px] text-center">
               {item.quantity}
             </Text>
             <Pressable

@@ -15,7 +15,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../lib/api';
 import { useToastStore } from '../../../store/toast';
-import { COLORS, FONTS } from '../../common/constants';
 
 export interface AddMenuItemModalProps {
   visible: boolean;
@@ -129,120 +128,52 @@ export function AddMenuItemModal({
     <Modal visible={visible} animationType="slide" transparent>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{
-          flex: 1,
-          justifyContent: 'flex-end',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        }}
+        className="flex-1 justify-end bg-black/50"
       >
-        <View
-          style={{
-            backgroundColor: COLORS.white,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            padding: 24,
-            maxHeight: '85%',
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottomWidth: 1,
-              borderBottomColor: COLORS.borderAlpha40,
-              marginBottom: 16,
-              paddingBottom: 12,
-            }}
-          >
-            <Text
-              style={{
-                color: COLORS.textPrimary,
-                fontFamily: FONTS.bold,
-                fontSize: 18,
-              }}
-            >
-              Add Menu Item
-            </Text>
+        <View className="bg-white rounded-t-3xl p-6 max-h-[85%]">
+          <View className="flex-row items-center justify-between border-b border-border/40 mb-4 pb-3">
+            <Text className="text-text-primary font-sans-bold text-lg">Add Menu Item</Text>
             <Pressable
               onPress={() => {
                 onClose();
                 resetForm();
               }}
             >
-              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+              <Ionicons name="close" size={24} color="#1A1A1A" />
             </Pressable>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Item Name */}
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  color: COLORS.textPrimary,
-                  fontFamily: FONTS.medium,
-                  fontSize: 12,
-                  marginBottom: 6,
-                }}
-              >
-                Item Name *
-              </Text>
+            <View className="mb-4">
+              <Text className="text-text-primary font-sans-medium text-xs mb-1.5">Item Name *</Text>
               <TextInput
                 value={name}
                 onChangeText={setName}
                 placeholder="e.g. Mango Special Smoothie"
-                placeholderTextColor={COLORS.textMuted}
-                style={{
-                  borderWidth: 1,
-                  borderColor: COLORS.borderAlpha60,
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  color: COLORS.textPrimary,
-                  fontFamily: FONTS.regular,
-                  fontSize: 14,
-                }}
+                placeholderTextColor="#8A8A8A"
+                className="border border-border/60 rounded-xl px-4 py-3 text-text-primary font-sans text-sm"
               />
             </View>
 
             {/* Category selection */}
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  color: COLORS.textPrimary,
-                  fontFamily: FONTS.medium,
-                  fontSize: 12,
-                  marginBottom: 6,
-                }}
-              >
-                Category *
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ flexDirection: 'row' }}
-              >
+            <View className="mb-4">
+              <Text className="text-text-primary font-sans-medium text-xs mb-1.5">Category *</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                 {categories.map((cat) => (
                   <Pressable
                     key={cat.id}
                     onPress={() => setSelectedCategoryId(cat.id)}
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      marginRight: 8,
-                      backgroundColor:
-                        selectedCategoryId === cat.id ? COLORS.primary : COLORS.white,
-                      borderColor: selectedCategoryId === cat.id ? COLORS.primary : COLORS.border,
-                    }}
+                    className={`px-4 py-2.5 rounded-xl border mr-2 ${
+                      selectedCategoryId === cat.id
+                        ? 'bg-primary border-primary'
+                        : 'bg-white border-border'
+                    }`}
                   >
                     <Text
-                      style={{
-                        fontFamily: FONTS.medium,
-                        fontSize: 12,
-                        color: selectedCategoryId === cat.id ? COLORS.white : COLORS.textPrimary,
-                      }}
+                      className={`font-sans-medium text-xs ${
+                        selectedCategoryId === cat.id ? 'text-white' : 'text-text-primary'
+                      }`}
                     >
                       {cat.name}
                     </Text>
@@ -252,15 +183,8 @@ export function AddMenuItemModal({
             </View>
 
             {/* Selling Price */}
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  color: COLORS.textPrimary,
-                  fontFamily: FONTS.medium,
-                  fontSize: 12,
-                  marginBottom: 6,
-                }}
-              >
+            <View className="mb-4">
+              <Text className="text-text-primary font-sans-medium text-xs mb-1.5">
                 Selling Price (₹) *
               </Text>
               <TextInput
@@ -268,125 +192,47 @@ export function AddMenuItemModal({
                 onChangeText={setSellingPrice}
                 keyboardType="numeric"
                 placeholder="e.g. 140"
-                placeholderTextColor={COLORS.textMuted}
-                style={{
-                  borderWidth: 1,
-                  borderColor: COLORS.borderAlpha60,
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  color: COLORS.textPrimary,
-                  fontFamily: FONTS.regular,
-                  fontSize: 14,
-                }}
+                placeholderTextColor="#8A8A8A"
+                className="border border-border/60 rounded-xl px-4 py-3 text-text-primary font-sans text-sm"
               />
             </View>
 
             {/* Description */}
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  color: COLORS.textPrimary,
-                  fontFamily: FONTS.medium,
-                  fontSize: 12,
-                  marginBottom: 6,
-                }}
-              >
+            <View className="mb-4">
+              <Text className="text-text-primary font-sans-medium text-xs mb-1.5">
                 Description (Optional)
               </Text>
               <TextInput
                 value={description}
                 onChangeText={setDescription}
                 placeholder="e.g. Made with fresh pulp & whole milk"
-                placeholderTextColor={COLORS.textMuted}
-                style={{
-                  borderWidth: 1,
-                  borderColor: COLORS.borderAlpha60,
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  color: COLORS.textPrimary,
-                  fontFamily: FONTS.regular,
-                  fontSize: 14,
-                }}
+                placeholderTextColor="#8A8A8A"
+                className="border border-border/60 rounded-xl px-4 py-3 text-text-primary font-sans text-sm"
               />
             </View>
 
             {/* Inventory Ingredients Section */}
-            <View
-              style={{
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: COLORS.borderAlpha60,
-                borderRadius: 16,
-                padding: 14,
-                backgroundColor: COLORS.surfaceAlpha50,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                }}
-              >
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text
-                    style={{
-                      color: COLORS.textPrimary,
-                      fontFamily: FONTS.bold,
-                      fontSize: 14,
-                    }}
-                  >
+            <View className="mb-5 border border-border/60 rounded-2xl p-3.5 bg-surface/50">
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-1 pr-2">
+                  <Text className="text-text-primary font-sans-bold text-sm">
                     Inventory Used & Recipe
                   </Text>
-                  <Text
-                    style={{
-                      color: COLORS.textMuted,
-                      fontFamily: FONTS.regular,
-                      fontSize: 11,
-                    }}
-                  >
+                  <Text className="text-text-muted font-sans text-[11px]">
                     Select inventory ingredients used per serving
                   </Text>
                 </View>
                 <Pressable
                   onPress={addIngredientRow}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: COLORS.primaryAlpha10,
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 10,
-                    gap: 4,
-                  }}
+                  className="flex-row items-center bg-primary/10 px-2.5 py-1.5 rounded-lg gap-1"
                 >
-                  <Ionicons name="add" size={16} color={COLORS.primary} />
-                  <Text
-                    style={{
-                      color: COLORS.primary,
-                      fontFamily: FONTS.semiBold,
-                      fontSize: 12,
-                    }}
-                  >
-                    Add Ingredient
-                  </Text>
+                  <Ionicons name="add" size={16} color="#1B4332" />
+                  <Text className="text-primary font-sans-semibold text-xs">Add Ingredient</Text>
                 </Pressable>
               </View>
 
               {ingredients.length === 0 ? (
-                <Text
-                  style={{
-                    color: COLORS.textMuted,
-                    fontFamily: FONTS.regular,
-                    fontSize: 12,
-                    fontStyle: 'italic',
-                    textAlign: 'center',
-                    marginVertical: 8,
-                  }}
-                >
+                <Text className="text-text-muted font-sans italic text-xs text-center my-2">
                   No inventory ingredients added yet. Tap "+ Add Ingredient" above.
                 </Text>
               ) : (
@@ -395,30 +241,10 @@ export function AddMenuItemModal({
                   return (
                     <View
                       key={idx}
-                      style={{
-                        backgroundColor: COLORS.white,
-                        borderWidth: 1,
-                        borderColor: COLORS.borderAlpha60,
-                        borderRadius: 12,
-                        padding: 12,
-                        marginBottom: 10,
-                      }}
+                      className="bg-white border border-border/60 rounded-xl p-3 mb-2.5"
                     >
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: 8,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: COLORS.textPrimary,
-                            fontFamily: FONTS.semiBold,
-                            fontSize: 12,
-                          }}
-                        >
+                      <View className="flex-row items-center justify-between mb-2">
+                        <Text className="text-text-primary font-sans-semibold text-xs">
                           Ingredient #{idx + 1}
                         </Text>
                         <Pressable onPress={() => removeIngredient(idx)}>
@@ -427,44 +253,28 @@ export function AddMenuItemModal({
                       </View>
 
                       {/* Select inventory item pill scroll */}
-                      <Text
-                        style={{
-                          color: COLORS.textMuted,
-                          fontFamily: FONTS.regular,
-                          fontSize: 11,
-                          marginBottom: 4,
-                        }}
-                      >
+                      <Text className="text-text-muted font-sans text-[11px] mb-1">
                         Select Inventory Item:
                       </Text>
                       <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        style={{ marginBottom: 10 }}
+                        className="mb-2.5"
                       >
                         {stockItems?.map((s) => (
                           <Pressable
                             key={s.id}
                             onPress={() => updateIngredient(idx, 'inventoryItemId', s.id)}
-                            style={{
-                              paddingHorizontal: 12,
-                              paddingVertical: 6,
-                              borderRadius: 10,
-                              borderWidth: 1,
-                              marginRight: 6,
-                              backgroundColor:
-                                ing.inventoryItemId === s.id ? COLORS.primary : COLORS.white,
-                              borderColor:
-                                ing.inventoryItemId === s.id ? COLORS.primary : COLORS.border,
-                            }}
+                            className={`px-3 py-1.5 rounded-lg border mr-1.5 ${
+                              ing.inventoryItemId === s.id
+                                ? 'bg-primary border-primary'
+                                : 'bg-white border-border'
+                            }`}
                           >
                             <Text
-                              style={{
-                                fontSize: 11,
-                                fontFamily: FONTS.medium,
-                                color:
-                                  ing.inventoryItemId === s.id ? COLORS.white : COLORS.textPrimary,
-                              }}
+                              className={`text-[11px] font-sans-medium ${
+                                ing.inventoryItemId === s.id ? 'text-white' : 'text-text-primary'
+                              }`}
                             >
                               {s.name} ({s.unit})
                             </Text>
@@ -473,14 +283,7 @@ export function AddMenuItemModal({
                       </ScrollView>
 
                       {/* Amount used input */}
-                      <Text
-                        style={{
-                          color: COLORS.textMuted,
-                          fontFamily: FONTS.regular,
-                          fontSize: 11,
-                          marginBottom: 4,
-                        }}
-                      >
+                      <Text className="text-text-muted font-sans text-[11px] mb-1">
                         Amount Used ({selectedStock?.unit || 'unit'} per item):
                       </Text>
                       <TextInput
@@ -488,17 +291,8 @@ export function AddMenuItemModal({
                         onChangeText={(val) => updateIngredient(idx, 'quantity', val)}
                         keyboardType="numeric"
                         placeholder={`e.g. 200 ${selectedStock?.unit || ''}`}
-                        placeholderTextColor={COLORS.textMuted}
-                        style={{
-                          borderWidth: 1,
-                          borderColor: COLORS.borderAlpha60,
-                          borderRadius: 8,
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
-                          fontSize: 13,
-                          color: COLORS.textPrimary,
-                          backgroundColor: COLORS.white,
-                        }}
+                        placeholderTextColor="#8A8A8A"
+                        className="border border-border/60 rounded-lg px-3 py-2 text-xs text-text-primary bg-white"
                       />
                     </View>
                   );
@@ -510,26 +304,12 @@ export function AddMenuItemModal({
             <Pressable
               onPress={handleSaveMenuItem}
               disabled={isSubmitting}
-              style={{
-                backgroundColor: COLORS.primary,
-                borderRadius: 16,
-                paddingVertical: 14,
-                alignItems: 'center',
-                marginBottom: 24,
-              }}
+              className="bg-primary rounded-2xl py-3.5 items-center mb-6"
             >
               {isSubmitting ? (
-                <ActivityIndicator color={COLORS.white} />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text
-                  style={{
-                    color: COLORS.white,
-                    fontFamily: FONTS.bold,
-                    fontSize: 15,
-                  }}
-                >
-                  Save Menu Item
-                </Text>
+                <Text className="text-white font-sans-bold text-sm">Save Menu Item</Text>
               )}
             </Pressable>
           </ScrollView>

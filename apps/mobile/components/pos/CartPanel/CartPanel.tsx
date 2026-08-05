@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  Animated,
+} from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../lib/api';
 import { useCartStore } from '../../../store/cart';
 import { useToastStore } from '../../../store/toast';
-import { COLORS, FONTS, fmt } from '../../common/constants';
+import { fmt } from '../../common/constants';
 import { CartItemRow } from '../CartItemRow';
 
 export interface CartPanelProps {
@@ -30,9 +38,34 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
   } = useCartStore();
 
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isSuccessOrder, setIsSuccessOrder] = useState(false);
+
+  // Animation values for success checkmark
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   const sub = subtotal();
   const tot = total();
+
+  useEffect(() => {
+    if (isSuccessOrder) {
+      scaleAnim.setValue(0.3);
+      opacityAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 4,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isSuccessOrder]);
 
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
@@ -77,105 +110,47 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         })),
       });
 
-      const orderNum = orderRes?.orderNumber ? `#${orderRes.orderNumber}` : '';
-      useToastStore.getState().showToast(`Order ${orderNum} placed successfully!`, 'success');
-      clearCart();
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
       queryClient.invalidateQueries({ queryKey: ['menu'] });
-    } catch (err: any) {
-      useToastStore.getState().showToast(err.message || 'Failed to place order', 'error');
-    } finally {
+
+      // Trigger checkmark animation in place of toast
       setIsSubmittingOrder(false);
+      setIsSuccessOrder(true);
+
+      setTimeout(() => {
+        setIsSuccessOrder(false);
+        clearCart();
+      }, 1800);
+    } catch (err: any) {
+      setIsSubmittingOrder(false);
+      useToastStore.getState().showToast(err.message || 'Failed to place order', 'error');
     }
   };
 
   return (
-    <View
-      style={{
-        backgroundColor: '#FFFFFF',
-        borderRadius: 32,
-        flex: 1,
-        borderWidth: 1.5,
-        borderColor: '#044E35',
-        marginBottom: 80,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.06,
-        shadowRadius: 16,
-        elevation: 4,
-        height: '100%',
-        minHeight: '100%',
-      }}
-    >
+    <View className="bg-white rounded-[32px] flex-1 border-[1.5px] border-[#044E35] mb-20 p-4 shadow-md elevation-4 h-full min-h-full">
       {/* Header Bar */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingBottom: 12,
-        }}
-      >
-        <Pressable
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            backgroundColor: '#044E35',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
+      <View className="flex-row items-center justify-between pb-3">
+        <Pressable className="w-[38px] h-[38px] rounded-full bg-[#044E35] items-center justify-center">
           <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
         </Pressable>
 
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{ color: '#111827', fontFamily: FONTS.bold, fontSize: 16 }}>
-            Purchase Receipt
-          </Text>
-          <Text
-            style={{
-              color: '#6B7280',
-              fontFamily: FONTS.semiBold,
-              fontSize: 13,
-              marginTop: 1,
-            }}
-          >
-            #{receiptNumber}
-          </Text>
+        <View className="items-center">
+          <Text className="text-gray-900 font-sans-bold text-base">Purchase Receipt</Text>
+          <Text className="text-gray-500 font-sans-semibold text-xs mt-0.5">#{receiptNumber}</Text>
         </View>
 
         <Pressable
           onPress={clearCart}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            borderWidth: 1.5,
-            borderColor: 'red',
-            alignItems: 'center',
-            backgroundColor: '#FFFFFF',
-            justifyContent: 'center',
-          }}
+          className="w-[38px] h-[38px] rounded-full border-[1.5px] border-red-500 items-center justify-center bg-white"
         >
           <Ionicons name="trash" size={18} color="red" />
         </Pressable>
       </View>
 
       {/* Payment Method Selector Pills (Cash / Online / Credit) */}
-      <View
-        style={{
-          flexDirection: 'row',
-          backgroundColor: '#FFFFFF',
-          borderRadius: 9999,
-          borderWidth: 1.5,
-          borderColor: '#044E35',
-          padding: 3,
-          marginTop: 8,
-        }}
-      >
+      <View className="flex-row bg-white rounded-full border-[1.5px] border-[#044E35] p-0.5 mt-2">
         {[
           { key: 'cash', label: 'Cash' },
           { key: 'upi', label: 'Online' },
@@ -186,21 +161,12 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
             <Pressable
               key={mode.key}
               onPress={() => setPaymentMethod(mode.key as any)}
-              style={{
-                flex: 1,
-                paddingVertical: 8,
-                borderRadius: 9999,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: isSelected ? '#044E35' : 'transparent',
-              }}
+              className={`flex-1 py-2 rounded-full items-center justify-center ${
+                isSelected ? 'bg-[#044E35]' : 'bg-transparent'
+              }`}
             >
               <Text
-                style={{
-                  fontFamily: FONTS.bold,
-                  fontSize: 12,
-                  color: isSelected ? '#FFFFFF' : '#6B7280',
-                }}
+                className={`font-sans-bold text-xs ${isSelected ? 'text-white' : 'text-gray-500'}`}
               >
                 {mode.label}
               </Text>
@@ -210,103 +176,40 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       </View>
 
       {/* Customer Inputs (Name & Phone) */}
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 4,
-              paddingHorizontal: 4,
-            }}
-          >
-            <Text
-              style={{
-                color: '#6B7280',
-                fontFamily: FONTS.medium,
-                fontSize: 11,
-              }}
-            >
-              Customer name
-            </Text>
+      <View className="flex-row gap-2.5 mt-3.5">
+        <View className="flex-1">
+          <View className="flex-row items-center justify-between mb-1 px-1">
+            <Text className="text-gray-500 font-sans-medium text-[11px]">Customer name</Text>
             {paymentMethod === 'credit' && (
-              <Text
-                style={{
-                  color: '#EF4444',
-                  fontFamily: FONTS.bold,
-                  fontSize: 10,
-                }}
-              >
-                * Req
-              </Text>
+              <Text className="text-red-500 font-sans-bold text-[10px]">* Req</Text>
             )}
           </View>
           <View
-            style={{
-              borderWidth: 1.5,
-              borderColor: paymentMethod === 'credit' && !customerName ? '#EF4444' : '#044E35',
-              borderRadius: 9999,
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              backgroundColor: '#FFFFFF',
-            }}
+            className={`border-[1.5px] rounded-full px-3.5 py-2 bg-white ${
+              paymentMethod === 'credit' && !customerName ? 'border-red-500' : 'border-[#044E35]'
+            }`}
           >
             <TextInput
               value={customerName}
               onChangeText={setCustomerName}
               placeholder="Name"
               placeholderTextColor="#9CA3AF"
-              style={{
-                color: '#111827',
-                fontFamily: FONTS.bold,
-                fontSize: 12,
-                padding: 0,
-              }}
+              className="text-gray-900 font-sans-bold text-xs p-0"
             />
           </View>
         </View>
 
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 4,
-              paddingHorizontal: 4,
-            }}
-          >
-            <Text
-              style={{
-                color: '#6B7280',
-                fontFamily: FONTS.medium,
-                fontSize: 11,
-              }}
-            >
-              Phone Number
-            </Text>
+        <View className="flex-1">
+          <View className="flex-row items-center justify-between mb-1 px-1">
+            <Text className="text-gray-500 font-sans-medium text-[11px]">Phone Number</Text>
             {paymentMethod === 'credit' && (
-              <Text
-                style={{
-                  color: '#EF4444',
-                  fontFamily: FONTS.bold,
-                  fontSize: 10,
-                }}
-              >
-                * Req
-              </Text>
+              <Text className="text-red-500 font-sans-bold text-[10px]">* Req</Text>
             )}
           </View>
           <View
-            style={{
-              borderWidth: 1.5,
-              borderColor: paymentMethod === 'credit' && !customerPhone ? '#EF4444' : '#044E35',
-              borderRadius: 9999,
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              backgroundColor: '#FFFFFF',
-            }}
+            className={`border-[1.5px] rounded-full px-3.5 py-2 bg-white ${
+              paymentMethod === 'credit' && !customerPhone ? 'border-red-500' : 'border-[#044E35]'
+            }`}
           >
             <TextInput
               value={customerPhone}
@@ -314,80 +217,28 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
               keyboardType="phone-pad"
               placeholder="Phone"
               placeholderTextColor="#9CA3AF"
-              style={{
-                color: '#111827',
-                fontFamily: FONTS.bold,
-                fontSize: 12,
-                padding: 0,
-              }}
+              className="text-gray-900 font-sans-bold text-xs p-0"
             />
           </View>
         </View>
       </View>
 
       {/* Order List Container */}
-      <Text
-        style={{
-          color: '#6B7280',
-          fontFamily: FONTS.medium,
-          fontSize: 12,
-          marginTop: 14,
-          marginBottom: 6,
-        }}
-      >
-        Order list
-      </Text>
+      <Text className="text-gray-500 font-sans-medium text-xs mt-3.5 mb-1.5">Order list</Text>
 
-      <View
-        style={{
-          flex: 1,
-          borderWidth: 1.5,
-          borderColor: '#044E35',
-          borderRadius: 24,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          backgroundColor: '#FFFFFF',
-        }}
-      >
+      <View className="flex-1 border-[1.5px] border-[#044E35] rounded-3xl px-3 py-2 bg-white">
         {items.length === 0 ? (
-          <View
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingVertical: 30,
-            }}
-          >
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                backgroundColor: '#F7F7F2',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 8,
-              }}
-            >
+          <View className="flex-1 items-center justify-center py-7">
+            <View className="w-14 h-14 rounded-full bg-[#F7F7F2] items-center justify-center mb-2">
               <Ionicons name="cart-outline" size={28} color="#044E35" />
             </View>
-            <Text style={{ color: '#111827', fontFamily: FONTS.bold, fontSize: 14 }}>
-              Your order list is empty
-            </Text>
-            <Text
-              style={{
-                color: '#6B7280',
-                fontFamily: FONTS.regular,
-                fontSize: 11,
-                marginTop: 2,
-                textAlign: 'center',
-              }}
-            >
+            <Text className="text-gray-900 font-sans-bold text-sm">Your order list is empty</Text>
+            <Text className="text-gray-500 font-sans text-xs mt-0.5 text-center">
               Tap items from the menu to build an order
             </Text>
           </View>
         ) : (
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
             {items.map((item) => (
               <CartItemRow
                 key={`${item.menuItemId}-${item.flavourId}`}
@@ -405,82 +256,45 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       </View>
 
       {/* Payment Details */}
-      <View>
-        <View style={{ gap: 2 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingBlock: 6,
-              paddingInline: 6,
-            }}
-          >
-            <Text style={{ color: '#111827', fontFamily: FONTS.bold, fontSize: 13 }}>Total</Text>
-            <Text
-              style={{
-                color: COLORS.primary,
-                fontFamily: FONTS.bold,
-                fontSize: 15,
-              }}
-            >
-              {fmt(tot)}
-            </Text>
-          </View>
+      <View className="mt-1">
+        <View className="flex-row justify-between items-center py-1.5 px-1.5">
+          <Text className="text-gray-900 font-sans-bold text-sm">Total</Text>
+          <Text className="text-primary font-sans-bold text-base">{fmt(tot)}</Text>
         </View>
       </View>
 
       {/* Place Order Button */}
       <Pressable
-        disabled={items.length === 0 || isSubmittingOrder}
+        disabled={items.length === 0 || isSubmittingOrder || isSuccessOrder}
         onPress={handlePlaceOrder}
+        className={`mt-2 rounded-full h-13 flex-row items-center justify-between shadow-md ${
+          isSuccessOrder ? 'bg-emerald-600 shadow-emerald-600/30' : 'bg-primary shadow-primary/25'
+        } ${items.length === 0 ? 'elevation-0 opacity-40' : 'elevation-4'}`}
         style={({ pressed }) => ({
-          marginTop: 10,
-          borderRadius: 9999,
-          backgroundColor: COLORS.primary,
-          paddingVertical: 5,
-          paddingHorizontal: 6,
-          height: 52,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
           opacity: pressed || isSubmittingOrder ? 0.88 : 1,
-          shadowColor: COLORS.primary,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.25,
-          shadowRadius: 8,
-          elevation: items.length === 0 ? 0 : 4,
         })}
       >
         {isSubmittingOrder ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator color={COLORS.white} />
+          <View className="flex-1 items-center justify-center p-3 px-6">
+            <ActivityIndicator color="#FFFFFF" />
           </View>
-        ) : (
-          <View
+        ) : isSuccessOrder ? (
+          <Animated.View
+            className="flex-row items-center w-full justify-center gap-2 p-3 px-6 rounded-2xl bg-emerald-600"
             style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              width: '100%',
-              justifyContent: 'center',
-              backgroundColor: COLORS.primary,
-              opacity: items.length === 0 ? 0.8 : 1,
-              padding: 8,
-              paddingInline: 16,
-              borderRadius: 20,
+              opacity: opacityAnim,
             }}
           >
-            <Text
-              style={{
-                color: COLORS.white,
-                fontFamily: FONTS.bold,
-                fontSize: 12,
-                textAlign: 'center',
-              }}
-            >
-              Place Order
-            </Text>
+            <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+            <Text className="text-white font-sans-bold text-sm text-center">Order Placed!</Text>
+          </Animated.View>
+        ) : (
+          <View
+            className={`flex-row items-center w-full justify-center bg-primary p-3 px-6 rounded-2xl ${
+              items.length === 0 ? 'opacity-80' : 'opacity-100'
+            }`}
+          >
+            <Text className="text-white font-sans-bold text-xs text-center">Place Order</Text>
           </View>
         )}
       </Pressable>

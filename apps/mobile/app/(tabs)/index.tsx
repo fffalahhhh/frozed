@@ -6,7 +6,6 @@ import { useRootNavigationState } from 'expo-router';
 import { api } from '../../lib/api';
 import { useCartStore } from '../../store/cart';
 import type { MenuWithCategories, MenuItem } from '@frozen-shake/shared';
-import { COLORS, FONTS } from '../../components/common/constants';
 import { TopLogoHeader } from '../../components/common/TopLogoHeader';
 import { CategoryCard } from '../../components/pos/CategoryCard';
 import { MenuItemCard } from '../../components/pos/MenuItemCard';
@@ -71,27 +70,19 @@ export default function FOHScreen() {
   const receiptNumber = String(Math.floor(Math.random() * 90000) + 10000);
 
   const MenuPanel = (
-    <View style={{ flex: 1, paddingBottom: 96 }}>
+    <View className="flex-1 pb-24">
       {/* Category Pills */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ paddingLeft: 16, marginBottom: 16 }}
+        className="pl-4 mb-4"
         contentContainerStyle={{ paddingRight: 16 }}
       >
         {isLoading
           ? [1, 2, 3].map((i) => (
               <View
                 key={i}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                  borderRadius: 24,
-                  marginRight: 12,
-                  minWidth: 145,
-                  height: 96,
-                  borderWidth: 1,
-                  borderColor: COLORS.borderAlpha40,
-                }}
+                className="bg-white/60 rounded-3xl mr-3 min-w-[145px] h-24 border border-border/40"
               />
             ))
           : menuData?.map((section: MenuWithCategories) => (
@@ -114,43 +105,14 @@ export default function FOHScreen() {
         contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 60 }}
         renderItem={({ item }) => <MenuItemCard item={item} onAdd={handleAddItem} />}
         ListEmptyComponent={
-          <View
-            style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingVertical: 80,
-            }}
-          >
-            <View
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                backgroundColor: COLORS.surfaceAlpha60,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 12,
-              }}
-            >
-              <Ionicons name="ice-cream-outline" size={40} color={COLORS.primary} />
+          <View className="items-center justify-center py-20">
+            <View className="w-20 h-20 rounded-full bg-surface/60 items-center justify-center mb-3">
+              <Ionicons name="ice-cream-outline" size={40} color="#1B4332" />
             </View>
-            <Text
-              style={{
-                color: COLORS.textPrimary,
-                fontFamily: FONTS.bold,
-                fontSize: 16,
-              }}
-            >
+            <Text className="text-text-primary font-sans-bold text-base">
               {isLoading ? 'Loading Menu...' : 'No Shakes Found'}
             </Text>
-            <Text
-              style={{
-                color: COLORS.textMuted,
-                fontFamily: FONTS.regular,
-                fontSize: 12,
-                marginTop: 4,
-              }}
-            >
+            <Text className="text-text-muted font-sans text-xs mt-1">
               {isLoading ? 'Fetching delicious items...' : 'Try adjusting your search'}
             </Text>
           </View>
@@ -160,7 +122,7 @@ export default function FOHScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.white }}>
+    <View className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Top Logo Header */}
@@ -169,14 +131,14 @@ export default function FOHScreen() {
       {/* Block interactive content until navigation context is fully mounted */}
       {isNavReady &&
         (isTablet ? (
-          <View style={{ flex: 1, flexDirection: 'row', padding: 16, gap: 16 }}>
-            <View style={{ flex: 0.65 }}>{MenuPanel}</View>
-            <View style={{ flex: 0.35 }}>
+          <View className="flex-1 flex-row p-4">
+            <View className="w-[70%]">{MenuPanel}</View>
+            <View className="w-[30%]">
               <CartPanel receiptNumber={receiptNumber} />
             </View>
           </View>
         ) : (
-          <View style={{ flex: 1 }}>{MenuPanel}</View>
+          <View className="flex-1">{MenuPanel}</View>
         ))}
 
       {/* Add Menu Item Modal */}

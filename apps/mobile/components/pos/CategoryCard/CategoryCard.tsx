@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONTS } from '../../common/constants';
 
 export interface CategoryCardProps {
   name: string;
@@ -21,90 +20,26 @@ export function CategoryCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        {
-          borderRadius: 24,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          marginRight: 12,
-          minWidth: 145,
-          height: 96,
-          justifyContent: 'space-between',
-          borderWidth: 1,
-          backgroundColor: isActive ? COLORS.primary : 'rgba(255, 255, 255, 0.9)',
-          borderColor: isActive ? COLORS.primary : COLORS.borderAlpha60,
-          opacity: pressed ? 0.85 : 1,
-        },
+      className={`rounded-3xl px-4 py-3.5 mr-3 min-w-[145px] h-24 justify-between border ${
         isActive
-          ? {
-              shadowColor: '#1B4332',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.25,
-              shadowRadius: 10,
-              elevation: 6,
-            }
-          : {
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.04,
-              shadowRadius: 6,
-              elevation: 2,
-            },
-      ]}
+          ? 'bg-primary border-primary shadow-lg shadow-primary/30 elevation-6'
+          : 'bg-white/90 border-border/60 shadow-sm elevation-2'
+      }`}
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
       {/* Badge */}
       {needsRestock ? (
-        <View
-          style={{
-            alignSelf: 'flex-start',
-            backgroundColor: COLORS.warningAlpha10,
-            borderWidth: 1,
-            borderColor: COLORS.warningAlpha30,
-            borderRadius: 9999,
-            paddingHorizontal: 10,
-            paddingVertical: 2,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          <Ionicons name="alert-circle" size={12} color={COLORS.warning} />
-          <Text
-            style={{
-              color: COLORS.warning,
-              fontSize: 10,
-              fontFamily: FONTS.semiBold,
-            }}
-          >
-            Re-stock
-          </Text>
+        <View className="self-start bg-warning/10 border border-warning/30 rounded-full px-2.5 py-0.5 flex-row items-center gap-1">
+          <Ionicons name="alert-circle" size={12} color="#F97316" />
+          <Text className="text-warning text-[10px] font-sans-semibold">Re-stock</Text>
         </View>
       ) : (
-        <View
-          style={{
-            alignSelf: 'flex-start',
-            borderRadius: 9999,
-            paddingHorizontal: 10,
-            paddingVertical: 2,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            backgroundColor: isActive ? 'rgba(255, 255, 255, 0.2)' : COLORS.successBg,
-            borderWidth: isActive ? 0 : 1,
-            borderColor: COLORS.primaryAlpha10,
-          }}
-        >
-          <Ionicons
-            name="checkmark-circle"
-            size={12}
-            color={isActive ? COLORS.white : COLORS.primary}
-          />
+        <View className={`self-start rounded-full flex-row items-center gap-1`}>
+          <Ionicons name="checkmark-circle" size={12} color={isActive ? '#FFFFFF' : '#1B4332'} />
           <Text
-            style={{
-              fontSize: 10,
-              fontFamily: FONTS.semiBold,
-              color: isActive ? COLORS.white : COLORS.primary,
-            }}
+            className={`text-[10px] font-sans-semibold ${isActive ? 'text-white' : 'text-primary'}`}
           >
             Available
           </Text>
@@ -114,23 +49,15 @@ export function CategoryCard({
       {/* Title & Count */}
       <View>
         <Text
-          style={{
-            fontFamily: FONTS.bold,
-            fontSize: 16,
-            lineHeight: 20,
-            color: isActive ? COLORS.white : COLORS.textPrimary,
-          }}
+          className={`font-sans-bold text-base leading-5 ${
+            isActive ? 'text-white' : 'text-text-primary'
+          }`}
           numberOfLines={1}
         >
           {name}
         </Text>
         <Text
-          style={{
-            fontFamily: FONTS.regular,
-            fontSize: 12,
-            marginTop: 2,
-            color: isActive ? 'rgba(255, 255, 255, 0.75)' : COLORS.textMuted,
-          }}
+          className={`font-sans text-xs mt-0.5 ${isActive ? 'text-white/75' : 'text-text-muted'}`}
         >
           {itemCount} Items
         </Text>
