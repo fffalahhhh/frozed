@@ -218,7 +218,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
   };
 
   return (
-    <View className="bg-white rounded-[32px] flex-1 border border-[#E5E0D8] p-5 shadow-sm elevation-2 h-full min-h-full justify-between z-10">
+    <View className="bg-white rounded-[32px] flex-1 border border-[#E5E0D8] p-5 shadow-sm elevation-2 h-full min-h-[600px] justify-between z-40 mb-2">
       {/* Header Bar */}
       <View className="flex-row items-center justify-between pb-3 border-b border-[#E5E0D8]/60">
         <Pressable className="w-10 h-10 rounded-full bg-[#0D4830] items-center justify-center">
@@ -267,9 +267,9 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       </View>
 
       {/* Customer Name & Phone Number Inputs with Left-Positioned History Popovers */}
-      <View className="flex-row gap-2.5 mt-3 z-30 relative">
+      <View className="flex-row gap-2.5 mt-3 z-50 relative">
         {/* Customer Name Field */}
-        <View className="flex-1 relative z-30">
+        <View className="flex-1 relative z-50">
           <View className="flex-row items-center justify-between mb-1 pl-1 pr-1">
             <Text className="text-gray-600 font-sans-medium text-xs">Customer name</Text>
             {paymentMethod === 'credit' && (
@@ -300,7 +300,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
 
           {/* Left-Positioned Popover Dropdown for Customer Name */}
           {showNamePopover && filteredByName.length > 0 && (
-            <View className="absolute top-0 right-full mr-2.5 z-50 w-56 bg-white border border-[#E5E0D8] rounded-2xl shadow-xl elevation-8 p-1.5 max-h-52">
+            <View className="absolute top-0 right-full mr-2.5 z-50 w-56 bg-white border border-[#E5E0D8] rounded-2xl shadow-2xl elevation-10 p-1.5 max-h-52">
               <View className="flex-row items-center justify-between px-2 py-1 border-b border-gray-100 mb-1">
                 <Text className="text-gray-400 font-sans-bold text-[10px] uppercase">
                   Previous Customers
@@ -331,7 +331,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         </View>
 
         {/* Customer Phone Field with Left-Positioned Popover */}
-        <View className="flex-1 relative z-30">
+        <View className="flex-1 relative z-50">
           <View className="flex-row items-center justify-between mb-1 pl-1 pr-1">
             <Text className="text-gray-600 font-sans-medium text-xs">Phone Number</Text>
             {paymentMethod === 'credit' && (
@@ -363,7 +363,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
 
           {/* Left-Positioned Popover Dropdown for Phone Field */}
           {showPhonePopover && filteredByPhone.length > 0 && (
-            <View className="absolute top-0 right-full mr-2.5 z-50 w-56 bg-white border border-[#E5E0D8] rounded-2xl shadow-xl elevation-8 p-1.5 max-h-52">
+            <View className="absolute top-0 right-full mr-2.5 z-50 w-56 bg-white border border-[#E5E0D8] rounded-2xl shadow-2xl elevation-10 p-1.5 max-h-52">
               <View className="flex-row items-center justify-between px-2 py-1 border-b border-gray-100 mb-1">
                 <Text className="text-gray-400 font-sans-bold text-[10px] uppercase">
                   Previous Phones
@@ -397,13 +397,13 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       {/* Order List Header */}
       <Text className="text-gray-700 font-sans-medium text-xs mt-3 mb-1.5">Order list</Text>
 
-      {/* Full Height Order List Container */}
+      {/* Stable Height Order List Container */}
       <Pressable
         onPress={() => {
           setShowNamePopover(false);
           setShowPhonePopover(false);
         }}
-        className="flex-1 border border-[#E5E0D8] rounded-[24px] px-3.5 py-2 bg-white overflow-hidden my-1"
+        className="flex-1 border border-[#E5E0D8] rounded-[24px] px-3.5 py-2 bg-white overflow-hidden my-1 min-h-[180px]"
       >
         {items.length === 0 ? (
           <View className="flex-1 items-center justify-center py-6">
@@ -425,7 +425,10 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
                   updateQuantity(item.menuItemId, item.flavourId, item.quantity + 1)
                 }
                 onDecrease={() =>
-                  updateQuantity(item.menuItemId, item.flavourId, item.quantity - 1)
+                  updateQuantity(item.menuItemId, item.flavourId, Math.max(0, item.quantity - 1))
+                }
+                onQuantityChange={(newQty) =>
+                  updateQuantity(item.menuItemId, item.flavourId, newQty)
                 }
               />
             ))}
@@ -434,7 +437,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       </Pressable>
 
       {/* Footer Section: Total & Place Order Button */}
-      <View className="">
+      <View>
         <View className="flex-row justify-between items-center py-1 mb-1">
           <Text className="text-gray-900 font-sans-bold text-base">Total</Text>
           <Text className="text-[#0D4830] font-sans-bold text-xl">{fmt(tot)}</Text>
@@ -464,14 +467,14 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
               }}
             >
               <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
-              <Text className="text-white font-sans-bold text-base text-center">Order Placed!</Text>
+              <Text className="text-white font-sans-bold text-base text-center">Order Confirmed!</Text>
             </Animated.View>
           ) : (
             <View className="flex-row items-center justify-between w-full px-2">
               <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center">
                 <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
               </View>
-              <Text className="text-white font-sans-bold text-base">Place Order {fmt(tot)}</Text>
+              <Text className="text-white font-sans-bold text-base">Confirm Order {fmt(tot)}</Text>
               <View className="flex-row items-center opacity-60">
                 <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
                 <Ionicons
