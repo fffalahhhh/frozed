@@ -4,7 +4,7 @@
     "slug": "frozen-shake",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/logo-icon.png",
     "scheme": "frozenshake",
     "userInterfaceStyle": "light",
     "splash": {
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/logo-icon.png",
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.frozenshake.app"
