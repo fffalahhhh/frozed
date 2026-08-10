@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   ActivityIndicator,
   Modal,
   TextInput,
@@ -154,16 +155,19 @@ export default function InventoryScreen() {
         <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
           {stockItems && stockItems.length > 0 ? (
             stockItems.map((item) => (
-              <View
+              <Pressable
                 key={item.id}
+                onPress={() => setEditItem(item)}
                 className="bg-white rounded-3xl p-4 mb-3 border border-border/60 shadow-sm"
-                style={{
+                style={({ pressed }: { pressed: boolean }) => ({
+                  opacity: pressed ? 0.88 : 1,
+                  transform: [{ scale: pressed ? 0.985 : 1 }],
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.04,
                   shadowRadius: 8,
                   elevation: 2,
-                }}
+                })}
               >
                 {/* Top row */}
                 <View className="flex-row items-center justify-between">
@@ -200,15 +204,12 @@ export default function InventoryScreen() {
 
                 {/* Action buttons */}
                 <View className="flex-row items-center justify-end gap-2 mt-3 pt-3 border-t border-border/30">
-                  <TouchableOpacity
-                    onPress={() => setEditItem(item)}
-                    className="flex-row items-center bg-surface border border-border/60 px-3 py-1.5 rounded-xl gap-1"
-                  >
+                  <View className="flex-row items-center bg-surface border border-border/60 px-3 py-1.5 rounded-xl gap-1">
                     <Ionicons name="pencil-outline" size={14} color="#1B4332" />
                     <Text className="font-sans-semibold text-xs" style={{ color: '#1B4332' }}>
                       Edit
                     </Text>
-                  </TouchableOpacity>
+                  </View>
 
                   <TouchableOpacity
                     onPress={() => handleDeleteItem(item)}
@@ -225,7 +226,7 @@ export default function InventoryScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
-              </View>
+              </Pressable>
             ))
           ) : (
             <View className="items-center justify-center py-20">
