@@ -202,6 +202,43 @@ export interface ApiError {
 
 // ─── Sync ────────────────────────────────────────────────────────────────────
 
+export type SyncOperationType =
+  | 'CREATE_ORDER'
+  | 'VOID_ORDER'
+  | 'PAY_ORDER'
+  | 'ADJUST_STOCK'
+  | 'CREATE_EXPENSE'
+  | 'UPDATE_MENU_ITEM';
+
+export interface SyncMutation {
+  localId: string;
+  operationType: SyncOperationType;
+  payload: any;
+  createdAt: string;
+}
+
+export interface BatchSyncPayload {
+  mutations: SyncMutation[];
+}
+
+export interface SyncResultItem {
+  localId: string;
+  serverId?: string | null;
+  success: boolean;
+  error?: string;
+}
+
+export interface BatchSyncResponse {
+  results: SyncResultItem[];
+}
+
+export interface SyncSnapshotData {
+  categories: Category[];
+  menuItems: MenuItem[];
+  inventory: InventoryItem[];
+  orders: Order[];
+}
+
 export interface SyncOrderPayload {
   orders: Array<{
     localId: string;
@@ -209,3 +246,4 @@ export interface SyncOrderPayload {
     items: Array<Omit<OrderItem, 'id' | 'orderId'>>;
   }>;
 }
+

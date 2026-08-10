@@ -19,6 +19,8 @@ import { AddMenuItemModal } from '../../components/menu/AddMenuItemModal';
 import { EditMenuItemModal } from '../../components/menu/EditMenuItemModal';
 
 // ─── Main Menu Management Screen ──────────────────────────────────────────────
+import { getLocalCategories, getLocalMenuItems, getLocalInventory } from '../../lib/db';
+
 export default function MenuManagementScreen() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -33,13 +35,33 @@ export default function MenuManagementScreen() {
     refetch,
   } = useQuery<MenuWithCategories[]>({
     queryKey: ['menu'],
-    queryFn: () => api.get('/menu'),
+    queryFn: async () => {
+      try {
+        const remote = await api.get<MenuWithCategories[]>('/menu');
+        return remote;
+      } catch (e) {
+        const cats = getLocalCategories();
+        const items = getLocalMenuItems();
+        return cats.map((c) => ({
+          category: c,
+          items: items.filter((i) => i.categoryId === c.id),
+          needsRestock: false,
+        }));
+      }
+    },
     staleTime: 0,
   });
 
   const { data: stockItems } = useQuery<any[]>({
     queryKey: ['inventory-stock'],
-    queryFn: () => api.get('/inventory'),
+    queryFn: async () => {
+      try {
+        const remote = await api.get<any[]>('/inventory');
+        return remote;
+      } catch (e) {
+        return getLocalInventory();
+      }
+    },
     staleTime: 1000 * 5,
   });
 

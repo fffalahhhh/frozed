@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,15 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import { fmt } from '../../components/common/constants';
 import { useToastStore } from '../../store/toast';
 import { OrderHistoryCard } from '../../components/history/OrderHistoryCard';
+
+import { getLocalOrders, updateLocalOrderStatus, enqueueOutboxMutation } from '../../lib/db';
+import { syncEngine } from '../../lib/syncEngine';
 
 export default function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,10 +52,23 @@ export default function HistoryScreen() {
     isLoading,
     refetch,
   } = useQuery<any[]>({
-    queryKey: ['orders-history'],
-    queryFn: () => api.get('/orders'),
-    staleTime: 1000 * 60,
+    queryKey: ['orders'],
+    queryFn: async () => {
+      try {
+        const remote = await api.get<any[]>('/orders');
+        return remote;
+      } catch (e) {
+        return getLocalOrders();
+      }
+    },
+    staleTime: 1000 * 10,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   const hasActiveFilters = useMemo(() => {
     return (
@@ -65,11 +82,14 @@ export default function HistoryScreen() {
 
   const handleMarkAsPaid = async (orderId: string) => {
     try {
-      await api.patch(`/orders/${orderId}`, {
-        status: 'paid',
+      updateLocalOrderStatus(orderId, 'paid');
+      enqueueOutboxMutation(`pay_${orderId}_${Date.now()}`, 'PAY_ORDER', {
+        orderId,
+        paymentMethod: 'cash',
       });
       useToastStore.getState().showToast('Order marked as Paid successfully!', 'success');
       refetch();
+      syncEngine.triggerSync();
     } catch (err: any) {
       useToastStore.getState().showToast(err.message || 'Failed to update order', 'error');
     }

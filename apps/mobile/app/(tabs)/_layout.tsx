@@ -1,8 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Platform, Pressable, View, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
+import { syncEngine } from '../../lib/syncEngine';
 
 function CustomTabBarButton(props: BottomTabBarButtonProps) {
   const { children, onPress, onLongPress, style, accessibilityState, ref, ...rest } = props;
@@ -58,7 +59,10 @@ function CustomTabBarButton(props: BottomTabBarButtonProps) {
           )}
 
           {/* Tab Content */}
-          <View style={[styles.tabContent, pressed && styles.tabContentPressed]} pointerEvents="none">
+          <View
+            style={[styles.tabContent, pressed && styles.tabContentPressed]}
+            pointerEvents="none"
+          >
             {isSelected && <View style={styles.activeTopIndicator} />}
             {children}
           </View>
@@ -72,94 +76,104 @@ function CustomTabBarButton(props: BottomTabBarButtonProps) {
 }
 
 export default function TabLayout() {
+  useEffect(() => {
+    syncEngine.init();
+  }, []);
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarButton: (props) => <CustomTabBarButton {...props} />,
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E8E2D9',
-          height: Platform.OS === 'ios' ? 84 : 74,
-          paddingBottom: Platform.OS === 'ios' ? 18 : 10,
-          paddingTop: 4,
-          paddingHorizontal: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.05,
-          shadowRadius: 10,
-          elevation: 8,
-        },
-        tabBarItemStyle: {
-          flex: 1,
-          height: '100%',
-          width: '100%',
-          padding: 0,
-          margin: 0,
-        },
-        tabBarActiveTintColor: '#1B4332',
-        tabBarInactiveTintColor: '#9ca3af',
-        tabBarLabelStyle: {
-          fontFamily: 'Inter_600SemiBold',
-          fontSize: 11,
-          marginTop: 2,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Orders',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'fast-food' : 'fast-food-outline'} size={22} color={color} />
-          ),
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarButton: (props) => <CustomTabBarButton {...props} />,
+          tabBarStyle: {
+            backgroundColor: '#FFFFFF',
+            borderTopColor: '#E8E2D9',
+            height: Platform.OS === 'ios' ? 84 : 74,
+            paddingBottom: Platform.OS === 'ios' ? 18 : 10,
+            paddingTop: 4,
+            paddingHorizontal: 0,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.05,
+            shadowRadius: 10,
+            elevation: 8,
+          },
+          tabBarItemStyle: {
+            flex: 1,
+            height: '100%',
+            width: '100%',
+            padding: 0,
+            margin: 0,
+          },
+          tabBarActiveTintColor: '#1B4332',
+          tabBarInactiveTintColor: '#9ca3af',
+          tabBarLabelStyle: {
+            fontFamily: 'Inter_600SemiBold',
+            fontSize: 11,
+            marginTop: 2,
+          },
         }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'History',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="inventory"
-        options={{
-          title: 'Inventory',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'cube' : 'cube-outline'} size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="menu"
-        options={{
-          title: 'Menu',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'restaurant' : 'restaurant-outline'}
-              size={22}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'stats-chart' : 'stats-chart-outline'}
-              size={22}
-              color={color}
-            />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Orders',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'fast-food' : 'fast-food-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: 'History',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={22} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="inventory"
+          options={{
+            title: 'Inventory',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? 'cube' : 'cube-outline'} size={22} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="menu"
+          options={{
+            title: 'Menu',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'restaurant' : 'restaurant-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="analytics"
+          options={{
+            title: 'Analytics',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'stats-chart' : 'stats-chart-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+          }}
+        />
+      </Tabs>
+    </View>
   );
 }
 

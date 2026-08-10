@@ -20,6 +20,8 @@ import { useToastStore } from '../../store/toast';
 import { fmt, UNITS } from '../../components/common/constants';
 import { EditInventoryModal } from '../../components/inventory/EditInventoryModal';
 
+import { getLocalInventory } from '../../lib/db';
+
 // ─── Main Inventory Screen ────────────────────────────────────────────────────
 export default function InventoryScreen() {
   const queryClient = useQueryClient();
@@ -29,7 +31,14 @@ export default function InventoryScreen() {
     refetch,
   } = useQuery<any[]>({
     queryKey: ['inventory-stock'],
-    queryFn: () => api.get('/inventory'),
+    queryFn: async () => {
+      try {
+        const remote = await api.get<any[]>('/inventory');
+        return remote;
+      } catch (e) {
+        return getLocalInventory();
+      }
+    },
     staleTime: 0,
   });
 

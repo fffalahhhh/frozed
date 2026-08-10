@@ -10,13 +10,20 @@ import {
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import type { MenuWithCategories } from '@frozen-shake/shared';
+import type { MenuWithCategories, Order } from '@frozen-shake/shared';
 import { api } from '../../../lib/api';
 import { useCartStore } from '../../../store/cart';
 import { useToastStore } from '../../../store/toast';
 import { getItemStockInfo } from '../../../lib/stock';
 import { fmt } from '../../common/constants';
 import { CartItemRow } from '../CartItemRow';
+import {
+  saveLocalOrder,
+  enqueueOutboxMutation,
+  getLocalNextOrderNumber,
+  getLocalOrders,
+} from '../../../lib/db';
+import { syncEngine } from '../../../lib/syncEngine';
 
 export interface CartPanelProps {
   receiptNumber?: string;
@@ -247,7 +254,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     }
   };
 
-  // Zero-Latency Instant Confirm Order Submission (0ms)
+  // Local-First Instant Confirm Order Submission (0ms)
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
       useToastStore
@@ -276,22 +283,59 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     const cName = customerName.trim();
     const cPhone = customerPhone.trim();
     const pMethod = paymentMethod;
+    const localId = `order_local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const nextOrderNum = getLocalNextOrderNumber();
 
-    setTimeout(() => {
-      setIsSuccessOrder(false);
-      clearCart();
-    }, 1800);
+    const newOrderPayload: Order = {
+      id: localId,
+      orderNumber: String(nextOrderNum),
+      cashierId: '',
+      cashierName: 'Cashier',
+      tableRef: null,
+      orderType: 'dine_in',
+      customerName: cName || null,
+      customerPhone: cPhone || null,
+      status: pMethod === 'credit' ? 'billed' : 'paid',
+      paymentMethod: pMethod,
+      subtotal: String(tot),
+      discountAmount: String(discountAmount),
+      totalAmount: String(tot),
+      notes: null,
+      createdAt: new Date().toISOString(),
+      paidAt: pMethod === 'credit' ? null : new Date().toISOString(),
+      items: currentCartItems.map((i, idx) => ({
+        id: `item_${localId}_${idx}`,
+        orderId: localId,
+        menuItemId: i.menuItemId,
+        menuItemName: i.menuItemName,
+        imageUrl: i.imageUrl,
+        flavourId: i.flavourId,
+        flavourName: i.flavourName,
+        quantity: i.quantity,
+        unitPrice: String(i.unitPrice),
+        itemCost: '0',
+        lineTotal: String(i.unitPrice * i.quantity),
+        notes: i.notes,
+      })),
+    };
 
-    // 2. Silent background sync
+    // 2. Write to local SQLite database instantly (0ms latency)
     try {
-      await api.post<any>('/orders', {
-        orderType: 'dine_in',
-        paymentMethod: pMethod,
-        customerName: cName || null,
-        customerPhone: cPhone || null,
-        subtotal: tot,
-        discountAmount,
-        totalAmount: tot,
+      saveLocalOrder(newOrderPayload, 'pending');
+      enqueueOutboxMutation(localId, 'CREATE_ORDER', {
+        order: {
+          cashierId: '',
+          orderType: 'dine_in',
+          paymentMethod: pMethod,
+          customerName: cName || null,
+          customerPhone: cPhone || null,
+          subtotal: tot,
+          discountAmount,
+          totalAmount: tot,
+          notes: null,
+          status: pMethod === 'credit' ? 'billed' : 'paid',
+          createdAt: newOrderPayload.createdAt,
+        },
         items: currentCartItems.map((i) => ({
           menuItemId: i.menuItemId,
           menuItemName: i.menuItemName,
@@ -307,9 +351,17 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
       queryClient.invalidateQueries({ queryKey: ['menu'] });
+
+      // Trigger background batch sync engine
+      syncEngine.triggerSync();
     } catch (err: any) {
-      useToastStore.getState().showToast(err.message || 'Failed to place order', 'error');
+      console.error('[CART] Local DB order save failed:', err);
     }
+
+    setTimeout(() => {
+      setIsSuccessOrder(false);
+      clearCart();
+    }, 1800);
   };
 
   return (

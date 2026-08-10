@@ -15,6 +15,8 @@ import { CartPanel } from '../../components/pos/CartPanel';
 import { AddMenuItemModal } from '../../components/pos/AddMenuItemModal';
 import { PendingPreOrdersBar } from '../../components/pos/PendingPreOrdersBar/PendingPreOrdersBar';
 
+import { getLocalCategories, getLocalMenuItems, getLocalInventory } from '../../lib/db';
+
 // ─── Main POS Screen ──────────────────────────────────────────────────────────
 export default function FOHScreen() {
   const { width } = useWindowDimensions();
@@ -35,14 +37,34 @@ export default function FOHScreen() {
     refetch: refetchMenu,
   } = useQuery<MenuWithCategories[]>({
     queryKey: ['menu'],
-    queryFn: () => api.get('/menu'),
+    queryFn: async () => {
+      try {
+        const remote = await api.get<MenuWithCategories[]>('/menu');
+        return remote;
+      } catch (e) {
+        const cats = getLocalCategories();
+        const items = getLocalMenuItems();
+        return cats.map((c) => ({
+          category: c,
+          items: items.filter((i) => i.categoryId === c.id),
+          needsRestock: false,
+        }));
+      }
+    },
     staleTime: 1000 * 60 * 5,
   });
 
   // Query inventory stock items for real-time menu availability calculation
   const { data: stockItems } = useQuery<any[]>({
     queryKey: ['inventory-stock'],
-    queryFn: () => api.get('/inventory'),
+    queryFn: async () => {
+      try {
+        const remote = await api.get<any[]>('/inventory');
+        return remote;
+      } catch (e) {
+        return getLocalInventory();
+      }
+    },
     staleTime: 1000 * 5,
   });
 

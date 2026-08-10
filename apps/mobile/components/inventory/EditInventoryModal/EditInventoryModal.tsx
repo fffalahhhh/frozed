@@ -11,9 +11,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../../lib/api';
 import { useToastStore } from '../../../store/toast';
 import { UNITS } from '../../common/constants';
+
+import { updateLocalInventoryStock, enqueueOutboxMutation } from '../../../lib/db';
+import { syncEngine } from '../../../lib/syncEngine';
 
 export interface EditInventoryModalProps {
   item: any | null;
@@ -22,12 +24,7 @@ export interface EditInventoryModalProps {
   onSuccess: () => void;
 }
 
-export function EditInventoryModal({
-  item,
-  visible,
-  onClose,
-  onSuccess,
-}: EditInventoryModalProps) {
+export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditInventoryModalProps) {
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('ml');
   const [currentStock, setCurrentStock] = useState('');
@@ -54,15 +51,25 @@ export function EditInventoryModal({
       useToastStore.getState().showToast('Enter a valid stock amount', 'error');
       return;
     }
+
+    const newStockNum = Number(currentStock);
+    const oldStockNum = parseFloat(item?.currentStock ?? '0');
+    const delta = newStockNum - oldStockNum;
+
     try {
       setIsSubmitting(true);
-      await api.patch(`/inventory/${item.id}`, {
-        name: name.trim(),
-        unit,
-        currentStock: String(Number(currentStock)),
-        reorderLevel: String(Number(reorderLevel) || 0),
-        costPerUnit: String(Number(costPerUnit) || 0),
-      });
+
+      if (item?.id) {
+        updateLocalInventoryStock(item.id, delta);
+        enqueueOutboxMutation(`adj_${item.id}_${Date.now()}`, 'ADJUST_STOCK', {
+          inventoryItemId: item.id,
+          type: 'manual_correction',
+          quantityDelta: delta,
+          note: `Manual stock adjustment to ${newStockNum}`,
+        });
+        syncEngine.triggerSync();
+      }
+
       useToastStore.getState().showToast(`"${name}" updated successfully`, 'success');
       onSuccess();
       onClose();
