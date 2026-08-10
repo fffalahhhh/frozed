@@ -206,6 +206,7 @@ export type SyncOperationType =
   | 'CREATE_ORDER'
   | 'VOID_ORDER'
   | 'PAY_ORDER'
+  | 'UNPAY_ORDER'
   | 'ADJUST_STOCK'
   | 'CREATE_EXPENSE'
   | 'UPDATE_MENU_ITEM';

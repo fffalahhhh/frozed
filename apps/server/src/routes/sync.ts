@@ -35,9 +35,10 @@ syncRouter.post('/batch', async (c) => {
     try {
       if (operationType === 'CREATE_ORDER') {
         const { order, items } = payload;
-        const cashierId = order.cashierId && order.cashierId !== '00000000-0000-0000-0000-000000000000'
-          ? order.cashierId
-          : userId;
+        const cashierId =
+          order.cashierId && order.cashierId !== '00000000-0000-0000-0000-000000000000'
+            ? order.cashierId
+            : userId;
 
         const [inserted] = await db
           .insert(orders)
@@ -66,7 +67,7 @@ syncRouter.post('/batch', async (c) => {
             quantity: Number(i.quantity) || 1,
             unitPrice: String(i.unitPrice || 0),
             itemCost: String(i.itemCost || 0),
-            lineTotal: String(i.lineTotal || (Number(i.unitPrice || 0) * Number(i.quantity || 1))),
+            lineTotal: String(i.lineTotal || Number(i.unitPrice || 0) * Number(i.quantity || 1)),
             notes: i.notes || null,
           }));
 
@@ -83,9 +84,19 @@ syncRouter.post('/batch', async (c) => {
       } else if (operationType === 'PAY_ORDER') {
         const { orderId, paymentMethod } = payload;
         if (orderId) {
+          const updates: any = { status: 'paid', paidAt: new Date() };
+          if (paymentMethod) {
+            updates.paymentMethod = paymentMethod;
+          }
+          await db.update(orders).set(updates).where(eq(orders.id, orderId));
+        }
+        results.push({ localId, success: true });
+      } else if (operationType === 'UNPAY_ORDER') {
+        const { orderId } = payload;
+        if (orderId) {
           await db
             .update(orders)
-            .set({ status: 'paid', paymentMethod: paymentMethod || 'cash', paidAt: new Date() })
+            .set({ status: 'billed', paidAt: null })
             .where(eq(orders.id, orderId));
         }
         results.push({ localId, success: true });

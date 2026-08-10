@@ -1,22 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fmt } from '../../common/constants';
 
 export interface OrderHistoryCardProps {
   order: any;
   onMarkAsPaid?: (orderId: string) => void;
+  onRevertPayment?: (orderId: string) => void;
 }
 
-export function OrderHistoryCard({ order, onMarkAsPaid }: OrderHistoryCardProps) {
+export function OrderHistoryCard({ order, onMarkAsPaid, onRevertPayment }: OrderHistoryCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const isMounted = useRef(true);
 
   useEffect(() => {
     isMounted.current = true;
+    const interval = setInterval(() => setNow(Date.now()), 10000);
     return () => {
       isMounted.current = false;
+      clearInterval(interval);
     };
   }, []);
 
@@ -71,6 +75,14 @@ export function OrderHistoryCard({ order, onMarkAsPaid }: OrderHistoryCardProps)
   const items = Array.isArray(order.items) ? order.items : [];
   const isPaid = (order.status || '').toLowerCase() === 'paid';
 
+  // 5-minute window check for reverting paid status
+  const canRevert = useMemo(() => {
+    if (!isPaid || !order.paidAt) return false;
+    const paidTime = new Date(order.paidAt).getTime();
+    const diffMinutes = (now - paidTime) / (1000 * 60);
+    return diffMinutes >= 0 && diffMinutes < 5;
+  }, [isPaid, order.paidAt, now]);
+
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -79,16 +91,54 @@ export function OrderHistoryCard({ order, onMarkAsPaid }: OrderHistoryCardProps)
     return `${dateStrFormatted}, ${timeStr}`;
   };
 
-  const handleMarkPaid = async () => {
+  const handleMarkPaid = () => {
     if (!onMarkAsPaid) return;
-    try {
-      if (isMounted.current) setIsUpdating(true);
-      await onMarkAsPaid(order.id);
-    } finally {
-      if (isMounted.current) {
-        setIsUpdating(false);
-      }
-    }
+    Alert.alert(
+      'Confirm Payment',
+      `Mark Order #${order.orderNumber} (${order.customerName ? order.customerName.trim() : 'Walk-in'}) as Paid?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Paid',
+          style: 'default',
+          onPress: async () => {
+            try {
+              if (isMounted.current) setIsUpdating(true);
+              await onMarkAsPaid(order.id);
+            } finally {
+              if (isMounted.current) {
+                setIsUpdating(false);
+              }
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleRevertPayment = () => {
+    if (!onRevertPayment) return;
+    Alert.alert(
+      'Revert Payment',
+      `Revert payment for Order #${order.orderNumber} back to Unpaid/Credit?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Revert',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (isMounted.current) setIsUpdating(true);
+              await onRevertPayment(order.id);
+            } finally {
+              if (isMounted.current) {
+                setIsUpdating(false);
+              }
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -109,9 +159,7 @@ export function OrderHistoryCard({ order, onMarkAsPaid }: OrderHistoryCardProps)
             {formatDate(order.createdAt)}
           </Text>
           <Text className="text-text-muted font-sans text-[11px] mx-1">•</Text>
-          <Text className="text-text-primary font-sans-bold text-xs">
-            #{order.orderNumber}
-          </Text>
+          <Text className="text-text-primary font-sans-bold text-xs">#{order.orderNumber}</Text>
           <Text className="text-text-muted font-sans text-[11px] mx-1">•</Text>
           <Text className="text-text-primary font-sans-medium text-xs" numberOfLines={1}>
             {order.customerName ? order.customerName.trim() : 'Walk-in'}
@@ -125,7 +173,9 @@ export function OrderHistoryCard({ order, onMarkAsPaid }: OrderHistoryCardProps)
 
         <View className="flex-row items-center gap-1.5 ml-auto">
           {/* Payment Method Badge */}
-          <View className={`px-2 py-0.5 rounded-lg border flex-row items-center gap-1 ${payInfo.bg}`}>
+          <View
+            className={`px-2 py-0.5 rounded-lg border flex-row items-center gap-1 ${payInfo.bg}`}
+          >
             <Ionicons name={payInfo.icon as any} size={10} color={payInfo.color} />
             <Text className={`text-[10px] font-sans-semibold ${payInfo.text}`}>
               {payInfo.label}
@@ -158,6 +208,24 @@ export function OrderHistoryCard({ order, onMarkAsPaid }: OrderHistoryCardProps)
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text className="text-white font-sans-bold text-[10px]">Mark Paid</Text>
+              )}
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Revert / Undo Payment Action (5 min window) */}
+          {isPaid && canRevert && onRevertPayment ? (
+            <TouchableOpacity
+              onPress={handleRevertPayment}
+              disabled={isUpdating}
+              className="px-2 py-0.5 rounded-lg bg-amber-100 border border-amber-300 active:opacity-80 flex-row items-center gap-1"
+            >
+              {isUpdating ? (
+                <ActivityIndicator size="small" color="#92400E" />
+              ) : (
+                <>
+                  <Ionicons name="arrow-undo-outline" size={11} color="#92400E" />
+                  <Text className="text-amber-900 font-sans-bold text-[10px]">Undo</Text>
+                </>
               )}
             </TouchableOpacity>
           ) : null}
@@ -200,7 +268,10 @@ export function OrderHistoryCard({ order, onMarkAsPaid }: OrderHistoryCardProps)
                     {i.quantity}x {i.menuItemName}
                   </Text>
                   {i.flavourName ? (
-                    <Text className="text-primary text-[10px] font-sans-semibold" style={{ color: '#1B4332' }}>
+                    <Text
+                      className="text-primary text-[10px] font-sans-semibold"
+                      style={{ color: '#1B4332' }}
+                    >
                       ✨ {i.flavourName}
                     </Text>
                   ) : null}

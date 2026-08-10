@@ -8,7 +8,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
@@ -16,10 +16,16 @@ import { fmt } from '../../components/common/constants';
 import { useToastStore } from '../../store/toast';
 import { OrderHistoryCard } from '../../components/history/OrderHistoryCard';
 
-import { getLocalOrders, updateLocalOrderStatus, enqueueOutboxMutation } from '../../lib/db';
+import {
+  getLocalOrders,
+  updateLocalOrderStatus,
+  enqueueOutboxMutation,
+  saveOrdersSnapshotToLocal,
+} from '../../lib/db';
 import { syncEngine } from '../../lib/syncEngine';
 
 export default function HistoryScreen() {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'cash' | 'upi' | 'credit'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'paid' | 'unpaid'>('ALL');
@@ -53,14 +59,7 @@ export default function HistoryScreen() {
     refetch,
   } = useQuery<any[]>({
     queryKey: ['orders'],
-    queryFn: async () => {
-      try {
-        const remote = await api.get<any[]>('/orders');
-        return remote;
-      } catch (e) {
-        return getLocalOrders();
-      }
-    },
+    queryFn: () => getLocalOrders(),
     staleTime: 1000 * 10,
   });
 
@@ -82,16 +81,71 @@ export default function HistoryScreen() {
 
   const handleMarkAsPaid = async (orderId: string) => {
     try {
+      const existingOrder = ordersList?.find((o) => o.id === orderId);
+      const existingPaymentMethod = existingOrder?.paymentMethod;
+
+      // 1. Instant local SQLite update (preserves existing paymentMethod)
       updateLocalOrderStatus(orderId, 'paid');
+
+      // 2. Queue mutation in outbox for background batch sync (without forcing paymentMethod)
       enqueueOutboxMutation(`pay_${orderId}_${Date.now()}`, 'PAY_ORDER', {
         orderId,
-        paymentMethod: 'cash',
       });
+
+      // 3. Instant 0ms Optimistic UI cache mutation in React Query (preserves paymentMethod)
+      queryClient.setQueryData<any[]>(['orders'], (oldOrders) => {
+        if (!oldOrders || !Array.isArray(oldOrders)) return getLocalOrders();
+        return oldOrders.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                status: 'paid',
+                paidAt: new Date().toISOString(),
+                paymentMethod: existingPaymentMethod || o.paymentMethod,
+              }
+            : o,
+        );
+      });
+
       useToastStore.getState().showToast('Order marked as Paid successfully!', 'success');
-      refetch();
+
+      // 4. Trigger background batch sync engine
       syncEngine.triggerSync();
     } catch (err: any) {
       useToastStore.getState().showToast(err.message || 'Failed to update order', 'error');
+    }
+  };
+
+  const handleRevertPayment = async (orderId: string) => {
+    try {
+      // 1. Instant local SQLite update back to billed
+      updateLocalOrderStatus(orderId, 'billed');
+
+      // 2. Queue UNPAY_ORDER mutation in outbox
+      enqueueOutboxMutation(`unpay_${orderId}_${Date.now()}`, 'UNPAY_ORDER', {
+        orderId,
+      });
+
+      // 3. Instant 0ms Optimistic UI cache mutation in React Query
+      queryClient.setQueryData<any[]>(['orders'], (oldOrders) => {
+        if (!oldOrders || !Array.isArray(oldOrders)) return getLocalOrders();
+        return oldOrders.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                status: 'billed',
+                paidAt: null,
+              }
+            : o,
+        );
+      });
+
+      useToastStore.getState().showToast('Payment reverted back to Unpaid/Credit!', 'success');
+
+      // 4. Trigger background batch sync engine
+      syncEngine.triggerSync();
+    } catch (err: any) {
+      useToastStore.getState().showToast(err.message || 'Failed to revert payment', 'error');
     }
   };
 
@@ -485,7 +539,12 @@ export default function HistoryScreen() {
         <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
           {filteredOrders.length > 0 ? (
             filteredOrders.map((order) => (
-              <OrderHistoryCard key={order.id} order={order} onMarkAsPaid={handleMarkAsPaid} />
+              <OrderHistoryCard
+                key={order.id}
+                order={order}
+                onMarkAsPaid={handleMarkAsPaid}
+                onRevertPayment={handleRevertPayment}
+              />
             ))
           ) : (
             <View className="items-center justify-center py-16 px-4">

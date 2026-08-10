@@ -257,10 +257,19 @@ export function getLocalNextOrderNumber(): number {
 export function saveOrdersSnapshotToLocal(orders: Order[]): void {
   const db = getLocalDb();
   db.withTransactionSync(() => {
-    db.execSync('DELETE FROM local_order_items;');
-    db.execSync('DELETE FROM local_orders;');
+    db.execSync("DELETE FROM local_order_items WHERE orderId IN (SELECT id FROM local_orders WHERE syncStatus = 'synced');");
+    db.execSync("DELETE FROM local_orders WHERE syncStatus = 'synced';");
 
     for (const o of orders) {
+      const pendingRow = db.getFirstSync<{ id: string }>(
+        "SELECT id FROM local_orders WHERE id = ? AND syncStatus = 'pending';",
+        [o.id],
+      );
+
+      if (pendingRow) {
+        continue;
+      }
+
       db.runSync(
         "INSERT OR REPLACE INTO local_orders (id, orderNumber, cashierId, cashierName, tableRef, orderType, customerName, customerPhone, status, paymentMethod, subtotal, discountAmount, totalAmount, notes, createdAt, paidAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced');",
         [
@@ -411,27 +420,28 @@ export function getLocalOrders(): Order[] {
 
 export function updateLocalOrderStatus(
   orderId: string,
-  status: 'paid' | 'voided',
+  status: 'paid' | 'voided' | 'billed',
   paymentMethod?: string,
 ): void {
   const db = getLocalDb();
   if (status === 'paid') {
     db.runSync(
-      "UPDATE local_orders SET status = 'paid', paymentMethod = COALESCE(?, paymentMethod), paidAt = ? WHERE id = ?;",
+      "UPDATE local_orders SET status = 'paid', syncStatus = 'pending', paymentMethod = COALESCE(?, paymentMethod), paidAt = ? WHERE id = ?;",
       [paymentMethod || null, new Date().toISOString(), orderId],
     );
+  } else if (status === 'billed') {
+    db.runSync(
+      "UPDATE local_orders SET status = 'billed', syncStatus = 'pending', paidAt = NULL WHERE id = ?;",
+      [orderId],
+    );
   } else if (status === 'voided') {
-    db.runSync("UPDATE local_orders SET status = 'voided' WHERE id = ?;", [orderId]);
+    db.runSync("UPDATE local_orders SET status = 'voided', syncStatus = 'pending' WHERE id = ?;", [orderId]);
   }
 }
 
 // ─── Sync Outbox Queue Queries ──────────────────────────────────────────────
 
-export function enqueueOutboxMutation(
-  localId: string,
-  operationType: string,
-  payload: any,
-): void {
+export function enqueueOutboxMutation(localId: string, operationType: string, payload: any): void {
   const db = getLocalDb();
   db.runSync(
     "INSERT OR REPLACE INTO sync_outbox (localId, operationType, payloadJson, status, retryCount, createdAt) VALUES (?, ?, ?, 'pending', 0, ?);",
@@ -503,10 +513,9 @@ export function setSyncMeta(key: string, value: string): void {
 export function getSyncMeta(key: string): string | null {
   try {
     const db = getLocalDb();
-    const row = db.getFirstSync<{ value: string }>(
-      'SELECT value FROM sync_meta WHERE key = ?;',
-      [key],
-    );
+    const row = db.getFirstSync<{ value: string }>('SELECT value FROM sync_meta WHERE key = ?;', [
+      key,
+    ]);
     return row?.value || null;
   } catch (err) {
     return null;
