@@ -242,7 +242,13 @@ ordersRouter.get('/:id', async (c) => {
 ordersRouter.patch('/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
-  const [updated] = await db.update(orders).set(body).where(eq(orders.id, id)).returning();
+  const updateData: Record<string, any> = { ...body };
+  if (updateData.paidAt && typeof updateData.paidAt === 'string') {
+    updateData.paidAt = new Date(updateData.paidAt);
+  } else if (updateData.status === 'paid' && !updateData.paidAt) {
+    updateData.paidAt = new Date();
+  }
+  const [updated] = await db.update(orders).set(updateData).where(eq(orders.id, id)).returning();
   return c.json({ success: true, data: updated });
 });
 
