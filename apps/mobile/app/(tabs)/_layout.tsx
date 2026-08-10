@@ -37,8 +37,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#E8E2D9',
-          height: Platform.OS === 'ios' ? 74 : 64,
-          paddingBottom: 0,
+          height: Platform.OS === 'ios' ? 94 : 84,
+          paddingBottom: 20,
           paddingTop: 0,
           paddingHorizontal: 0,
           shadowColor: '#000',
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 28,
   },
   tabContentPressed: {
     transform: [{ scale: 0.93 }],

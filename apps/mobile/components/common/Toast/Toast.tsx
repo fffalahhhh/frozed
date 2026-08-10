@@ -50,16 +50,20 @@ export function ToastBanner() {
   const bgStyle =
     renderedType === 'error'
       ? 'bg-rose-900 border-rose-700'
-      : renderedType === 'info'
-        ? 'bg-slate-800 border-slate-700'
-        : 'bg-[#0D4830] border-[#0D4830]';
+      : renderedType === 'warning'
+        ? 'bg-amber-800 border-amber-600'
+        : renderedType === 'info'
+          ? 'bg-slate-800 border-slate-700'
+          : 'bg-[#0D4830] border-[#0D4830]';
 
   const iconName =
     renderedType === 'error'
       ? 'alert-circle'
-      : renderedType === 'info'
-        ? 'information-circle'
-        : 'checkmark-circle';
+      : renderedType === 'warning'
+        ? 'warning'
+        : renderedType === 'info'
+          ? 'information-circle'
+          : 'checkmark-circle';
 
   return (
     <View

@@ -51,6 +51,7 @@ export interface MenuItem {
   imageUrl: string | null;
   sellingPrice: string; // numeric as string for precision
   isAvailable: boolean;
+  maxAvailable?: number; // max portions available based on recipe inventory
   flavours?: MenuItemFlavour[];
   recipes?: RecipeItem[];
 }

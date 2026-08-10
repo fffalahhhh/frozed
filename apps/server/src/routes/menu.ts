@@ -22,6 +22,10 @@ menuRouter.get('/', async (c) => {
     db.select().from(inventoryItems),
   ]);
 
+  const stockMap = new Map(
+    stockItems.map((s) => [s.name.toLowerCase().trim(), parseFloat(s.currentStock)]),
+  );
+
   const needsRestockNames = new Set(
     stockItems
       .filter((s) => parseFloat(s.currentStock) <= parseFloat(s.reorderLevel))
@@ -33,15 +37,40 @@ menuRouter.get('/', async (c) => {
     const needsRestock = catItems.some((item) => needsRestockNames.has(item.name.toLowerCase()));
     return {
       category: cat,
-      items: catItems.map((item) => ({
-        ...item,
-        flavours: item.flavours.map((mif) => ({
-          flavourId: mif.flavourId,
-          flavourName: mif.flavour.name,
-          extraCost: mif.extraCost,
-        })),
-        recipes: item.recipes || [],
-      })),
+      items: catItems.map((item) => {
+        let maxAvailable = 999999;
+        if (!item.isAvailable) {
+          maxAvailable = 0;
+        } else if (item.recipes && item.recipes.length > 0) {
+          for (const rec of item.recipes) {
+            const currentStock = stockMap.get(rec.ingredientName.toLowerCase().trim()) ?? 0;
+            const reqQty = parseFloat(rec.quantity as any);
+            if (reqQty > 0) {
+              const possiblePortions = Math.floor(currentStock / reqQty + 1e-9);
+              if (possiblePortions < maxAvailable) {
+                maxAvailable = possiblePortions;
+              }
+            }
+          }
+        }
+        if (maxAvailable === 999999) {
+          maxAvailable = 999; // Default fallback if no specific recipe ingredients
+        }
+
+        const effectiveAvailable = item.isAvailable && maxAvailable > 0;
+
+        return {
+          ...item,
+          isAvailable: effectiveAvailable,
+          maxAvailable,
+          flavours: item.flavours.map((mif) => ({
+            flavourId: mif.flavourId,
+            flavourName: mif.flavour.name,
+            extraCost: mif.extraCost,
+          })),
+          recipes: item.recipes || [],
+        };
+      }),
       needsRestock,
     };
   });

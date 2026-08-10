@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { CartItem, OrderType, PaymentMethod } from '@frozen-shake/shared';
+import { useToastStore } from './toast';
 
 interface CartState {
   // Cart items
@@ -12,9 +13,14 @@ interface CartState {
   discountAmount: number;
 
   // Actions
-  addItem: (item: CartItem) => void;
+  addItem: (item: CartItem, maxAvailable?: number) => void;
   removeItem: (menuItemId: string, flavourId: string | null) => void;
-  updateQuantity: (menuItemId: string, flavourId: string | null, qty: number) => void;
+  updateQuantity: (
+    menuItemId: string,
+    flavourId: string | null,
+    qty: number,
+    maxAvailable?: number,
+  ) => void;
   setOrderType: (type: OrderType) => void;
   setPaymentMethod: (method: PaymentMethod) => void;
   setCustomerName: (name: string) => void;
@@ -38,10 +44,30 @@ export const useCartStore = create<CartState>((set, get) => ({
   tableRef: '',
   discountAmount: 0,
 
-  addItem: (newItem) => {
+  addItem: (newItem, maxAvailable) => {
     const existing = get().items.find(
       (i) => i.menuItemId === newItem.menuItemId && i.flavourId === newItem.flavourId,
     );
+    const currentQty = existing ? existing.quantity : 0;
+    const targetQty = currentQty + newItem.quantity;
+
+    if (maxAvailable !== undefined && maxAvailable !== null) {
+      if (currentQty >= maxAvailable) {
+        useToastStore
+          .getState()
+          .showToast(`Stock limit reached! Max available: ${maxAvailable}`, 'warning');
+        return;
+      }
+      if (targetQty > maxAvailable) {
+        useToastStore
+          .getState()
+          .showToast(`Stock limit reached! Only ${maxAvailable} available in inventory.`, 'warning');
+        const allowed = maxAvailable - currentQty;
+        if (allowed <= 0) return;
+        newItem = { ...newItem, quantity: allowed };
+      }
+    }
+
     if (existing) {
       set((s) => ({
         items: s.items.map((i) =>
@@ -61,10 +87,16 @@ export const useCartStore = create<CartState>((set, get) => ({
     }));
   },
 
-  updateQuantity: (menuItemId, flavourId, qty) => {
+  updateQuantity: (menuItemId, flavourId, qty, maxAvailable) => {
     if (qty <= 0) {
       get().removeItem(menuItemId, flavourId);
       return;
+    }
+    if (maxAvailable !== undefined && maxAvailable !== null && qty > maxAvailable) {
+      useToastStore
+        .getState()
+        .showToast(`Stock limit reached! Only ${maxAvailable} available in inventory.`, 'warning');
+      qty = maxAvailable;
     }
     set((s) => ({
       items: s.items.map((i) =>

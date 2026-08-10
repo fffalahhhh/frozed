@@ -98,8 +98,8 @@ export const recipes = pgTable('recipes', {
   flavourId: uuid('flavour_id').references(() => flavours.id),
   ingredientName: text('ingredient_name').notNull(),
   unit: text('unit').notNull(), // ml, g, pcs
-  quantity: numeric('quantity', { precision: 10, scale: 3 }).notNull(),
-  costPerUnit: numeric('cost_per_unit', { precision: 10, scale: 4 }).notNull(),
+  quantity: numeric('quantity', { precision: 14, scale: 6 }).notNull(),
+  costPerUnit: numeric('cost_per_unit', { precision: 14, scale: 6 }).notNull(),
 });
 
 // ─── Making Costs (labour, packaging, etc.) ───────────────────────────────────
@@ -119,9 +119,9 @@ export const inventoryItems = pgTable('inventory_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull().unique(),
   unit: text('unit').notNull(),
-  currentStock: numeric('current_stock', { precision: 10, scale: 3 }).notNull().default('0'),
-  reorderLevel: numeric('reorder_level', { precision: 10, scale: 3 }).notNull().default('0'),
-  costPerUnit: numeric('cost_per_unit', { precision: 10, scale: 4 }).notNull(),
+  currentStock: numeric('current_stock', { precision: 14, scale: 6 }).notNull().default('0'),
+  reorderLevel: numeric('reorder_level', { precision: 14, scale: 6 }).notNull().default('0'),
+  costPerUnit: numeric('cost_per_unit', { precision: 14, scale: 6 }).notNull(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
@@ -136,7 +136,7 @@ export const inventoryAdjustments = pgTable('inventory_adjustments', {
     .notNull()
     .references(() => users.id),
   type: inventoryAdjustmentTypeEnum('type').notNull(),
-  quantityDelta: numeric('quantity_delta', { precision: 10, scale: 3 }).notNull(),
+  quantityDelta: numeric('quantity_delta', { precision: 14, scale: 6 }).notNull(),
   note: text('note'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });

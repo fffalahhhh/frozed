@@ -6,6 +6,7 @@ import { useRootNavigationState } from 'expo-router';
 import { api } from '../../lib/api';
 import { useCartStore } from '../../store/cart';
 import { useToastStore } from '../../store/toast';
+import { getItemStockInfo } from '../../lib/stock';
 import type { MenuWithCategories, MenuItem } from '@frozen-shake/shared';
 import { TopLogoHeader } from '../../components/common/TopLogoHeader';
 import { CategoryCard } from '../../components/pos/CategoryCard';
@@ -38,6 +39,13 @@ export default function FOHScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
+  // Query inventory stock items for real-time menu availability calculation
+  const { data: stockItems } = useQuery<any[]>({
+    queryKey: ['inventory-stock'],
+    queryFn: () => api.get('/inventory'),
+    staleTime: 1000 * 5,
+  });
+
   // Query pending pre-orders count for the top-right header toggle badge
   const { data: preOrdersData } = useQuery<any[]>({
     queryKey: ['pre-orders'],
@@ -56,6 +64,7 @@ export default function FOHScreen() {
 
   const categoriesList = menuData?.map((m) => ({ id: m.category.id, name: m.category.name })) ?? [];
 
+  const cartItems = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
   const clearCart = useCartStore((s) => s.clearCart);
   const setCustomerName = useCartStore((s) => s.setCustomerName);
@@ -76,17 +85,20 @@ export default function FOHScreen() {
     return activeSection?.items ?? [];
   }, [menuData, activeCategoryId, allItems]);
 
-  function handleAddItem(item: MenuItem) {
-    addItem({
-      menuItemId: item.id,
-      menuItemName: item.name,
-      imageUrl: item.imageUrl,
-      flavourId: null,
-      flavourName: null,
-      quantity: 1,
-      unitPrice: parseFloat(item.sellingPrice),
-      notes: null,
-    });
+  function handleAddItem(item: MenuItem, maxAvailable?: number) {
+    addItem(
+      {
+        menuItemId: item.id,
+        menuItemName: item.name,
+        imageUrl: item.imageUrl,
+        flavourId: null,
+        flavourName: null,
+        quantity: 1,
+        unitPrice: parseFloat(item.sellingPrice),
+        notes: null,
+      },
+      maxAvailable,
+    );
   }
 
   const handleManualRefresh = async () => {
@@ -94,6 +106,7 @@ export default function FOHScreen() {
       setIsRefreshing(true);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['menu'] }),
+        queryClient.invalidateQueries({ queryKey: ['inventory-stock'] }),
         queryClient.invalidateQueries({ queryKey: ['orders'] }),
         queryClient.invalidateQueries({ queryKey: ['pre-orders'] }),
       ]);
@@ -201,7 +214,21 @@ export default function FOHScreen() {
           columnWrapperStyle={{ justifyContent: 'flex-start' }}
           className="flex-1"
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <MenuItemCard item={item} onAdd={handleAddItem} />}
+          renderItem={({ item }) => {
+            const stockInfo = getItemStockInfo(item, allItems, stockItems || [], cartItems);
+            const cartQty = cartItems
+              .filter((ci) => ci.menuItemId === item.id)
+              .reduce((s, ci) => s + ci.quantity, 0);
+
+            return (
+              <MenuItemCard
+                item={item}
+                stockInfo={stockInfo}
+                cartQuantity={cartQty}
+                onAdd={() => handleAddItem(item, stockInfo.maxAvailable)}
+              />
+            );
+          }}
           ListEmptyComponent={
             <View className="items-center justify-center py-20 w-full">
               <View className="w-20 h-20 rounded-full bg-white items-center justify-center mb-3 shadow-sm border border-[#E5E0D8]">

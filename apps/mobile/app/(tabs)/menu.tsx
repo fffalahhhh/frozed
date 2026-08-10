@@ -37,6 +37,12 @@ export default function MenuManagementScreen() {
     staleTime: 0,
   });
 
+  const { data: stockItems } = useQuery<any[]>({
+    queryKey: ['inventory-stock'],
+    queryFn: () => api.get('/inventory'),
+    staleTime: 1000 * 5,
+  });
+
   useFocusEffect(
     useCallback(() => {
       refetch();
@@ -277,19 +283,49 @@ export default function MenuManagementScreen() {
 
                   {item.recipes && item.recipes.length > 0 ? (
                     <View className="flex-row flex-wrap gap-1.5 mt-1">
-                      {item.recipes.map((rec: RecipeItem, idx: number) => (
-                        <View
-                          key={idx}
-                          className="bg-white border border-border/80 rounded-xl px-2.5 py-1.5 flex-row items-center gap-1"
-                        >
-                          <Text className="text-text-primary font-sans-semibold text-xs">
-                            {rec.ingredientName}:
-                          </Text>
-                          <Text className="font-sans-bold text-xs" style={{ color: '#1B4332' }}>
-                            {rec.quantity} {rec.unit}
-                          </Text>
-                        </View>
-                      ))}
+                      {item.recipes.map((rec: RecipeItem, idx: number) => {
+                        const matchedStock = stockItems?.find(
+                          (s) => s.name.trim().toLowerCase() === rec.ingredientName.trim().toLowerCase(),
+                        );
+                        const stockNum = matchedStock ? parseFloat(matchedStock.currentStock || '0') : 999;
+                        const reorderNum = matchedStock ? parseFloat(matchedStock.reorderLevel || '0') : 0;
+                        const isOutOfStock = matchedStock ? stockNum <= 0 : false;
+                        const isLowStock = matchedStock ? !isOutOfStock && stockNum <= reorderNum : false;
+
+                        return (
+                          <View
+                            key={idx}
+                            className={`border rounded-xl px-2.5 py-1.5 flex-row items-center gap-1 ${
+                              isOutOfStock
+                                ? 'bg-amber-50 border-amber-300'
+                                : isLowStock
+                                ? 'bg-orange-50 border-orange-200'
+                                : 'bg-white border-border/80'
+                            }`}
+                          >
+                            <Text className="text-text-primary font-sans-semibold text-xs">
+                              {rec.ingredientName}:
+                            </Text>
+                            <Text
+                              className="font-sans-bold text-xs"
+                              style={{ color: isOutOfStock ? '#B45309' : '#1B4332' }}
+                            >
+                              {rec.quantity} {rec.unit}
+                            </Text>
+                            {isOutOfStock ? (
+                              <View className="bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-md flex-row items-center gap-0.5 ml-1">
+                                <Ionicons name="warning" size={10} color="#D97706" />
+                                <Text className="text-amber-800 font-sans-bold text-[9px]">Out of Stock</Text>
+                              </View>
+                            ) : isLowStock ? (
+                              <View className="bg-orange-100 border border-orange-200 px-1.5 py-0.2 rounded-md flex-row items-center gap-0.5 ml-1">
+                                <Ionicons name="alert-circle" size={10} color="#EA580C" />
+                                <Text className="text-orange-800 font-sans-bold text-[9px]">Low Stock</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        );
+                      })}
                     </View>
                   ) : (
                     <Text className="text-text-muted font-sans italic text-[11px]">

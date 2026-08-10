@@ -6,16 +6,25 @@ import { fmt, getItemImageUrl, DEFAULT_DRINK_IMAGES } from '../../common/constan
 
 export interface CartItemRowProps {
   item: ReturnType<typeof useCartStore.getState>['items'][0];
+  maxAvailable?: number;
   onIncrease: () => void;
   onDecrease: () => void;
   onQuantityChange?: (qty: number) => void;
 }
 
-export function CartItemRow({ item, onIncrease, onDecrease, onQuantityChange }: CartItemRowProps) {
+export function CartItemRow({
+  item,
+  maxAvailable,
+  onIncrease,
+  onDecrease,
+  onQuantityChange,
+}: CartItemRowProps) {
   const [imgSrc, setImgSrc] = useState<string>(
     getItemImageUrl({ name: item.menuItemName, imageUrl: item.imageUrl }),
   );
   const [qtyText, setQtyText] = useState<string>(String(item.quantity));
+
+  const isMaxReached = maxAvailable !== undefined && item.quantity >= maxAvailable;
 
   useEffect(() => {
     setQtyText(String(item.quantity));
@@ -91,10 +100,11 @@ export function CartItemRow({ item, onIncrease, onDecrease, onQuantityChange }: 
 
         <Pressable
           onPress={onIncrease}
+          disabled={isMaxReached}
           hitSlop={6}
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          style={({ pressed }) => ({ opacity: isMaxReached ? 0.3 : pressed ? 0.6 : 1 })}
         >
-          <Ionicons name="add" size={13} color="#111827" />
+          <Ionicons name="add" size={13} color={isMaxReached ? '#9CA3AF' : '#111827'} />
         </Pressable>
       </View>
     </View>

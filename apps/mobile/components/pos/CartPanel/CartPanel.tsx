@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import type { MenuWithCategories } from '@frozen-shake/shared';
 import { api } from '../../../lib/api';
 import { useCartStore } from '../../../store/cart';
 import { useToastStore } from '../../../store/toast';
+import { getItemStockInfo } from '../../../lib/stock';
 import { fmt } from '../../common/constants';
 import { CartItemRow } from '../CartItemRow';
 
@@ -99,6 +101,23 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
   }, [previousOrders]);
 
   const activeOrderNum = receiptNumber || trueOrderNumber;
+
+  // Query stock and menu items to calculate portion limits
+  const { data: stockItems } = useQuery<any[]>({
+    queryKey: ['inventory-stock'],
+    queryFn: () => api.get('/inventory'),
+    staleTime: 1000 * 10,
+  });
+
+  const { data: menuData } = useQuery<MenuWithCategories[]>({
+    queryKey: ['menu'],
+    queryFn: () => api.get('/menu'),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const allMenuItems = useMemo(() => {
+    return menuData ? menuData.flatMap((s) => s.items) : [];
+  }, [menuData]);
 
   // Extract unique past customers (Name & Phone pairs)
   const pastCustomers = useMemo(() => {
@@ -215,9 +234,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
 
       if (res && res.id) {
         queryClient.setQueryData<any[]>(['pre-orders'], (old) =>
-          Array.isArray(old)
-            ? old.map((item) => (item.id === tempId ? res : item))
-            : [res],
+          Array.isArray(old) ? old.map((item) => (item.id === tempId ? res : item)) : [res],
         );
       }
       queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
@@ -233,7 +250,9 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
   // Zero-Latency Instant Confirm Order Submission (0ms)
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
-      useToastStore.getState().showToast('Cart is empty. Please add items to place an order.', 'error');
+      useToastStore
+        .getState()
+        .showToast('Cart is empty. Please add items to place an order.', 'error');
       return;
     }
 
@@ -243,7 +262,9 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
         return;
       }
       if (!customerPhone.trim()) {
-        useToastStore.getState().showToast('Customer Phone Number is required for Credit orders.', 'error');
+        useToastStore
+          .getState()
+          .showToast('Customer Phone Number is required for Credit orders.', 'error');
         return;
       }
     }
@@ -331,9 +352,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
               }`}
             >
               <Text
-                className={`font-sans-bold text-xs ${
-                  isSelected ? 'text-white' : 'text-gray-600'
-                }`}
+                className={`font-sans-bold text-xs ${isSelected ? 'text-white' : 'text-gray-600'}`}
               >
                 {mode.label}
               </Text>
@@ -493,27 +512,36 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
           </View>
         ) : (
           <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-            {items.map((item) => (
-              <CartItemRow
-                key={`${item.menuItemId}-${item.flavourId}`}
-                item={item}
-                onIncrease={() =>
-                  updateQuantity(item.menuItemId, item.flavourId, item.quantity + 1)
-                }
-                onDecrease={() =>
-                  updateQuantity(item.menuItemId, item.flavourId, Math.max(0, item.quantity - 1))
-                }
-                onQuantityChange={(newQty) =>
-                  updateQuantity(item.menuItemId, item.flavourId, newQty)
-                }
-              />
-            ))}
+            {items.map((item) => {
+              const targetMenu = allMenuItems.find((m) => m.id === item.menuItemId);
+              const stockInfo = targetMenu
+                ? getItemStockInfo(targetMenu, allMenuItems, stockItems || [], items)
+                : undefined;
+              const maxAvailable = stockInfo?.maxAvailable;
+
+              return (
+                <CartItemRow
+                  key={`${item.menuItemId}-${item.flavourId}`}
+                  item={item}
+                  maxAvailable={maxAvailable}
+                  onIncrease={() =>
+                    updateQuantity(item.menuItemId, item.flavourId, item.quantity + 1, maxAvailable)
+                  }
+                  onDecrease={() =>
+                    updateQuantity(item.menuItemId, item.flavourId, Math.max(0, item.quantity - 1))
+                  }
+                  onQuantityChange={(newQty) =>
+                    updateQuantity(item.menuItemId, item.flavourId, newQty, maxAvailable)
+                  }
+                />
+              );
+            })}
           </ScrollView>
         )}
       </Pressable>
 
       {/* Footer Section: Total, Save as Pre-Order, & Confirm Order Button */}
-      <View className="pt-2 border-t border-[#E5E0D8]">
+      <View>
         <View className="flex-row justify-between items-center py-1 mb-1.5">
           <Text className="text-gray-900 font-sans-bold text-base">Total</Text>
           <Text className="text-[#0D4830] font-sans-bold text-xl">{fmt(tot)}</Text>
@@ -559,9 +587,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
               <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center">
                 <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
               </View>
-              <Text className="text-white font-sans-bold text-base">
-                Confirm Order {fmt(tot)}
-              </Text>
+              <Text className="text-white font-sans-bold text-base">Confirm Order {fmt(tot)}</Text>
               <View className="flex-row items-center opacity-60">
                 <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
                 <Ionicons
