@@ -134,3 +134,47 @@ export function getItemStockInfo(
     limitingIngredient,
   };
 }
+
+/**
+ * Calculates unit expense cost (COGS) for a menu item based on recipe ingredient quantities and unit costs.
+ */
+export function calculateMenuItemCost(menuItem: any, inventoryItems?: any[]): number {
+  if (!menuItem) return 0;
+
+  let recipesArr: any[] = [];
+  if (Array.isArray(menuItem.recipes)) {
+    recipesArr = menuItem.recipes;
+  } else if (typeof menuItem.recipes === 'string') {
+    try {
+      recipesArr = JSON.parse(menuItem.recipes);
+    } catch {
+      recipesArr = [];
+    }
+  }
+
+  if (!recipesArr || recipesArr.length === 0) return 0;
+
+  let totalCost = 0;
+  for (const rec of recipesArr) {
+    if (!rec) continue;
+    const reqQty = parseFloat(String(rec.quantity || '0'));
+    let cPerUnit = parseFloat(String(rec.costPerUnit || '0'));
+
+    // If costPerUnit is missing on recipe, look up by ingredientName in inventory
+    if (cPerUnit <= 0 && rec.ingredientName && Array.isArray(inventoryItems)) {
+      const ingNameLower = String(rec.ingredientName).trim().toLowerCase();
+      const matchedInv = inventoryItems.find(
+        (inv) => inv && (inv.name || '').trim().toLowerCase() === ingNameLower,
+      );
+      if (matchedInv) {
+        cPerUnit = parseFloat(String(matchedInv.costPerUnit || '0'));
+      }
+    }
+
+    if (reqQty > 0 && cPerUnit > 0) {
+      totalCost += reqQty * cPerUnit;
+    }
+  }
+
+  return totalCost;
+}

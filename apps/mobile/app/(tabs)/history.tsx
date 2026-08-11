@@ -10,18 +10,13 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../lib/api';
 import { fmt } from '../../components/common/constants';
 import { useToastStore } from '../../store/toast';
 import { OrderHistoryCard } from '../../components/history/OrderHistoryCard';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
+import { parseDbDate, getLocalDateStr } from '../../lib/dateUtils';
 
-import {
-  getLocalOrders,
-  updateLocalOrderStatus,
-  enqueueOutboxMutation,
-  saveOrdersSnapshotToLocal,
-} from '../../lib/db';
+import { getLocalOrders, updateLocalOrderStatus, enqueueOutboxMutation } from '../../lib/db';
 import { syncEngine } from '../../lib/syncEngine';
 
 export default function HistoryScreen() {
@@ -154,14 +149,16 @@ export default function HistoryScreen() {
 
       // 3. Date filter
       if (order.createdAt) {
-        const orderDate = new Date(order.createdAt);
-        if (dateFilter === 'TODAY') {
-          if (orderDate < todayStart) return false;
-        } else if (dateFilter === 'WEEK') {
-          if (orderDate < weekAgoStart) return false;
-        } else if (dateFilter === 'CUSTOM' && selectedCustomDate) {
-          const orderDateStr = orderDate.toISOString().split('T')[0];
-          if (orderDateStr !== selectedCustomDate) return false;
+        const orderDate = parseDbDate(order.createdAt);
+        if (orderDate) {
+          if (dateFilter === 'TODAY') {
+            if (orderDate < todayStart) return false;
+          } else if (dateFilter === 'WEEK') {
+            if (orderDate < weekAgoStart) return false;
+          } else if (dateFilter === 'CUSTOM' && selectedCustomDate) {
+            const orderDateStr = getLocalDateStr(orderDate);
+            if (orderDateStr !== selectedCustomDate) return false;
+          }
         }
       }
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +9,9 @@ import { StatCard } from '../../components/analytics/StatCard';
 import { ProfitBreakdown } from '../../components/analytics/ProfitBreakdown';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
 import { getLocalOrders, getLocalMenuItems, getLocalInventory } from '../../lib/db';
+import { syncEngine } from '../../lib/syncEngine';
+import { getLocalDateStr, getUtcRangeForLocalDate } from '../../lib/dateUtils';
+import { calculateMenuItemCost } from '../../lib/stock';
 
 type DateFilter = 'today' | 'yesterday' | 'this_week' | 'all' | 'custom';
 type ViewTab = 'menu_items' | 'inventory_expenses';
@@ -20,29 +23,22 @@ const DATE_OPTIONS: { key: DateFilter; label: string }[] = [
   { key: 'all', label: 'All Time' },
 ];
 
-function formatDateIso(date: Date): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 function getDateRange(filter: DateFilter, customDate?: string) {
   const now = new Date();
   if (filter === 'today') {
-    const d = formatDateIso(now);
+    const d = getLocalDateStr(now);
     return { from: d, to: d, label: 'Today' };
   }
   if (filter === 'yesterday') {
     const y = new Date(now);
     y.setDate(y.getDate() - 1);
-    const d = formatDateIso(y);
+    const d = getLocalDateStr(y);
     return { from: d, to: d, label: 'Yesterday' };
   }
   if (filter === 'this_week') {
     const w = new Date(now);
     w.setDate(w.getDate() - 6);
-    return { from: formatDateIso(w), to: formatDateIso(now), label: 'This Week' };
+    return { from: getLocalDateStr(w), to: getLocalDateStr(now), label: 'This Week' };
   }
   if (filter === 'custom' && customDate) {
     return { from: customDate, to: customDate, label: customDate };
@@ -56,30 +52,60 @@ export default function AnalyticsScreen() {
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<ViewTab>('menu_items');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(() => syncEngine.getStatus());
+
+  useEffect(() => {
+    return syncEngine.subscribe((status) => {
+      setSyncStatus(status);
+    });
+  }, []);
 
   const dateRange = useMemo(
     () => getDateRange(dateFilter, selectedCustomDate),
     [dateFilter, selectedCustomDate],
   );
 
-  // Server Analytics summary query
+  const utcRange = useMemo(
+    () => getUtcRangeForLocalDate(dateRange.from, dateRange.to),
+    [dateRange.from, dateRange.to],
+  );
+
+  // Server Analytics summary query (passing exact UTC range of the selected local dates)
   const queryPath = `/analytics/summary${
-    dateRange.from || dateRange.to ? `?from=${dateRange.from}&to=${dateRange.to}` : ''
+    utcRange.fromUtc || utcRange.toUtc
+      ? `?from=${encodeURIComponent(utcRange.fromUtc)}&to=${encodeURIComponent(utcRange.toUtc)}`
+      : ''
   }`;
 
   const {
     data: serverData,
     isLoading,
+    isFetching,
     refetch,
   } = useQuery<any>({
-    queryKey: ['analytics-summary', dateFilter, dateRange.from, dateRange.to],
+    queryKey: ['analytics-summary', dateFilter, utcRange.fromUtc, utcRange.toUtc],
     queryFn: () => api.get(queryPath),
   });
 
+  const isSyncingActive = isManualSyncing || isFetching || syncStatus.isSyncing;
+
+  const handleReload = useCallback(async () => {
+    setIsManualSyncing(true);
+    try {
+      await syncEngine.triggerSync({ forceSnapshot: true });
+      await refetch();
+    } catch (err) {
+      console.error('[Analytics] Sync/Refetch error:', err);
+    } finally {
+      setIsManualSyncing(false);
+    }
+  }, [refetch]);
+
   useFocusEffect(
     useCallback(() => {
-      refetch();
-    }, [refetch]),
+      handleReload();
+    }, [handleReload]),
   );
 
   // Local SQLite offline fallback computation
@@ -98,7 +124,7 @@ export default function AnalyticsScreen() {
         if (!o) return false;
         if ((o.status || '').toLowerCase() !== 'paid') return false;
         if (!from || !to) return true;
-        const dateStr = (o.createdAt || '').split('T')[0];
+        const dateStr = getLocalDateStr(o.createdAt);
         if (!dateStr) return true;
         return dateStr >= from && dateStr <= to;
       });
@@ -143,7 +169,18 @@ export default function AnalyticsScreen() {
           const qty = Number(item.quantity) || 1;
           const uPrice = parseFloat(String(item.unitPrice || '0'));
           const lTotal = item.lineTotal ? parseFloat(String(item.lineTotal)) : uPrice * qty;
-          const iCost = parseFloat(String(item.itemCost || '0'));
+          let iCost = parseFloat(String(item.itemCost || '0'));
+          if (iCost <= 0) {
+            const mItem = menuItems.find(
+              (m) =>
+                m &&
+                (m.id === item.menuItemId ||
+                  (m.name && m.name.toLowerCase() === (item.menuItemName || '').toLowerCase())),
+            );
+            if (mItem) {
+              iCost = calculateMenuItemCost(mItem, inventory);
+            }
+          }
           const exp = iCost * qty;
           totalCOGS += exp;
 
@@ -349,11 +386,16 @@ export default function AnalyticsScreen() {
           </Text>
         </View>
         <Pressable
-          onPress={() => refetch()}
+          onPress={handleReload}
+          disabled={isSyncingActive}
           className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border/40"
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          style={({ pressed }) => ({ opacity: pressed || isSyncingActive ? 0.7 : 1 })}
         >
-          <Ionicons name="refresh" size={16} color="#1B4332" />
+          {isSyncingActive ? (
+            <ActivityIndicator size="small" color="#1B4332" />
+          ) : (
+            <Ionicons name="refresh" size={16} color="#1B4332" />
+          )}
         </Pressable>
       </View>
 
@@ -409,7 +451,7 @@ export default function AnalyticsScreen() {
       ) : (
         <ScrollView className="flex-1 pb-20" showsVerticalScrollIndicator={false}>
           {/* Summary Stat Cards Grid */}
-          <View className="flex-row gap-2.5 mb-3">
+          <View className="flex-row gap-2 mb-3">
             <StatCard
               title="Total Revenue"
               value={analyticsData?.totalRevenue || 0}
@@ -418,9 +460,16 @@ export default function AnalyticsScreen() {
               variant="primary"
             />
             <StatCard
+              title="Total Expenses"
+              value={(analyticsData?.totalCOGS || 0) + (analyticsData?.shopExpenses || 0)}
+              subtitle="COGS + Shop Bills"
+              iconName="receipt-outline"
+              variant="warning"
+            />
+            <StatCard
               title="Net Profit"
               value={analyticsData?.netProfit || 0}
-              subtitle="Gross Profit − Expenses"
+              subtitle="Gross − Expenses"
               iconName="trending-up"
               variant="success"
             />

@@ -1,27 +1,20 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-  Animated,
-} from 'react-native';
+import { View, Text, ScrollView, TextInput, Pressable, Animated } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import type { MenuWithCategories, Order } from '@frozen-shake/shared';
 import { api } from '../../../lib/api';
 import { useCartStore } from '../../../store/cart';
 import { useToastStore } from '../../../store/toast';
-import { getItemStockInfo } from '../../../lib/stock';
+import { getItemStockInfo, calculateMenuItemCost } from '../../../lib/stock';
 import { fmt } from '../../common/constants';
 import { CartItemRow } from '../CartItemRow';
 import {
   saveLocalOrder,
   enqueueOutboxMutation,
   getLocalNextOrderNumber,
-  getLocalOrders,
+  getLocalMenuItems,
+  getLocalInventory,
 } from '../../../lib/db';
 import { syncEngine } from '../../../lib/syncEngine';
 
@@ -286,6 +279,28 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     const localId = `order_local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const nextOrderNum = getLocalNextOrderNumber();
 
+    const localMenuItems = getLocalMenuItems();
+    const localInventory = getLocalInventory();
+
+    const mappedOrderItems = currentCartItems.map((i, idx) => {
+      const mItem = localMenuItems.find((m) => m && m.id === i.menuItemId);
+      const computedUnitCost = calculateMenuItemCost(mItem, localInventory);
+      return {
+        id: `item_${localId}_${idx}`,
+        orderId: localId,
+        menuItemId: i.menuItemId,
+        menuItemName: i.menuItemName,
+        imageUrl: i.imageUrl,
+        flavourId: i.flavourId,
+        flavourName: i.flavourName,
+        quantity: i.quantity,
+        unitPrice: String(i.unitPrice),
+        itemCost: String(computedUnitCost),
+        lineTotal: String(i.unitPrice * i.quantity),
+        notes: i.notes,
+      };
+    });
+
     const newOrderPayload: Order = {
       id: localId,
       orderNumber: String(nextOrderNum),
@@ -303,20 +318,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       notes: null,
       createdAt: new Date().toISOString(),
       paidAt: pMethod === 'credit' ? null : new Date().toISOString(),
-      items: currentCartItems.map((i, idx) => ({
-        id: `item_${localId}_${idx}`,
-        orderId: localId,
-        menuItemId: i.menuItemId,
-        menuItemName: i.menuItemName,
-        imageUrl: i.imageUrl,
-        flavourId: i.flavourId,
-        flavourName: i.flavourName,
-        quantity: i.quantity,
-        unitPrice: String(i.unitPrice),
-        itemCost: '0',
-        lineTotal: String(i.unitPrice * i.quantity),
-        notes: i.notes,
-      })),
+      items: mappedOrderItems,
     };
 
     // 2. Write to local SQLite database instantly (0ms latency)
@@ -336,14 +338,15 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
           status: pMethod === 'credit' ? 'billed' : 'paid',
           createdAt: newOrderPayload.createdAt,
         },
-        items: currentCartItems.map((i) => ({
+        items: mappedOrderItems.map((i) => ({
           menuItemId: i.menuItemId,
           menuItemName: i.menuItemName,
           flavourId: i.flavourId,
           flavourName: i.flavourName,
           quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          lineTotal: i.unitPrice * i.quantity,
+          unitPrice: Number(i.unitPrice),
+          itemCost: Number(i.itemCost),
+          lineTotal: Number(i.lineTotal),
           notes: i.notes,
         })),
       });

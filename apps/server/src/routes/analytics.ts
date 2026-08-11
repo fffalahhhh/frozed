@@ -7,8 +7,18 @@ export const analyticsRouter = new Hono();
 
 function orderDateFilters(from?: string, to?: string) {
   const filters = [eq(orders.status, 'paid')];
-  if (from) filters.push(gte(orders.createdAt, new Date(from)));
-  if (to) filters.push(lte(orders.createdAt, new Date(to + 'T23:59:59')));
+  if (from) {
+    const fromDate = new Date(from);
+    if (!isNaN(fromDate.getTime())) {
+      filters.push(gte(orders.createdAt, fromDate));
+    }
+  }
+  if (to) {
+    const toDate = to.includes('T') ? new Date(to) : new Date(to + 'T23:59:59.999Z');
+    if (!isNaN(toDate.getTime())) {
+      filters.push(lte(orders.createdAt, toDate));
+    }
+  }
   return and(...filters);
 }
 

@@ -57,32 +57,45 @@ syncRouter.post('/batch', async (c) => {
           .returning();
 
         if (inserted && Array.isArray(items) && items.length > 0) {
-          const itemRows = items.map((i: any) => ({
-            orderId: inserted.id,
-            menuItemId: i.menuItemId,
-            menuItemName: i.menuItemName,
-            flavourId: i.flavourId || null,
-            flavourName: i.flavourName || null,
-            quantity: Number(i.quantity) || 1,
-            unitPrice: String(i.unitPrice || 0),
-            itemCost: String(i.itemCost || 0),
-            lineTotal: String(i.lineTotal || Number(i.unitPrice || 0) * Number(i.quantity || 1)),
-            notes: i.notes || null,
-          }));
+          const menuItemIds = Array.from(
+            new Set(items.map((i: any) => i.menuItemId).filter(Boolean)),
+          );
+          let allRecipes: any[] = [];
+          if (menuItemIds.length > 0) {
+            allRecipes = await db
+              .select()
+              .from(recipes)
+              .where(inArray(recipes.menuItemId, menuItemIds as string[]));
+          }
+
+          const itemRows = items.map((i: any) => {
+            let cost = parseFloat(String(i.itemCost || 0));
+            if (cost <= 0) {
+              const recs = allRecipes.filter((r) => r.menuItemId === i.menuItemId);
+              cost = recs.reduce(
+                (sum, r) => sum + parseFloat(r.quantity || '0') * parseFloat(r.costPerUnit || '0'),
+                0,
+              );
+            }
+            return {
+              orderId: inserted.id,
+              menuItemId: i.menuItemId,
+              menuItemName: i.menuItemName,
+              flavourId: i.flavourId || null,
+              flavourName: i.flavourName || null,
+              quantity: Number(i.quantity) || 1,
+              unitPrice: String(i.unitPrice || 0),
+              itemCost: String(cost.toFixed(2)),
+              lineTotal: String(i.lineTotal || Number(i.unitPrice || 0) * Number(i.quantity || 1)),
+              notes: i.notes || null,
+            };
+          });
 
           await db.insert(orderItems).values(itemRows);
 
           // Deduct inventory stock for recipe ingredients
           try {
-            const menuItemIds = Array.from(
-              new Set(items.map((i: any) => i.menuItemId).filter(Boolean)),
-            );
             if (menuItemIds.length > 0) {
-              const allRecipes = await db
-                .select()
-                .from(recipes)
-                .where(inArray(recipes.menuItemId, menuItemIds));
-
               for (const item of items) {
                 const recs = allRecipes.filter((r) => r.menuItemId === item.menuItemId);
                 const itemQty = Number(item.quantity) || 1;

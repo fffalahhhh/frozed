@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { formatDateLocalized } from '../../../lib/dateUtils';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fmt } from '../../common/constants';
@@ -84,11 +85,7 @@ export function OrderHistoryCard({ order, onMarkAsPaid, onRevertPayment }: Order
   }, [isPaid, order.paidAt, now]);
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const dateStrFormatted = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    return `${dateStrFormatted}, ${timeStr}`;
+    return formatDateLocalized(dateStr);
   };
 
   const handleMarkPaid = () => {
