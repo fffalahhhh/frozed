@@ -31,15 +31,8 @@ export default function InventoryScreen() {
     refetch,
   } = useQuery<any[]>({
     queryKey: ['inventory-stock'],
-    queryFn: async () => {
-      try {
-        const remote = await api.get<any[]>('/inventory');
-        return remote;
-      } catch (e) {
-        return getLocalInventory();
-      }
-    },
-    staleTime: 0,
+    queryFn: () => getLocalInventory(),
+    staleTime: 1000 * 10,
   });
 
   // Automatically refetch inventory levels whenever the Inventory page is visited / focused
@@ -116,7 +109,10 @@ export default function InventoryScreen() {
             refetch();
             useToastStore.getState().showToast(`"${item.name}" deleted`, 'success');
           } catch (err: any) {
-            useToastStore.getState().showToast(err.message || 'Failed to delete', 'error');
+            const warningMsg =
+              err?.message ||
+              'Cannot delete item because it is referenced in recipes or history.';
+            useToastStore.getState().showToast(warningMsg, 'error');
           } finally {
             setDeletingId(null);
           }
@@ -164,78 +160,95 @@ export default function InventoryScreen() {
         <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
           {stockItems && stockItems.length > 0 ? (
             stockItems.map((item) => (
-              <Pressable
+              <View
                 key={item.id}
-                onPress={() => setEditItem(item)}
-                className="bg-white rounded-3xl p-4 mb-3 border border-border/60 shadow-sm"
-                style={({ pressed }: { pressed: boolean }) => ({
-                  opacity: pressed ? 0.88 : 1,
-                  transform: [{ scale: pressed ? 0.985 : 1 }],
+                className="bg-white rounded-2xl p-2.5 px-3 mb-2 border border-border/60 shadow-sm flex-row items-center justify-between"
+                style={{
                   shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.04,
-                  shadowRadius: 8,
-                  elevation: 2,
-                })}
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 4,
+                  elevation: 1,
+                }}
               >
-                {/* Top row */}
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1 pr-3">
-                    <View className="flex-row items-center gap-2 flex-wrap">
-                      <Text className="text-text-primary font-sans-bold text-base">
-                        {item.name}
-                      </Text>
-                      {item.needsRestock && (
-                        <View className="bg-warning/10 border border-warning/30 rounded-full px-2 py-0.5 flex-row items-center gap-1">
-                          <Ionicons name="alert-circle" size={12} color="#F97316" />
-                          <Text className="text-warning text-[10px] font-sans-semibold">
-                            Low Stock
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text className="text-text-muted font-sans text-xs mt-1">
-                      Cost: {fmt(item.costPerUnit)} / {item.unit} • Reorder at:{' '}
-                      {parseFloat(item.reorderLevel)} {item.unit}
+                {/* Left Info: Name • Low Stock Badge • Meta Subtitle */}
+                <View className="flex-1 pr-2">
+                  <View className="flex-row items-center gap-1.5 flex-wrap">
+                    <Text className="text-text-primary font-sans-bold text-xs" numberOfLines={1}>
+                      {item.name}
                     </Text>
+                    {item.needsRestock && (
+                      <View className="bg-amber-100/70 border border-amber-300 rounded-lg px-2 py-0.5 flex-row items-center gap-1">
+                        <Ionicons name="alert-circle" size={10} color="#D97706" />
+                        <Text className="text-amber-800 text-[10px] font-sans-bold uppercase">
+                          LOW STOCK
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
-                  <View className="items-end">
-                    <Text
-                      className="text-primary font-sans-bold text-lg"
-                      style={{ color: '#1B4332' }}
-                    >
-                      {parseFloat(item.currentStock)}
+                  <View className="flex-row items-center flex-wrap mt-0.5">
+                    <Text className="text-text-muted font-sans text-[11px]">
+                      Cost: {fmt(item.costPerUnit)} / {item.unit}
                     </Text>
-                    <Text className="text-text-muted font-sans text-xs">{item.unit}</Text>
+                    <Text className="text-text-muted font-sans text-[11px] mx-1">•</Text>
+                    <Text className="text-text-muted font-sans text-[11px]">
+                      Reorder @ {parseFloat(item.reorderLevel)} {item.unit}
+                    </Text>
                   </View>
                 </View>
 
-                {/* Action buttons */}
-                <View className="flex-row items-center justify-end gap-2 mt-3 pt-3 border-t border-border/30">
-                  <View className="flex-row items-center bg-surface border border-border/60 px-3 py-1.5 rounded-xl gap-1">
-                    <Ionicons name="pencil-outline" size={14} color="#1B4332" />
-                    <Text className="font-sans-semibold text-xs" style={{ color: '#1B4332' }}>
-                      Edit
+                {/* Right Actions: Stock Badge + Edit Button + Delete Button */}
+                <View className="flex-row items-center gap-1.5 ml-auto">
+                  {/* Current Stock Level Badge */}
+                  <View
+                    className={`px-2 py-0.5 rounded-lg border flex-row items-baseline gap-0.5 ${
+                      item.needsRestock
+                        ? 'bg-amber-100/70 border-amber-300'
+                        : 'bg-emerald-100/70 border-emerald-300'
+                    }`}
+                  >
+                    <Text
+                      className={`text-[10px] font-sans-bold ${
+                        item.needsRestock ? 'text-amber-800' : 'text-emerald-800'
+                      }`}
+                    >
+                      {parseFloat(item.currentStock)}
+                    </Text>
+                    <Text
+                      className={`text-[9px] font-sans-medium ${
+                        item.needsRestock ? 'text-amber-700' : 'text-emerald-700'
+                      }`}
+                    >
+                      {item.unit}
                     </Text>
                   </View>
 
+                  {/* Edit Action Button */}
+                  <TouchableOpacity
+                    onPress={() => setEditItem(item)}
+                    className="px-2 py-0.5 rounded-lg bg-[#1B4332] active:opacity-80 flex-row items-center gap-1"
+                  >
+                    <Ionicons name="pencil" size={16} color="#FFFFFF" />
+                    <Text className="text-white font-sans-bold text-[10px]">Edit</Text>
+                  </TouchableOpacity>
+
+                  {/* Delete Action Button */}
                   <TouchableOpacity
                     onPress={() => handleDeleteItem(item)}
                     disabled={deletingId === item.id}
-                    className="flex-row items-center bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl gap-1"
+                    className="px-2 py-0.5 rounded-lg bg-rose-50 border border-rose-200 active:opacity-80 flex-row items-center gap-1"
                   >
                     {deletingId === item.id ? (
                       <ActivityIndicator size="small" color="#EF4444" />
                     ) : (
                       <>
-                        <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                        <Text className="text-rose-600 font-sans-semibold text-xs">Delete</Text>
+                        <Ionicons name="trash-outline" size={16} color="#EF4444" />
                       </>
                     )}
                   </TouchableOpacity>
                 </View>
-              </Pressable>
+              </View>
             ))
           ) : (
             <View className="items-center justify-center py-20">

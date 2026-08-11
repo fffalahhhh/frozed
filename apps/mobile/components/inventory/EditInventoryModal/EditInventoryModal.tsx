@@ -10,11 +10,16 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useToastStore } from '../../../store/toast';
 import { UNITS } from '../../common/constants';
 
-import { updateLocalInventoryStock, enqueueOutboxMutation } from '../../../lib/db';
+import {
+  getLocalInventory,
+  updateLocalInventoryStock,
+  enqueueOutboxMutation,
+} from '../../../lib/db';
 import { syncEngine } from '../../../lib/syncEngine';
 
 export interface EditInventoryModalProps {
@@ -25,9 +30,10 @@ export interface EditInventoryModalProps {
 }
 
 export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditInventoryModalProps) {
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('ml');
-  const [currentStock, setCurrentStock] = useState('');
+  const [addedStock, setAddedStock] = useState('');
   const [reorderLevel, setReorderLevel] = useState('');
   const [costPerUnit, setCostPerUnit] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,38 +42,61 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
     if (item) {
       setName(item.name ?? '');
       setUnit(item.unit ?? 'ml');
-      setCurrentStock(String(parseFloat(item.currentStock ?? '0')));
+      setAddedStock('');
       setReorderLevel(String(parseFloat(item.reorderLevel ?? '0')));
       setCostPerUnit(String(parseFloat(item.costPerUnit ?? '0')));
     }
   }, [item]);
+
+  const oldStockNum = parseFloat(item?.currentStock ?? '0');
+  const addedStockNum = parseFloat(addedStock.trim() || '0');
+  const delta = isNaN(addedStockNum) ? 0 : addedStockNum;
+  const calculatedTotalStock = oldStockNum + delta;
 
   const handleSave = async () => {
     if (!name.trim()) {
       useToastStore.getState().showToast('Item name is required', 'error');
       return;
     }
-    if (!currentStock.trim() || isNaN(Number(currentStock))) {
-      useToastStore.getState().showToast('Enter a valid stock amount', 'error');
-      return;
-    }
-
-    const newStockNum = Number(currentStock);
-    const oldStockNum = parseFloat(item?.currentStock ?? '0');
-    const delta = newStockNum - oldStockNum;
 
     try {
       setIsSubmitting(true);
 
       if (item?.id) {
-        updateLocalInventoryStock(item.id, delta);
-        enqueueOutboxMutation(`adj_${item.id}_${Date.now()}`, 'ADJUST_STOCK', {
-          inventoryItemId: item.id,
-          type: 'manual_correction',
-          quantityDelta: delta,
-          note: `Manual stock adjustment to ${newStockNum}`,
-        });
-        syncEngine.triggerSync();
+        if (delta !== 0) {
+          // 1. Instant local SQLite update
+          updateLocalInventoryStock(item.id, delta);
+
+          // 2. Queue outbox mutation
+          enqueueOutboxMutation(`adj_${item.id}_${Date.now()}`, 'ADJUST_STOCK', {
+            inventoryItemId: item.id,
+            type: 'manual_correction',
+            quantityDelta: delta,
+            note: `Added ${delta} ${unit} to stock (Previous: ${oldStockNum}, New Total: ${calculatedTotalStock})`,
+          });
+
+          // 3. Instant 0ms Optimistic UI cache mutation in React Query
+          queryClient.setQueryData<any[]>(['inventory-stock'], (old) => {
+            if (!old || !Array.isArray(old)) return getLocalInventory();
+            const reorderNum = parseFloat(reorderLevel || '0');
+            return old.map((i) =>
+              i.id === item.id
+                ? {
+                    ...i,
+                    name: name.trim(),
+                    unit,
+                    currentStock: String(calculatedTotalStock),
+                    reorderLevel: String(reorderNum),
+                    costPerUnit: String(parseFloat(costPerUnit || '0')),
+                    needsRestock: calculatedTotalStock <= reorderNum,
+                  }
+                : i,
+            );
+          });
+
+          // 4. Trigger background sync
+          syncEngine.triggerSync();
+        }
       }
 
       useToastStore.getState().showToast(`"${name}" updated successfully`, 'success');
@@ -139,19 +168,39 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
               </ScrollView>
             </View>
 
-            {/* Current Stock */}
+            {/* Single Line Unhighlighted Stock Addition Row */}
             <View className="mb-4">
               <Text className="text-text-primary font-sans-medium text-xs mb-1.5">
-                Current Stock Level ({unit}) *
+                Stock Addition ({unit})
               </Text>
-              <TextInput
-                value={currentStock}
-                onChangeText={setCurrentStock}
-                keyboardType="numeric"
-                placeholder="e.g. 5000"
-                placeholderTextColor="#8A8A8A"
-                className="border border-border/80 rounded-xl px-4 py-3 text-text-primary font-sans text-sm bg-surface"
-              />
+              <View className="flex-row items-center border border-border/80 rounded-xl px-3 py-2.5 bg-surface">
+                {/* Previous Stock Readout */}
+                <View className="flex-row items-baseline gap-1 pr-2.5">
+                  <Text className="text-text-muted font-sans text-xs">Prev:</Text>
+                  <Text className="text-text-primary font-sans-bold text-xs">{oldStockNum}</Text>
+                </View>
+
+                {/* Plus sign */}
+                <Text className="text-text-muted font-sans-bold text-xs mx-2.5">+</Text>
+
+                {/* Added Stock Input */}
+                <TextInput
+                  value={addedStock}
+                  onChangeText={setAddedStock}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor="#8A8A8A"
+                  className="flex-1 text-text-primary font-sans-bold text-xs py-0"
+                />
+
+                {/* Equals sign & Live Total Readout */}
+                <View className="flex-row items-baseline gap-1 pl-2.5 border-l border-border/40 ml-2">
+                  <Text className="text-text-muted font-sans text-xs">=</Text>
+                  <Text className="text-text-primary font-sans-bold text-xs">
+                    {calculatedTotalStock} {unit}
+                  </Text>
+                </View>
+              </View>
             </View>
 
             {/* Reorder Level */}

@@ -196,8 +196,15 @@ export function getLocalMenuItems(): MenuItem[] {
 export function saveInventorySnapshotToLocal(items: InventoryItem[]): void {
   const db = getLocalDb();
   db.withTransactionSync(() => {
-    db.execSync('DELETE FROM local_inventory;');
+    db.execSync("DELETE FROM local_inventory WHERE syncStatus = 'synced';");
     for (const i of items) {
+      const pendingRow = db.getFirstSync<{ id: string }>(
+        "SELECT id FROM local_inventory WHERE id = ? AND syncStatus = 'pending';",
+        [i.id],
+      );
+      if (pendingRow) {
+        continue;
+      }
       db.runSync(
         "INSERT OR REPLACE INTO local_inventory (id, name, unit, currentStock, reorderLevel, costPerUnit, updatedAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?, ?, 'synced');",
         [
@@ -214,19 +221,24 @@ export function saveInventorySnapshotToLocal(items: InventoryItem[]): void {
   });
 }
 
-export function getLocalInventory(): InventoryItem[] {
+export function getLocalInventory(): (InventoryItem & { needsRestock?: boolean })[] {
   try {
     const db = getLocalDb();
     const rows = db.getAllSync<any>('SELECT * FROM local_inventory ORDER BY name ASC;');
-    return rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      unit: r.unit,
-      currentStock: String(r.currentStock),
-      reorderLevel: String(r.reorderLevel),
-      costPerUnit: String(r.costPerUnit),
-      updatedAt: r.updatedAt,
-    }));
+    return rows.map((r) => {
+      const stock = parseFloat(r.currentStock || 0);
+      const reorder = parseFloat(r.reorderLevel || 0);
+      return {
+        id: r.id,
+        name: r.name,
+        unit: r.unit,
+        currentStock: String(stock),
+        reorderLevel: String(reorder),
+        costPerUnit: String(r.costPerUnit),
+        updatedAt: r.updatedAt,
+        needsRestock: stock <= reorder,
+      };
+    });
   } catch (err) {
     return [];
   }
@@ -235,7 +247,7 @@ export function getLocalInventory(): InventoryItem[] {
 export function updateLocalInventoryStock(inventoryItemId: string, deltaQty: number): void {
   const db = getLocalDb();
   db.runSync(
-    'UPDATE local_inventory SET currentStock = currentStock + ?, updatedAt = ? WHERE id = ?;',
+    "UPDATE local_inventory SET currentStock = currentStock + ?, syncStatus = 'pending', updatedAt = ? WHERE id = ?;",
     [deltaQty, new Date().toISOString(), inventoryItemId],
   );
 }
@@ -365,6 +377,33 @@ export function saveLocalOrder(order: Order, syncStatus: 'pending' | 'synced' = 
             item.notes || null,
           ],
         );
+      }
+
+      // Automatically deduct recipe ingredients from local_inventory
+      try {
+        const allMenuItems = getLocalMenuItems();
+        for (const item of order.items) {
+          const menuItem = allMenuItems.find((m) => m.id === item.menuItemId);
+          if (menuItem && Array.isArray(menuItem.recipes)) {
+            const itemQty = Number(item.quantity) || 1;
+            for (const rec of menuItem.recipes) {
+              const reqQty = parseFloat(String(rec.quantity || '0'));
+              if (reqQty > 0 && rec.ingredientName) {
+                const totalDeduction = reqQty * itemQty;
+                db.runSync(
+                  `UPDATE local_inventory 
+                   SET currentStock = MAX(0, currentStock - ?), 
+                       syncStatus = 'pending', 
+                       updatedAt = ? 
+                   WHERE LOWER(TRIM(name)) = LOWER(TRIM(?));`,
+                  [totalDeduction, new Date().toISOString(), rec.ingredientName],
+                );
+              }
+            }
+          }
+        }
+      } catch (ingErr) {
+        console.warn('[DB] Failed local inventory stock deduction:', ingErr);
       }
     }
   });

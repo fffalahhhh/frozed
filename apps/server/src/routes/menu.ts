@@ -230,10 +230,22 @@ menuRouter.delete('/items/:id', async (c) => {
   if (!IS_UUID.test(id)) {
     return c.json({ success: true, data: { id } });
   }
-  const [updated] = await db
-    .update(menuItems)
-    .set({ isDeleted: true })
-    .where(eq(menuItems.id, id))
-    .returning();
-  return c.json({ success: true, data: updated });
+  try {
+    const [updated] = await db
+      .update(menuItems)
+      .set({ isDeleted: true })
+      .where(eq(menuItems.id, id))
+      .returning();
+    return c.json({ success: true, data: updated });
+  } catch (err: any) {
+    console.warn(`[DELETE MENU ITEM] Cannot delete item ${id}:`, err?.message || err);
+    return c.json(
+      {
+        success: false,
+        error:
+          'This menu item cannot be deleted because it is referenced in sales history or active orders.',
+      },
+      400,
+    );
+  }
 });

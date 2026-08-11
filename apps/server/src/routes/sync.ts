@@ -4,13 +4,12 @@ import {
   orders,
   orderItems,
   menuItems,
-  categories,
   inventoryItems,
   inventoryAdjustments,
   shopExpenses,
-  users,
+  recipes,
 } from '../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, inArray } from 'drizzle-orm';
 import type { SyncMutation, SyncResultItem } from '@frozen-shake/shared';
 
 export const syncRouter = new Hono();
@@ -72,6 +71,38 @@ syncRouter.post('/batch', async (c) => {
           }));
 
           await db.insert(orderItems).values(itemRows);
+
+          // Deduct inventory stock for recipe ingredients
+          try {
+            const menuItemIds = Array.from(
+              new Set(items.map((i: any) => i.menuItemId).filter(Boolean)),
+            );
+            if (menuItemIds.length > 0) {
+              const allRecipes = await db
+                .select()
+                .from(recipes)
+                .where(inArray(recipes.menuItemId, menuItemIds));
+
+              for (const item of items) {
+                const recs = allRecipes.filter((r) => r.menuItemId === item.menuItemId);
+                const itemQty = Number(item.quantity) || 1;
+                for (const rec of recs) {
+                  const reqQty = parseFloat(rec.quantity || '0');
+                  if (reqQty > 0 && rec.ingredientName) {
+                    const totalDeduction = reqQty * itemQty;
+                    await db.execute(sql`
+                      UPDATE "inventory_items"
+                      SET "current_stock" = GREATEST(0, CAST("current_stock" AS NUMERIC) - ${totalDeduction}),
+                          "updated_at" = NOW()
+                      WHERE LOWER(TRIM("name")) = LOWER(TRIM(${rec.ingredientName}))
+                    `);
+                  }
+                }
+              }
+            }
+          } catch (stockErr) {
+            console.error('[SYNC] Failed inventory stock deduction for CREATE_ORDER:', stockErr);
+          }
         }
 
         results.push({ localId, serverId: inserted?.id ?? null, success: true });

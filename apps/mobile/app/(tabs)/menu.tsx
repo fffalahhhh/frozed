@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  Image,
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
@@ -17,14 +18,37 @@ import { useToastStore } from '../../store/toast';
 import { fmt } from '../../components/common/constants';
 import { AddMenuItemModal } from '../../components/menu/AddMenuItemModal';
 import { EditMenuItemModal } from '../../components/menu/EditMenuItemModal';
-
-// ─── Main Menu Management Screen ──────────────────────────────────────────────
 import { getLocalCategories, getLocalMenuItems, getLocalInventory } from '../../lib/db';
+
+function MenuItemThumbnail({ item }: { item: MenuItem }) {
+  const [imgErr, setImgErr] = useState(false);
+  const uri = item.imageUrl?.trim();
+
+  if (uri && !imgErr) {
+    return (
+      <View className="w-9 h-9 rounded-xl bg-surface border border-border/60 overflow-hidden items-center justify-center mr-2.5">
+        <Image
+          source={{ uri }}
+          className="w-9 h-9"
+          resizeMode="cover"
+          onError={() => setImgErr(true)}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View className="w-9 h-9 rounded-xl bg-surface border border-border/80 items-center justify-center mr-2.5">
+      <Ionicons name="image-outline" size={16} color="#8A8A8A" />
+    </View>
+  );
+}
 
 export default function MenuManagementScreen() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('ALL');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE' | 'UNAVAILABLE'>('ALL');
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editItem, setEditItem] = useState<(MenuItem & { categoryName: string }) | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -71,7 +95,12 @@ export default function MenuManagementScreen() {
     }, [refetch]),
   );
 
-  const categoriesList = menuData?.map((m) => ({ id: m.category.id, name: m.category.name })) ?? [];
+  const categoriesList = React.useMemo(() => {
+    if (menuData && menuData.length > 0) {
+      return menuData.map((m) => ({ id: m.category.id, name: m.category.name }));
+    }
+    return getLocalCategories().map((c) => ({ id: c.id, name: c.name }));
+  }, [menuData]);
 
   const allItemsWithCategory = React.useMemo(() => {
     if (!menuData) return [];
@@ -88,17 +117,63 @@ export default function MenuManagementScreen() {
     const matchesCategory =
       activeCategoryFilter === 'ALL' || item.categoryId === activeCategoryFilter;
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
+
+    let matchesAvailability = true;
+    if (availabilityFilter === 'AVAILABLE') {
+      matchesAvailability = item.isAvailable;
+    } else if (availabilityFilter === 'UNAVAILABLE') {
+      matchesAvailability = !item.isAvailable;
+    }
+
+    return matchesCategory && matchesSearch && matchesAvailability;
   });
 
-  const handleToggleAvailability = async (item: MenuItem) => {
+  const executeToggleAvailability = async (item: MenuItem) => {
     try {
+      const nextAvailable = !item.isAvailable;
+
+      // 1. Instant 0ms Optimistic UI Cache Mutation
+      queryClient.setQueryData<MenuWithCategories[]>(['menu'], (old) => {
+        if (!old) return [];
+        return old.map((section) => ({
+          ...section,
+          items: section.items.map((i) =>
+            i.id === item.id ? { ...i, isAvailable: nextAvailable } : i,
+          ),
+        }));
+      });
+
+      // 2. Server API Toggle
       await api.patch(`/menu/items/${item.id}/toggle`, {});
       await queryClient.invalidateQueries({ queryKey: ['menu'] });
-      refetch();
-      useToastStore.getState().showToast(`Availability for "${item.name}" updated`, 'success');
+
+      useToastStore
+        .getState()
+        .showToast(
+          `"${item.name}" marked as ${nextAvailable ? 'Available' : 'Unavailable'}`,
+          'success',
+        );
     } catch (err: any) {
       useToastStore.getState().showToast(err.message || 'Failed to toggle availability', 'error');
+    }
+  };
+
+  const handleToggleAvailability = (item: MenuItem) => {
+    if (item.isAvailable) {
+      Alert.alert(
+        'Disable Menu Item',
+        `Are you sure you want to mark "${item.name}" as unavailable?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: () => executeToggleAvailability(item),
+          },
+        ],
+      );
+    } else {
+      executeToggleAvailability(item);
     }
   };
 
@@ -116,9 +191,10 @@ export default function MenuManagementScreen() {
             refetch();
             useToastStore.getState().showToast(`"${item.name}" has been deleted.`, 'success');
           } catch (err: any) {
-            useToastStore
-              .getState()
-              .showToast(err.message || 'Failed to delete menu item', 'error');
+            const warningMsg =
+              err?.message ||
+              'Cannot delete item because it is referenced in sales history or active orders.';
+            useToastStore.getState().showToast(warningMsg, 'error');
           } finally {
             setDeletingId(null);
           }
@@ -179,48 +255,115 @@ export default function MenuManagementScreen() {
         )}
       </View>
 
-      {/* Category Filter Pills */}
+      {/* Unified Horizontal Filter Pills Bar (Availability + Categories) */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="mb-4 flex-row max-h-10"
+        className="mb-3.5 flex-row max-h-10"
       >
+        {/* Availability Status Filters */}
         <TouchableOpacity
-          onPress={() => setActiveCategoryFilter('ALL')}
-          className="px-4 py-2 rounded-xl border mr-2"
-          style={
-            activeCategoryFilter === 'ALL'
-              ? { backgroundColor: '#1B4332', borderColor: '#1B4332' }
-              : { borderColor: '#E5E7EB' }
-          }
+          onPress={() => setAvailabilityFilter('ALL')}
+          className={`px-3 py-1.5 rounded-xl border mr-1.5 flex-row items-center gap-1 ${
+            availabilityFilter === 'ALL'
+              ? 'bg-[#1B4332] border-[#1B4332]'
+              : 'bg-surface border-border/60'
+          }`}
         >
           <Text
-            className="font-sans-medium text-xs"
-            style={{ color: activeCategoryFilter === 'ALL' ? '#fff' : '#1A1A1A' }}
+            className={`font-sans-semibold text-xs ${
+              availabilityFilter === 'ALL' ? 'text-white' : 'text-text-primary'
+            }`}
+          >
+            All Status
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setAvailabilityFilter('AVAILABLE')}
+          className={`px-3 py-1.5 rounded-xl border mr-1.5 flex-row items-center gap-1 ${
+            availabilityFilter === 'AVAILABLE'
+              ? 'bg-emerald-700 border-emerald-700'
+              : 'bg-emerald-50/70 border-emerald-200'
+          }`}
+        >
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={13}
+            color={availabilityFilter === 'AVAILABLE' ? '#FFF' : '#047857'}
+          />
+          <Text
+            className={`font-sans-semibold text-xs ${
+              availabilityFilter === 'AVAILABLE' ? 'text-white' : 'text-emerald-800'
+            }`}
+          >
+            Available
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setAvailabilityFilter('UNAVAILABLE')}
+          className={`px-3 py-1.5 rounded-xl border mr-2 flex-row items-center gap-1 ${
+            availabilityFilter === 'UNAVAILABLE'
+              ? 'bg-rose-700 border-rose-700'
+              : 'bg-rose-50/70 border-rose-200'
+          }`}
+        >
+          <Ionicons
+            name="close-circle-outline"
+            size={13}
+            color={availabilityFilter === 'UNAVAILABLE' ? '#FFF' : '#BE123C'}
+          />
+          <Text
+            className={`font-sans-semibold text-xs ${
+              availabilityFilter === 'UNAVAILABLE' ? 'text-white' : 'text-rose-800'
+            }`}
+          >
+            Unavailable
+          </Text>
+        </TouchableOpacity>
+
+        {/* Separator Divider */}
+        <View className="w-[1px] h-5 bg-border/60 mx-1 self-center" />
+
+        {/* Category Filters */}
+        <TouchableOpacity
+          onPress={() => setActiveCategoryFilter('ALL')}
+          className={`px-3 py-1.5 rounded-xl border mr-1.5 ml-1 flex-row items-center gap-1 ${
+            activeCategoryFilter === 'ALL'
+              ? 'bg-[#1B4332] border-[#1B4332]'
+              : 'bg-surface border-border/60'
+          }`}
+        >
+          <Text
+            className={`font-sans-semibold text-xs ${
+              activeCategoryFilter === 'ALL' ? 'text-white' : 'text-text-primary'
+            }`}
           >
             All Categories
           </Text>
         </TouchableOpacity>
 
-        {categoriesList.map((cat) => (
-          <TouchableOpacity
-            key={cat.id}
-            onPress={() => setActiveCategoryFilter(cat.id)}
-            className="px-4 py-2 rounded-xl border mr-2"
-            style={
-              activeCategoryFilter === cat.id
-                ? { backgroundColor: '#1B4332', borderColor: '#1B4332' }
-                : { borderColor: '#E5E7EB' }
-            }
-          >
-            <Text
-              className="font-sans-medium text-xs"
-              style={{ color: activeCategoryFilter === cat.id ? '#fff' : '#1A1A1A' }}
+        {categoriesList.map((cat) => {
+          const isActive = activeCategoryFilter === cat.id;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              onPress={() => setActiveCategoryFilter(cat.id)}
+              className={`px-3 py-1.5 rounded-xl border mr-1.5 flex-row items-center gap-1 ${
+                isActive ? 'bg-[#1B4332] border-[#1B4332]' : 'bg-surface border-border/60'
+              }`}
             >
-              {cat.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                className={`font-sans-semibold text-xs ${
+                  isActive ? 'text-white' : 'text-text-primary'
+                }`}
+              >
+                {cat.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Content List */}
@@ -232,161 +375,195 @@ export default function MenuManagementScreen() {
       ) : (
         <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
           {filteredItems.length > 0 ? (
-            filteredItems.map((item) => (
-              <View
-                key={item.id}
-                className="bg-white rounded-3xl p-4 mb-3.5 border border-border/60 shadow-sm"
-                style={{
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.04,
-                  shadowRadius: 8,
-                  elevation: 2,
-                }}
-              >
-                {/* Header row */}
-                <View className="flex-row items-start justify-between mb-2">
+            filteredItems.map((item) => {
+              // Calculate Stock Availability status & Glass Portion count
+              let maxGlasses: number | null = null;
+              if (item.recipes && item.recipes.length > 0) {
+                let minPortions = Infinity;
+                for (const rec of item.recipes) {
+                  const matched = stockItems?.find(
+                    (s) => s.name.trim().toLowerCase() === rec.ingredientName.trim().toLowerCase(),
+                  );
+                  if (matched) {
+                    const reqQty = parseFloat(String(rec.quantity || '0'));
+                    const currentStock = parseFloat(String(matched.currentStock || '0'));
+                    if (reqQty > 0) {
+                      const portions = Math.floor(currentStock / reqQty);
+                      if (portions < minPortions) {
+                        minPortions = portions;
+                      }
+                    }
+                  }
+                }
+                if (minPortions !== Infinity) {
+                  maxGlasses = Math.max(0, minPortions);
+                }
+              }
+
+              let stockStatus = {
+                label: maxGlasses !== null ? `In Stock (${maxGlasses})` : 'In Stock',
+                bg: 'bg-emerald-50 border-emerald-200',
+                text: 'text-emerald-700',
+              };
+
+              if (!item.isAvailable) {
+                stockStatus = {
+                  label: 'Unavailable',
+                  bg: 'bg-rose-50 border-rose-200',
+                  text: 'text-rose-600',
+                };
+              } else if (item.recipes && item.recipes.length > 0) {
+                let hasOutOfStock = false;
+                let hasLowStock = false;
+
+                for (const rec of item.recipes) {
+                  const matched = stockItems?.find(
+                    (s) => s.name.trim().toLowerCase() === rec.ingredientName.trim().toLowerCase(),
+                  );
+                  if (matched) {
+                    const current = parseFloat(matched.currentStock || '0');
+                    const reorder = parseFloat(matched.reorderLevel || '0');
+                    if (current <= 0) {
+                      hasOutOfStock = true;
+                    } else if (current <= reorder) {
+                      hasLowStock = true;
+                    }
+                  }
+                }
+
+                if (hasOutOfStock || (maxGlasses !== null && maxGlasses === 0)) {
+                  stockStatus = {
+                    label: maxGlasses !== null ? `Out of Stock (0)` : 'Out of Stock',
+                    bg: 'bg-rose-50 border-rose-200',
+                    text: 'text-rose-600',
+                  };
+                } else if (hasLowStock) {
+                  stockStatus = {
+                    label: maxGlasses !== null ? `Low Stock (${maxGlasses})` : 'Low Stock',
+                    bg: 'bg-amber-50 border-amber-300',
+                    text: 'text-amber-800',
+                  };
+                }
+              }
+
+              return (
+                <View
+                  key={item.id}
+                  className="bg-white rounded-2xl p-2.5 px-3 mb-2 border border-border/60 shadow-sm flex-row items-center justify-between"
+                  style={{
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.02,
+                    shadowRadius: 4,
+                    elevation: 1,
+                  }}
+                >
+                  {/* Left Side Thumbnail with Fallback Box */}
+                  <MenuItemThumbnail item={item} />
+
+                  {/* Middle Info: Name + Stock Availability Badge + Price • Glasses Left • Recipes */}
                   <View className="flex-1 pr-2">
-                    <View className="flex-row items-center gap-2 flex-wrap">
-                      <Text className="text-text-primary font-sans-bold text-base">
+                    <View className="flex-row items-center gap-1.5 flex-wrap">
+                      <Text className="text-text-primary font-sans-bold text-xs" numberOfLines={1}>
                         {item.name}
                       </Text>
-                      <View className="bg-surface border border-border/60 rounded-full px-2.5 py-0.5">
-                        <Text className="text-text-muted text-[10px] font-sans-medium">
-                          {item.categoryName}
-                        </Text>
-                      </View>
-                    </View>
-                    {item.description ? (
-                      <Text className="text-text-muted font-sans text-xs mt-1">
-                        {item.description}
-                      </Text>
-                    ) : null}
-                  </View>
 
-                  <View className="items-end gap-1">
-                    <Text className="font-sans-bold text-base" style={{ color: '#1B4332' }}>
-                      {fmt(item.sellingPrice)}
-                    </Text>
+                      {/* Stock Availability Badge with Glass Count */}
+                      <TouchableOpacity
+                        onPress={() => handleToggleAvailability(item)}
+                        className={`px-1.5 py-0.2 rounded-md border ${stockStatus.bg}`}
+                      >
+                        <Text className={`text-[9px] font-sans-bold uppercase ${stockStatus.text}`}>
+                          {stockStatus.label}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View className="flex-row items-center flex-wrap mt-0.5">
+                      <Text className="text-[#1B4332] font-sans-bold text-[11px]">
+                        {fmt(item.sellingPrice)}
+                      </Text>
+                      {maxGlasses !== null ? (
+                        <>
+                          <Text className="text-text-muted font-sans text-[11px] mx-1">•</Text>
+                          <Text
+                            className={`font-sans-semibold text-[10px] ${
+                              maxGlasses === 0
+                                ? 'text-rose-600'
+                                : maxGlasses <= 5
+                                  ? 'text-amber-800'
+                                  : 'text-emerald-700'
+                            }`}
+                          >
+                            {maxGlasses} {maxGlasses === 1 ? 'glass' : 'glasses'} left
+                          </Text>
+                        </>
+                      ) : null}
+                      {item.recipes && item.recipes.length > 0 ? (
+                        <>
+                          <Text className="text-text-muted font-sans text-[11px] mx-1">•</Text>
+                          <Text className="text-text-muted font-sans text-[10px]" numberOfLines={1}>
+                            {item.recipes
+                              .map((r: any) => `${r.ingredientName} (${r.quantity}${r.unit})`)
+                              .join(', ')}
+                          </Text>
+                        </>
+                      ) : null}
+                    </View>
+                  </View>
+                  {/* Right Actions: Toggle Availability, Edit & Delete Buttons */}
+                  <View className="flex-row items-center gap-1.5 ml-auto">
+                    {/* Toggle Availability Button */}
                     <TouchableOpacity
                       onPress={() => handleToggleAvailability(item)}
-                      className={`px-2 py-0.5 rounded-full border ${
+                      className={`px-2 py-0.5 rounded-lg border flex-row items-center gap-1 active:opacity-80 ${
                         item.isAvailable
-                          ? 'bg-emerald-50 border-emerald-200'
-                          : 'bg-rose-50 border-rose-200'
+                          ? 'bg-amber-50 border-amber-300'
+                          : 'bg-emerald-50 border-emerald-200'
                       }`}
                     >
+                      <Ionicons
+                        name={item.isAvailable ? 'eye-off-outline' : 'eye-outline'}
+                        size={10}
+                        color={item.isAvailable ? '#D97706' : '#047857'}
+                      />
                       <Text
-                        className={`text-[10px] font-sans-semibold ${
-                          item.isAvailable ? 'text-emerald-700' : 'text-rose-600'
+                        className={`font-sans-bold text-[10px] ${
+                          item.isAvailable ? 'text-amber-800' : 'text-emerald-800'
                         }`}
                       >
-                        {item.isAvailable ? 'Available' : 'Out of Stock'}
+                        {item.isAvailable ? 'Disable' : 'Enable'}
                       </Text>
+                    </TouchableOpacity>
+
+                    {/* Edit */}
+                    <TouchableOpacity
+                      onPress={() => setEditItem(item)}
+                      className="px-2 py-0.5 rounded-lg bg-[#1B4332] active:opacity-80 flex-row items-center gap-1"
+                    >
+                      <Ionicons name="pencil" size={10} color="#FFFFFF" />
+                      <Text className="text-white font-sans-bold text-[10px]">Edit</Text>
+                    </TouchableOpacity>
+
+                    {/* Delete */}
+                    <TouchableOpacity
+                      onPress={() => handleDeleteItem(item)}
+                      disabled={deletingId === item.id}
+                      className="px-2 py-0.5 rounded-lg bg-rose-50 border border-rose-200 active:opacity-80 flex-row items-center gap-1"
+                    >
+                      {deletingId === item.id ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                      ) : (
+                        <>
+                          <Ionicons name="trash-outline" size={10} color="#EF4444" />
+                          <Text className="text-rose-600 font-sans-bold text-[10px]">Delete</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
-
-                {/* Ingredients section */}
-                <View className="mt-2 pt-3 border-t border-border/40 bg-surface/40 rounded-2xl p-3">
-                  <View className="flex-row items-center justify-between mb-1.5">
-                    <View className="flex-row items-center gap-1.5">
-                      <Ionicons name="nutrition-outline" size={14} color="#1B4332" />
-                      <Text className="text-text-primary font-sans-bold text-xs">
-                        Ingredients Used:
-                      </Text>
-                    </View>
-                    <Text className="text-text-muted font-sans text-[10px]">
-                      {item.recipes && item.recipes.length > 0
-                        ? `${item.recipes.length} ingredient${item.recipes.length > 1 ? 's' : ''}`
-                        : 'None'}
-                    </Text>
-                  </View>
-
-                  {item.recipes && item.recipes.length > 0 ? (
-                    <View className="flex-row flex-wrap gap-1.5 mt-1">
-                      {item.recipes.map((rec: RecipeItem, idx: number) => {
-                        const matchedStock = stockItems?.find(
-                          (s) => s.name.trim().toLowerCase() === rec.ingredientName.trim().toLowerCase(),
-                        );
-                        const stockNum = matchedStock ? parseFloat(matchedStock.currentStock || '0') : 999;
-                        const reorderNum = matchedStock ? parseFloat(matchedStock.reorderLevel || '0') : 0;
-                        const isOutOfStock = matchedStock ? stockNum <= 0 : false;
-                        const isLowStock = matchedStock ? !isOutOfStock && stockNum <= reorderNum : false;
-
-                        return (
-                          <View
-                            key={idx}
-                            className={`border rounded-xl px-2.5 py-1.5 flex-row items-center gap-1 ${
-                              isOutOfStock
-                                ? 'bg-amber-50 border-amber-300'
-                                : isLowStock
-                                ? 'bg-orange-50 border-orange-200'
-                                : 'bg-white border-border/80'
-                            }`}
-                          >
-                            <Text className="text-text-primary font-sans-semibold text-xs">
-                              {rec.ingredientName}:
-                            </Text>
-                            <Text
-                              className="font-sans-bold text-xs"
-                              style={{ color: isOutOfStock ? '#B45309' : '#1B4332' }}
-                            >
-                              {rec.quantity} {rec.unit}
-                            </Text>
-                            {isOutOfStock ? (
-                              <View className="bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-md flex-row items-center gap-0.5 ml-1">
-                                <Ionicons name="warning" size={10} color="#D97706" />
-                                <Text className="text-amber-800 font-sans-bold text-[9px]">Out of Stock</Text>
-                              </View>
-                            ) : isLowStock ? (
-                              <View className="bg-orange-100 border border-orange-200 px-1.5 py-0.2 rounded-md flex-row items-center gap-0.5 ml-1">
-                                <Ionicons name="alert-circle" size={10} color="#EA580C" />
-                                <Text className="text-orange-800 font-sans-bold text-[9px]">Low Stock</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ) : (
-                    <Text className="text-text-muted font-sans italic text-[11px]">
-                      No linked inventory ingredients.
-                    </Text>
-                  )}
-                </View>
-
-                {/* Action buttons */}
-                <View className="flex-row items-center justify-end gap-2 mt-3 pt-2">
-                  {/* Edit */}
-                  <TouchableOpacity
-                    onPress={() => setEditItem(item)}
-                    className="flex-row items-center bg-surface border border-border/60 px-3 py-1.5 rounded-xl gap-1"
-                  >
-                    <Ionicons name="pencil-outline" size={14} color="#1B4332" />
-                    <Text className="font-sans-semibold text-xs" style={{ color: '#1B4332' }}>
-                      Edit
-                    </Text>
-                  </TouchableOpacity>
-
-                  {/* Delete */}
-                  <TouchableOpacity
-                    onPress={() => handleDeleteItem(item)}
-                    disabled={deletingId === item.id}
-                    className="flex-row items-center bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl gap-1"
-                  >
-                    {deletingId === item.id ? (
-                      <ActivityIndicator size="small" color="#EF4444" />
-                    ) : (
-                      <>
-                        <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                        <Text className="text-rose-600 font-sans-semibold text-xs">Delete</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+              );
+            })
           ) : (
             <View className="items-center justify-center py-20">
               <Ionicons name="restaurant-outline" size={48} color="#8A8A8A" />

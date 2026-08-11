@@ -54,8 +54,20 @@ inventoryRouter.patch('/:id', async (c) => {
 // DELETE /inventory/:id — remove an inventory item
 inventoryRouter.delete('/:id', async (c) => {
   const id = c.req.param('id');
-  await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
-  return c.json({ success: true, data: { id } });
+  try {
+    await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+    return c.json({ success: true, data: { id } });
+  } catch (err: any) {
+    console.warn(`[DELETE INVENTORY] Cannot delete item ${id}:`, err?.message || err);
+    return c.json(
+      {
+        success: false,
+        error:
+          'This inventory item cannot be deleted because it is referenced in active menu item recipes or transaction history.',
+      },
+      400,
+    );
+  }
 });
 
 // POST /inventory/adjust — log an adjustment (restock / waste / correction)
