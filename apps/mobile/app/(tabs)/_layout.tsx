@@ -6,7 +6,7 @@ import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { syncEngine } from '../../lib/syncEngine';
 
 function CustomTabBarButton(props: BottomTabBarButtonProps) {
-  const { children, onPress, onLongPress, style, accessibilityState, ref, ...rest } = props;
+  const { children, onPress, onLongPress, style, accessibilityState, accessibilityLabel, testID } = props;
   const isSelected = accessibilityState?.selected;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
@@ -32,10 +32,12 @@ function CustomTabBarButton(props: BottomTabBarButtonProps) {
 
   return (
     <Pressable
-      {...rest}
       onPress={onPress}
       onLongPress={onLongPress}
       onPressIn={handlePressIn}
+      accessibilityState={accessibilityState}
+      accessibilityLabel={accessibilityLabel}
+      testID={testID}
       android_ripple={{
         color: 'rgba(27, 67, 50, 0.15)',
         borderless: false,

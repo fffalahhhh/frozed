@@ -1,125 +1,713 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import { fmt } from '../../components/common/constants';
 import { StatCard } from '../../components/analytics/StatCard';
 import { ProfitBreakdown } from '../../components/analytics/ProfitBreakdown';
+import { DatePickerModal } from '../../components/common/DatePickerModal';
+import { getLocalOrders, getLocalMenuItems, getLocalInventory } from '../../lib/db';
+
+type DateFilter = 'today' | 'yesterday' | 'this_week' | 'all' | 'custom';
+type ViewTab = 'menu_items' | 'inventory_expenses';
+
+const DATE_OPTIONS: { key: DateFilter; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'yesterday', label: 'Yesterday' },
+  { key: 'this_week', label: 'This Week' },
+  { key: 'all', label: 'All Time' },
+];
+
+function formatDateIso(date: Date): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getDateRange(filter: DateFilter, customDate?: string) {
+  const now = new Date();
+  if (filter === 'today') {
+    const d = formatDateIso(now);
+    return { from: d, to: d, label: 'Today' };
+  }
+  if (filter === 'yesterday') {
+    const y = new Date(now);
+    y.setDate(y.getDate() - 1);
+    const d = formatDateIso(y);
+    return { from: d, to: d, label: 'Yesterday' };
+  }
+  if (filter === 'this_week') {
+    const w = new Date(now);
+    w.setDate(w.getDate() - 6);
+    return { from: formatDateIso(w), to: formatDateIso(now), label: 'This Week' };
+  }
+  if (filter === 'custom' && customDate) {
+    return { from: customDate, to: customDate, label: customDate };
+  }
+  return { from: '', to: '', label: 'All Time' };
+}
 
 export default function AnalyticsScreen() {
-  // Single request — server runs all 4 queries in parallel and returns everything at once
+  const [dateFilter, setDateFilter] = useState<DateFilter>('today');
+  const [selectedCustomDate, setSelectedCustomDate] = useState<string>('');
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<ViewTab>('menu_items');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const dateRange = useMemo(
+    () => getDateRange(dateFilter, selectedCustomDate),
+    [dateFilter, selectedCustomDate],
+  );
+
+  // Server Analytics summary query
+  const queryPath = `/analytics/summary${
+    dateRange.from || dateRange.to ? `?from=${dateRange.from}&to=${dateRange.to}` : ''
+  }`;
+
   const {
-    data,
+    data: serverData,
     isLoading,
     refetch,
   } = useQuery<any>({
-    queryKey: ['analytics-summary'],
-    queryFn: () => api.get('/analytics/summary'),
+    queryKey: ['analytics-summary', dateFilter, dateRange.from, dateRange.to],
+    queryFn: () => api.get(queryPath),
   });
 
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
+
+  // Local SQLite offline fallback computation
+  const localAnalyticsData = useMemo(() => {
+    try {
+      const { from, to } = dateRange;
+      const rawOrders = getLocalOrders();
+      const rawMenuItems = getLocalMenuItems();
+      const rawInventory = getLocalInventory();
+
+      const orders = Array.isArray(rawOrders) ? rawOrders : [];
+      const menuItems = Array.isArray(rawMenuItems) ? rawMenuItems : [];
+      const inventory = Array.isArray(rawInventory) ? rawInventory : [];
+
+      const filteredOrders = orders.filter((o) => {
+        if (!o) return false;
+        if ((o.status || '').toLowerCase() !== 'paid') return false;
+        if (!from || !to) return true;
+        const dateStr = (o.createdAt || '').split('T')[0];
+        if (!dateStr) return true;
+        return dateStr >= from && dateStr <= to;
+      });
+
+      let totalRevenue = 0;
+      let totalCOGS = 0;
+
+      const menuItemMap = new Map<
+        string,
+        {
+          id: string;
+          name: string;
+          quantitySold: number;
+          netSales: number;
+          expenses: number;
+          profit: number;
+          marginPercent: number;
+        }
+      >();
+
+      // Pre-populate menu items
+      for (const m of menuItems) {
+        if (!m || !m.id) continue;
+        menuItemMap.set(m.id, {
+          id: m.id,
+          name: m.name || 'Unnamed Item',
+          quantitySold: 0,
+          netSales: 0,
+          expenses: 0,
+          profit: 0,
+          marginPercent: 0,
+        });
+      }
+
+      for (const o of filteredOrders) {
+        totalRevenue += parseFloat(String(o.totalAmount || '0'));
+        const items = Array.isArray(o.items) ? o.items : [];
+        for (const item of items) {
+          if (!item) continue;
+          const id = item.menuItemId || item.menuItemName || 'unknown_item';
+          const name = item.menuItemName || 'Unnamed Item';
+          const qty = Number(item.quantity) || 1;
+          const uPrice = parseFloat(String(item.unitPrice || '0'));
+          const lTotal = item.lineTotal ? parseFloat(String(item.lineTotal)) : uPrice * qty;
+          const iCost = parseFloat(String(item.itemCost || '0'));
+          const exp = iCost * qty;
+          totalCOGS += exp;
+
+          const existing = menuItemMap.get(id) || {
+            id,
+            name,
+            quantitySold: 0,
+            netSales: 0,
+            expenses: 0,
+            profit: 0,
+            marginPercent: 0,
+          };
+
+          existing.quantitySold += qty;
+          existing.netSales += lTotal;
+          existing.expenses += exp;
+          existing.profit = existing.netSales - existing.expenses;
+          existing.marginPercent =
+            existing.netSales > 0 ? (existing.profit / existing.netSales) * 100 : 0;
+          menuItemMap.set(id, existing);
+        }
+      }
+
+      const allMenuItemsList = Array.from(menuItemMap.values()).sort(
+        (a, b) => (b.netSales || 0) - (a.netSales || 0),
+      );
+
+      // Group Inventory Expenses
+      const inventoryMap = new Map<
+        string,
+        {
+          id: string;
+          name: string;
+          unit: string;
+          currentStock: number;
+          costPerUnit: number;
+          quantityUsed: number;
+          totalExpenses: number;
+        }
+      >();
+
+      for (const inv of inventory) {
+        if (!inv || !inv.id) continue;
+        const cPerUnit = parseFloat(String(inv.costPerUnit || '0'));
+        inventoryMap.set(inv.id, {
+          id: inv.id,
+          name: inv.name || 'Unnamed Ingredient',
+          unit: inv.unit || 'units',
+          currentStock: parseFloat(String(inv.currentStock || '0')),
+          costPerUnit: cPerUnit,
+          quantityUsed: 0,
+          totalExpenses: 0,
+        });
+      }
+
+      for (const o of filteredOrders) {
+        const items = Array.isArray(o.items) ? o.items : [];
+        for (const item of items) {
+          if (!item) continue;
+          const itemMenuNameLower = (item.menuItemName || '').toLowerCase();
+          const mItem = menuItems.find(
+            (m) =>
+              m &&
+              (m.id === item.menuItemId || (m.name && m.name.toLowerCase() === itemMenuNameLower)),
+          );
+          if (mItem) {
+            let recipesArr: any[] = [];
+            if (Array.isArray(mItem.recipes)) {
+              recipesArr = mItem.recipes;
+            } else if (typeof mItem.recipes === 'string') {
+              try {
+                recipesArr = JSON.parse(mItem.recipes);
+              } catch {
+                recipesArr = [];
+              }
+            }
+
+            const itemQty = Number(item.quantity) || 1;
+            for (const rec of recipesArr) {
+              if (!rec) continue;
+              const reqQty = parseFloat(String(rec.quantity || '0'));
+              if (reqQty > 0 && rec.ingredientName) {
+                const ingNameLower = (rec.ingredientName || '').trim().toLowerCase();
+                for (const invData of inventoryMap.values()) {
+                  if ((invData.name || '').trim().toLowerCase() === ingNameLower) {
+                    const qtyUsed = reqQty * itemQty;
+                    invData.quantityUsed += qtyUsed;
+                    invData.totalExpenses = invData.quantityUsed * invData.costPerUnit;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const allInventoryList = Array.from(inventoryMap.values()).sort(
+        (a, b) => (b.totalExpenses || 0) - (a.totalExpenses || 0),
+      );
+
+      const grossProfit = totalRevenue - totalCOGS;
+
+      return {
+        orderCount: filteredOrders.length,
+        totalRevenue,
+        totalCOGS,
+        grossProfit,
+        shopExpenses: 0,
+        netProfit: grossProfit,
+        allItems: allMenuItemsList,
+        allInventory: allInventoryList,
+      };
+    } catch (err) {
+      console.error('[Analytics] Local computation error:', err);
+      return {
+        orderCount: 0,
+        totalRevenue: 0,
+        totalCOGS: 0,
+        grossProfit: 0,
+        shopExpenses: 0,
+        netProfit: 0,
+        allItems: [],
+        allInventory: [],
+      };
+    }
+  }, [dateRange]);
+
+  // Combine server & local fallback values
+  const analyticsData = useMemo(() => {
+    const base = localAnalyticsData || {
+      orderCount: 0,
+      totalRevenue: 0,
+      totalCOGS: 0,
+      grossProfit: 0,
+      shopExpenses: 0,
+      netProfit: 0,
+      allItems: [],
+      allInventory: [],
+    };
+
+    if (serverData && typeof serverData === 'object' && serverData.totalRevenue !== undefined) {
+      const serverAllItems = Array.isArray(serverData.allItems) ? serverData.allItems : [];
+      const mergedMenuItemsMap = new Map<string, any>();
+      for (const localItem of base.allItems || []) {
+        if (localItem && localItem.id) {
+          mergedMenuItemsMap.set(localItem.id, localItem);
+        }
+      }
+      for (const sItem of serverAllItems) {
+        if (!sItem) continue;
+        const itemId = sItem.menuItemId || sItem.id || 'item_' + Math.random();
+        mergedMenuItemsMap.set(itemId, {
+          id: itemId,
+          name: sItem.name || 'Unnamed Item',
+          quantitySold: Number(sItem.quantitySold || 0),
+          netSales: parseFloat(String(sItem.netSales || sItem.revenue || '0')),
+          expenses: parseFloat(String(sItem.expenses || '0')),
+          profit: parseFloat(String(sItem.profit || '0')),
+          marginPercent: parseFloat(String(sItem.marginPercent || '0')),
+        });
+      }
+
+      return {
+        orderCount: Number(serverData.orderCount || base.orderCount || 0),
+        totalRevenue: parseFloat(String(serverData.totalRevenue || '0')),
+        totalCOGS: parseFloat(String(serverData.totalCOGS || '0')),
+        grossProfit: parseFloat(String(serverData.grossProfit || '0')),
+        shopExpenses: parseFloat(String(serverData.shopExpenses || '0')),
+        netProfit: parseFloat(String(serverData.netProfit || '0')),
+        allItems: Array.from(mergedMenuItemsMap.values()).sort(
+          (a, b) => (b?.netSales || 0) - (a?.netSales || 0),
+        ),
+        allInventory: base.allInventory || [],
+      };
+    }
+    return base;
+  }, [serverData, localAnalyticsData]);
+
+  // Filtered menu items by search query
+  const filteredMenuItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const items = Array.isArray(analyticsData?.allItems) ? analyticsData.allItems : [];
+    if (!q) return items;
+    return items.filter((i: any) => (i?.name || '').toLowerCase().includes(q));
+  }, [analyticsData?.allItems, searchQuery]);
+
+  // Filtered inventory items by search query
+  const filteredInventoryItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const items = Array.isArray(analyticsData?.allInventory) ? analyticsData.allInventory : [];
+    if (!q) return items;
+    return items.filter((i: any) => (i?.name || '').toLowerCase().includes(q));
+  }, [analyticsData?.allInventory, searchQuery]);
+
   return (
-    <View className="flex-1 bg-white pt-12 px-5">
+    <View className="flex-1 bg-white pt-10 px-4">
       {/* Header */}
-      <View className="flex-row items-center justify-between pb-4 border-b border-border/40 mb-3">
+      <View className="flex-row items-center justify-between pb-2 border-b border-border/40 mb-2.5">
         <View>
-          <Text className="text-text-primary font-sans-bold text-2xl">Analytics</Text>
-          <Text className="text-text-muted font-sans text-xs mt-0.5">
-            Sales, COGS & Net Profit breakdown
+          <Text className="text-text-primary font-sans-bold text-xl">Analytics</Text>
+          <Text className="text-text-muted font-sans text-[11px] mt-0.5">
+            Sales, Expenses, Profits & Inventory Costs
           </Text>
         </View>
-        <TouchableOpacity
+        <Pressable
           onPress={() => refetch()}
-          className="w-10 h-10 rounded-full bg-surface items-center justify-center border border-border/40"
+          className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border/40"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
-          <Ionicons name="refresh" size={20} color="#1B4332" />
-        </TouchableOpacity>
+          <Ionicons name="refresh" size={16} color="#1B4332" />
+        </Pressable>
+      </View>
+
+      {/* Date Selector Pills */}
+      <View className="flex-row items-center bg-[#F4F1EA] p-1 rounded-2xl mb-3 border border-border/40">
+        {DATE_OPTIONS.map((opt) => {
+          const isActive = dateFilter === opt.key;
+          return (
+            <Pressable
+              key={opt.key}
+              onPress={() => setDateFilter(opt.key)}
+              className={`flex-1 py-2 rounded-full items-center justify-center ${
+                isActive ? 'bg-[#0D4830]' : 'bg-transparent'
+              }`}
+            >
+              <Text
+                className={`font-sans-bold text-xs ${isActive ? 'text-white' : 'text-gray-600'}`}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+
+        {/* Custom Specific Date Selection Option */}
+        <Pressable
+          onPress={() => setIsDatePickerVisible(true)}
+          className={`flex-1 py-2 px-1 rounded-full items-center justify-center flex-row gap-1 ${
+            dateFilter === 'custom' ? 'bg-[#0D4830]' : 'bg-transparent'
+          }`}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={13}
+            color={dateFilter === 'custom' ? '#FFFFFF' : '#4B5563'}
+          />
+          <Text
+            className={`font-sans-bold text-xs ${
+              dateFilter === 'custom' ? 'text-white' : 'text-gray-600'
+            }`}
+            numberOfLines={1}
+          >
+            {dateFilter === 'custom' && selectedCustomDate ? selectedCustomDate : 'Select Date'}
+          </Text>
+        </Pressable>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#1B4332" />
-          <Text className="text-text-muted font-sans text-xs mt-2">Calculating analytics...</Text>
+          <Text className="text-text-muted font-sans text-xs mt-2">Loading analytics...</Text>
         </View>
       ) : (
-        <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
-          {/* Stat Cards Grid */}
-          <View className="flex-row flex-wrap gap-3 mb-4">
+        <ScrollView className="flex-1 pb-20" showsVerticalScrollIndicator={false}>
+          {/* Summary Stat Cards Grid */}
+          <View className="flex-row gap-2.5 mb-3">
             <StatCard
               title="Total Revenue"
-              value={data?.totalRevenue}
-              subtitle={`${data?.orderCount || 0} Orders Paid`}
+              value={analyticsData?.totalRevenue || 0}
+              subtitle={`${analyticsData?.orderCount || 0} Orders Paid`}
               iconName="cash-outline"
               variant="primary"
             />
             <StatCard
               title="Net Profit"
-              value={data?.netProfit}
+              value={analyticsData?.netProfit || 0}
               subtitle="Gross Profit − Expenses"
               iconName="trending-up"
               variant="success"
             />
           </View>
 
-          {/* Breakdown Section */}
-          <Text className="text-text-primary font-sans-bold text-base mb-3">
-            Profit & Cost Math
-          </Text>
+          {/* Profit & Cost Math Breakdown */}
+          <View className="mb-4">
+            <Text className="text-text-primary font-sans-bold text-xs uppercase tracking-wider mb-2">
+              Financial Summary
+            </Text>
+            <ProfitBreakdown
+              totalRevenue={analyticsData?.totalRevenue || 0}
+              totalCOGS={analyticsData?.totalCOGS || 0}
+              grossProfit={analyticsData?.grossProfit || 0}
+              shopExpenses={analyticsData?.shopExpenses || 0}
+              netProfit={analyticsData?.netProfit || 0}
+            />
+          </View>
 
-          <ProfitBreakdown
-            totalRevenue={data?.totalRevenue}
-            totalCOGS={data?.totalCOGS}
-            grossProfit={data?.grossProfit}
-            shopExpenses={data?.shopExpenses}
-            netProfit={data?.netProfit}
-          />
+          {/* Section Selector Tabs */}
+          <View className="flex-row items-center justify-between mb-2.5">
+            <Text className="text-text-primary font-sans-bold text-xs uppercase tracking-wider">
+              Detailed Breakdown
+            </Text>
 
-          {/* Top Selling Items */}
-          {data?.topItems && data.topItems.length > 0 && (
-            <View className="mt-4">
-              <Text className="text-text-primary font-sans-bold text-base mb-3">
-                Top Selling Items
-              </Text>
-              <View className="bg-white rounded-3xl p-4 border border-border/60 shadow-sm gap-2.5">
-                {data.topItems.map((item: any, idx: number) => (
-                  <View
-                    key={item.menuItemId}
-                    className="flex-row items-center justify-between py-1.5 border-b border-border/20 last:border-0"
-                  >
-                    <View className="flex-row items-center gap-2 flex-1">
-                      <View
-                        className="w-6 h-6 rounded-full items-center justify-center"
-                        style={{ backgroundColor: idx === 0 ? '#1B4332' : '#F3F4F6' }}
-                      >
-                        <Text
-                          className="font-sans-bold text-[10px]"
-                          style={{ color: idx === 0 ? '#fff' : '#6B7280' }}
+            {/* View Switcher: Menu Items vs Inventory Expenses */}
+            <View className="flex-row bg-[#F4F1EA] p-0.5 rounded-xl border border-border/40">
+              <Pressable
+                onPress={() => setActiveTab('menu_items')}
+                className={`px-3 py-1 rounded-lg flex-row items-center gap-1 ${
+                  activeTab === 'menu_items' ? 'bg-[#1B4332]' : ''
+                }`}
+                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+              >
+                <Ionicons
+                  name="fast-food-outline"
+                  size={12}
+                  color={activeTab === 'menu_items' ? '#FFF' : '#4B5563'}
+                />
+                <Text
+                  className={`text-[10.5px] font-sans-semibold ${
+                    activeTab === 'menu_items' ? 'text-white' : 'text-gray-600'
+                  }`}
+                >
+                  Menu Items ({filteredMenuItems.length})
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setActiveTab('inventory_expenses')}
+                className={`px-3 py-1 rounded-lg flex-row items-center gap-1 ${
+                  activeTab === 'inventory_expenses' ? 'bg-[#1B4332]' : ''
+                }`}
+                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+              >
+                <Ionicons
+                  name="cube-outline"
+                  size={12}
+                  color={activeTab === 'inventory_expenses' ? '#FFF' : '#4B5563'}
+                />
+                <Text
+                  className={`text-[10.5px] font-sans-semibold ${
+                    activeTab === 'inventory_expenses' ? 'text-white' : 'text-gray-600'
+                  }`}
+                >
+                  Inventory ({filteredInventoryItems.length})
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Search Box */}
+          <View className="flex-row items-center bg-[#F9F8F5] border border-border/60 rounded-xl px-3 py-2 mb-3">
+            <Ionicons name="search-outline" size={15} color="#6B7280" className="mr-2" />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={
+                activeTab === 'menu_items'
+                  ? 'Search menu items by name...'
+                  : 'Search inventory ingredients...'
+              }
+              placeholderTextColor="#9CA3AF"
+              className="flex-1 text-xs text-text-primary font-sans py-0"
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+              </Pressable>
+            )}
+          </View>
+
+          {/* TAB 1: ALL MENU ITEMS FINANCIAL BREAKDOWN */}
+          {activeTab === 'menu_items' && (
+            <View className="gap-2 mb-6">
+              {filteredMenuItems.length > 0 ? (
+                filteredMenuItems.map((item: any, idx: number) => {
+                  const profitVal = Number(item?.profit || 0);
+                  const isProfitPositive = profitVal >= 0;
+                  const marginVal = Number(item?.marginPercent || 0);
+                  return (
+                    <View
+                      key={item?.id || idx}
+                      className="bg-white rounded-2xl p-3 border border-border/60 shadow-sm"
+                    >
+                      {/* Top Row: Rank & Name | Count & Profit Badge */}
+                      <View className="flex-row items-center justify-between pb-2 border-b border-border/20 mb-2">
+                        <View className="flex-row items-center gap-2 flex-1 pr-2">
+                          <View
+                            className="w-5 h-5 rounded-full items-center justify-center"
+                            style={{ backgroundColor: idx === 0 ? '#1B4332' : '#F3F4F6' }}
+                          >
+                            <Text
+                              className="font-sans-bold text-[9px]"
+                              style={{ color: idx === 0 ? '#fff' : '#6B7280' }}
+                            >
+                              {idx + 1}
+                            </Text>
+                          </View>
+                          <Text
+                            className="text-text-primary font-sans-bold text-xs flex-1"
+                            numberOfLines={1}
+                          >
+                            {item?.name || 'Unnamed Item'}
+                          </Text>
+                        </View>
+
+                        {/* Sold Count Badge */}
+                        <View className="bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                          <Text className="text-[#1B4332] font-sans-bold text-[10px]">
+                            {item?.quantitySold || 0} sold
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Financial Metrics Grid: Net Sales | Expenses | Profit | Margin */}
+                      <View className="flex-row items-center justify-between bg-[#F9F8F5] p-2.5 rounded-xl">
+                        <View className="items-start flex-1">
+                          <Text className="text-text-muted font-sans text-[9.5px]">Net Sales</Text>
+                          <Text className="text-text-primary font-sans-bold text-xs">
+                            {fmt(item?.netSales)}
+                          </Text>
+                        </View>
+
+                        <View className="items-center flex-1 border-x border-border/40 px-1">
+                          <Text className="text-text-muted font-sans text-[9.5px]">Expenses</Text>
+                          <Text className="text-amber-700 font-sans-semibold text-xs">
+                            {fmt(item?.expenses)}
+                          </Text>
+                        </View>
+
+                        <View className="items-end flex-1">
+                          <Text className="text-text-muted font-sans text-[9.5px]">Profit</Text>
+                          <Text
+                            className={`font-sans-bold text-xs ${
+                              isProfitPositive ? 'text-[#1B4332]' : 'text-rose-600'
+                            }`}
+                          >
+                            {fmt(item?.profit)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Footer Badge: Margin Percentage */}
+                      <View className="flex-row items-center justify-between mt-2 pt-1">
+                        <Text className="text-text-muted font-sans text-[10px]">Profit Margin</Text>
+                        <View
+                          className={`px-2 py-0.2 rounded-md ${
+                            marginVal >= 50
+                              ? 'bg-emerald-100'
+                              : marginVal > 0
+                                ? 'bg-amber-100'
+                                : 'bg-rose-100'
+                          }`}
                         >
-                          {idx + 1}
+                          <Text
+                            className={`text-[9.5px] font-sans-bold ${
+                              marginVal >= 50
+                                ? 'text-emerald-800'
+                                : marginVal > 0
+                                  ? 'text-amber-800'
+                                  : 'text-rose-800'
+                            }`}
+                          >
+                            {marginVal.toFixed(1)}% margin
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <View className="bg-white rounded-2xl p-6 items-center justify-center border border-border/60">
+                  <Ionicons name="alert-circle-outline" size={24} color="#9CA3AF" />
+                  <Text className="text-text-muted font-sans text-xs mt-1">
+                    No menu items found for {(dateRange?.label || '').toLowerCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* TAB 2: INVENTORY ITEM EXPENSES BREAKDOWN */}
+          {activeTab === 'inventory_expenses' && (
+            <View className="gap-2 mb-6">
+              {filteredInventoryItems.length > 0 ? (
+                filteredInventoryItems.map((item: any, idx: number) => {
+                  const qtyUsed = Number(item?.quantityUsed || 0);
+                  const currentStock = Number(item?.currentStock || 0);
+                  return (
+                    <View
+                      key={item?.id || idx}
+                      className="bg-white rounded-2xl p-3 border border-border/60 shadow-sm"
+                    >
+                      {/* Top Row: Ingredient Name + Unit Price */}
+                      <View className="flex-row items-center justify-between pb-2 border-b border-border/20 mb-2">
+                        <View className="flex-row items-center gap-2 flex-1 pr-2">
+                          <Ionicons name="cube-outline" size={14} color="#1B4332" />
+                          <Text
+                            className="text-text-primary font-sans-bold text-xs flex-1"
+                            numberOfLines={1}
+                          >
+                            {item?.name || 'Unnamed Ingredient'}
+                          </Text>
+                        </View>
+
+                        <Text className="text-text-muted font-sans-medium text-[10px]">
+                          Cost: {fmt(item?.costPerUnit)} / {item?.unit || 'unit'}
                         </Text>
                       </View>
-                      <Text
-                        className="text-text-primary font-sans-medium text-sm flex-1"
-                        numberOfLines={1}
-                      >
-                        {item.name}
-                      </Text>
+
+                      {/* Financial Metrics Grid: Current Stock | Qty Used | Total Expense */}
+                      <View className="flex-row items-center justify-between bg-[#F9F8F5] p-2.5 rounded-xl">
+                        <View className="items-start flex-1">
+                          <Text className="text-text-muted font-sans text-[9.5px]">In Stock</Text>
+                          <Text className="text-text-primary font-sans-bold text-xs">
+                            {currentStock} {item?.unit || ''}
+                          </Text>
+                        </View>
+
+                        <View className="items-center flex-1 border-x border-border/40 px-1">
+                          <Text className="text-text-muted font-sans text-[9.5px]">Qty Used</Text>
+                          <Text className="text-[#1B4332] font-sans-bold text-xs">
+                            {qtyUsed.toFixed(1)} {item?.unit || ''}
+                          </Text>
+                        </View>
+
+                        <View className="items-end flex-1">
+                          <Text className="text-text-muted font-sans text-[9.5px]">
+                            Total Expense
+                          </Text>
+                          <Text className="text-amber-700 font-sans-bold text-xs">
+                            {fmt(item?.totalExpenses)}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
-                    <View className="items-end">
-                      <Text className="font-sans-bold text-sm" style={{ color: '#1B4332' }}>
-                        {fmt(item.revenue)}
-                      </Text>
-                      <Text className="text-text-muted font-sans text-[10px]">
-                        {item.quantitySold} sold
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
+                  );
+                })
+              ) : (
+                <View className="bg-white rounded-2xl p-6 items-center justify-center border border-border/60">
+                  <Ionicons name="alert-circle-outline" size={24} color="#9CA3AF" />
+                  <Text className="text-text-muted font-sans text-xs mt-1">
+                    No inventory usage recorded for {(dateRange?.label || '').toLowerCase()}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </ScrollView>
       )}
+
+      {/* Date Selection Modal */}
+      <DatePickerModal
+        visible={isDatePickerVisible}
+        selectedDate={selectedCustomDate}
+        onSelectDate={(dateStr) => {
+          setSelectedCustomDate(dateStr);
+          setDateFilter('custom');
+        }}
+        onClose={() => setIsDatePickerVisible(false)}
+        onClear={() => {
+          setSelectedCustomDate('');
+          setDateFilter('today');
+        }}
+        title="Select Analytics Date"
+      />
     </View>
   );
 }

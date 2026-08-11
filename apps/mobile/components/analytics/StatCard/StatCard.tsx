@@ -16,23 +16,33 @@ export function StatCard({ title, value, subtitle, iconName, variant = 'primary'
 
   return (
     <View
-      className={`flex-1 min-w-[145px] rounded-3xl p-4 border ${
-        isSuccess ? 'bg-success-bg border-primary/30' : 'bg-primary/5 border-primary/20'
+      className={`flex-1 min-w-[140px] rounded-2xl p-3 border ${
+        isSuccess ? 'bg-emerald-50/70 border-emerald-200' : 'bg-emerald-900/5 border-emerald-900/15'
       }`}
     >
-      <View className="flex-row items-center justify-between mb-2">
+      <View className="flex-row items-center justify-between mb-1">
         <Text
-          className={`font-sans-medium text-xs ${isSuccess ? 'text-primary' : 'text-text-muted'}`}
+          className={`font-sans-medium text-[11px] ${
+            isSuccess ? 'text-emerald-800' : 'text-text-muted'
+          }`}
+          numberOfLines={1}
         >
           {title}
         </Text>
-        <Ionicons name={iconName} size={20} color="#1B4332" />
+        <Ionicons name={iconName} size={16} color="#1B4332" />
       </View>
-      <Text className="text-primary font-sans-bold text-2xl">{fmt(value)}</Text>
       <Text
-        className={`font-sans text-[11px] mt-1 ${
-          isSuccess ? 'text-primary/70' : 'text-text-muted'
+        className="text-[#1B4332] font-sans-bold text-lg leading-6"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        {fmt(value)}
+      </Text>
+      <Text
+        className={`font-sans text-[10px] mt-0.5 ${
+          isSuccess ? 'text-emerald-700/80' : 'text-text-muted'
         }`}
+        numberOfLines={1}
       >
         {subtitle}
       </Text>

@@ -120,7 +120,7 @@ export function IngredientSection({
                         color="#FFFFFF"
                       />
                       <Text className="text-[11px] font-sans-semibold text-white">
-                        {selected.name} ({selected.unit})
+                        {selected?.name || 'Ingredient'} ({selected?.unit || 'unit'})
                       </Text>
                     </View>
 
@@ -161,6 +161,7 @@ export function IngredientSection({
                   ) : (
                     <View className="flex-row flex-wrap gap-1.5">
                       {availableOptions.map((s) => {
+                        if (!s) return null;
                         const isThisSelected = ing.inventoryItemId === s.id;
                         const stockNum = parseFloat(s.currentStock || '0');
                         const reorderNum = parseFloat(s.reorderLevel || '0');
@@ -203,7 +204,7 @@ export function IngredientSection({
                                   : '#1F2937',
                               }}
                             >
-                              {s.name} ({s.unit}){isOutOfStock ? ' • Out of Stock' : isLowStock ? ' • Low Stock' : ''}
+                              {s?.name || 'Ingredient'} ({s?.unit || 'unit'}){isOutOfStock ? ' • Out of Stock' : isLowStock ? ' • Low Stock' : ''}
                             </Text>
                           </TouchableOpacity>
                         );

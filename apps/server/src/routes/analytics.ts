@@ -136,12 +136,11 @@ analyticsRouter.get('/inventory-usage', async (c) => {
 });
 
 // GET /analytics/summary?from=&to= — all key metrics in ONE request
-// The mobile dashboard can call this instead of 4 separate endpoints.
 analyticsRouter.get('/summary', async (c) => {
   const { from, to } = c.req.query();
   const expFilter = expenseDateFilters(from, to);
 
-  const [salesRows, topItemRows, profitRows, expenseRows] = await Promise.all([
+  const [salesRows, topItemRows, allItemRows, profitRows, expenseRows] = await Promise.all([
     db
       .select({
         date: sql<string>`DATE(${orders.createdAt})`,
@@ -169,6 +168,20 @@ analyticsRouter.get('/summary', async (c) => {
 
     db
       .select({
+        menuItemId: orderItems.menuItemId,
+        name: orderItems.menuItemName,
+        quantitySold: sql<number>`SUM(${orderItems.quantity})`,
+        netSales: sql<string>`SUM(${orderItems.lineTotal})`,
+        expenses: sql<string>`SUM(${orderItems.itemCost} * ${orderItems.quantity})`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(orderDateFilters(from, to))
+      .groupBy(orderItems.menuItemId, orderItems.menuItemName)
+      .orderBy(desc(sql`SUM(${orderItems.lineTotal})`)),
+
+    db
+      .select({
         totalRevenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
         totalCOGS: sql<string>`COALESCE(SUM(${orderItems.itemCost} * ${orderItems.quantity}), 0)`,
         orderCount: sql<number>`COUNT(DISTINCT ${orders.id})`,
@@ -187,11 +200,28 @@ analyticsRouter.get('/summary', async (c) => {
   const totalCOGS = parseFloat(profitRows[0]?.totalCOGS ?? '0');
   const shopExpTotal = parseFloat(expenseRows[0]?.total ?? '0');
 
+  const formattedAllItems = allItemRows.map((item) => {
+    const sales = parseFloat(item.netSales || '0');
+    const exp = parseFloat(item.expenses || '0');
+    const profit = sales - exp;
+    const marginPercent = sales > 0 ? (profit / sales) * 100 : 0;
+    return {
+      menuItemId: item.menuItemId,
+      name: item.name,
+      quantitySold: Number(item.quantitySold || 0),
+      netSales: sales,
+      expenses: exp,
+      profit: profit,
+      marginPercent: parseFloat(marginPercent.toFixed(1)),
+    };
+  });
+
   return c.json({
     success: true,
     data: {
       sales: salesRows,
       topItems: topItemRows,
+      allItems: formattedAllItems,
       orderCount: profitRows[0]?.orderCount ?? 0,
       totalRevenue: totalRevenue.toFixed(2),
       totalCOGS: totalCOGS.toFixed(2),
