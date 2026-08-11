@@ -29,10 +29,6 @@ class SyncEngine {
   private listeners: Set<SyncStatusListener> = new Set();
   private timer: any = null;
 
-  constructor() {
-    // Initial status
-  }
-
   public init() {
     try {
       initLocalDb();
@@ -49,27 +45,30 @@ class SyncEngine {
       this.notifyListeners();
 
       if (online && wasOffline) {
-        console.log('[SYNC ENGINE] Network restored — triggering immediate batch sync');
+        console.log('[SYNC ENGINE] Network restored — syncing pending outbox items');
         this.triggerSync();
       }
     });
 
-    // Initial check
+    // Initial check on app boot
     NetInfo.fetch().then((state) => {
       this.isOnline = Boolean(state.isConnected && state.isInternetReachable !== false);
       this.notifyListeners();
       if (this.isOnline) {
-        this.triggerSync();
+        this.triggerSync({ forceSnapshot: true });
       }
     });
 
-    // Periodic sync every 15 seconds
+    // Background interval check: ONLY run if there are pending outbox items!
     if (!this.timer) {
       this.timer = setInterval(() => {
         if (this.isOnline && !this.isSyncing) {
-          this.triggerSync();
+          const pendingCount = getPendingOutboxCount();
+          if (pendingCount > 0) {
+            this.triggerSync();
+          }
         }
-      }, 15000);
+      }, 30000);
     }
   }
 
@@ -95,9 +94,20 @@ class SyncEngine {
     this.listeners.forEach((l) => l(status));
   }
 
-  public async triggerSync(): Promise<void> {
+  public async triggerSync(options?: { forceSnapshot?: boolean }): Promise<void> {
     if (!this.isOnline || this.isSyncing) {
       this.notifyListeners();
+      return;
+    }
+
+    const pendingMutations = getPendingOutboxMutations();
+    const lastSyncedAtStr = getSyncMeta('last_synced_at');
+    const now = Date.now();
+    const lastSyncedTime = lastSyncedAtStr ? new Date(lastSyncedAtStr).getTime() : 0;
+    const isSnapshotStale = now - lastSyncedTime > 10 * 60 * 1000; // 10 minutes
+
+    // If no pending mutations, no forced snapshot, and snapshot is fresh -> IDLE (do nothing)
+    if (pendingMutations.length === 0 && !options?.forceSnapshot && !isSnapshotStale) {
       return;
     }
 
@@ -105,8 +115,6 @@ class SyncEngine {
     this.notifyListeners();
 
     try {
-      const pendingMutations = getPendingOutboxMutations();
-
       if (pendingMutations.length > 0) {
         console.log(`[SYNC ENGINE] Uploading batch of ${pendingMutations.length} mutations…`);
         const res = await api.post<{ results: Array<{ localId: string; success: boolean }> }>(
@@ -129,26 +137,27 @@ class SyncEngine {
         }
       }
 
-      // Fetch snapshot to keep local database fresh
-      console.log('[SYNC ENGINE] Fetching server snapshot for local database refresh…');
-      const snapshot = await api.get<SyncSnapshotData>('/sync/snapshot');
+      // Fetch snapshot only when mutations were uploaded, or when snapshot is explicitly requested / stale (>10 min)
+      if (pendingMutations.length > 0 || options?.forceSnapshot || isSnapshotStale) {
+        console.log('[SYNC ENGINE] Refreshing server snapshot…');
+        const snapshot = await api.get<SyncSnapshotData>('/sync/snapshot');
 
-      if (snapshot) {
-        if (snapshot.categories && snapshot.menuItems) {
-          saveMenuSnapshotToLocal(snapshot.categories, snapshot.menuItems);
+        if (snapshot) {
+          if (snapshot.categories && snapshot.menuItems) {
+            saveMenuSnapshotToLocal(snapshot.categories, snapshot.menuItems);
+          }
+          if (snapshot.inventory) {
+            saveInventorySnapshotToLocal(snapshot.inventory);
+          }
+          if (snapshot.orders) {
+            saveOrdersSnapshotToLocal(snapshot.orders);
+          }
         }
-        if (snapshot.inventory) {
-          saveInventorySnapshotToLocal(snapshot.inventory);
-        }
-        if (snapshot.orders) {
-          saveOrdersSnapshotToLocal(snapshot.orders);
-        }
+
+        setSyncMeta('last_synced_at', new Date().toISOString());
       }
-
-      const now = new Date().toISOString();
-      setSyncMeta('last_synced_at', now);
     } catch (err: any) {
-      console.warn('[SYNC ENGINE] Sync attempt error (will retry):', err?.message || err);
+      console.warn('[SYNC ENGINE] Sync attempt warning:', err?.message || err);
     } finally {
       this.isSyncing = false;
       this.notifyListeners();

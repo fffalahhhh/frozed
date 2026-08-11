@@ -257,7 +257,9 @@ export function getLocalNextOrderNumber(): number {
 export function saveOrdersSnapshotToLocal(orders: Order[]): void {
   const db = getLocalDb();
   db.withTransactionSync(() => {
-    db.execSync("DELETE FROM local_order_items WHERE orderId IN (SELECT id FROM local_orders WHERE syncStatus = 'synced');");
+    db.execSync(
+      "DELETE FROM local_order_items WHERE orderId IN (SELECT id FROM local_orders WHERE syncStatus = 'synced');",
+    );
     db.execSync("DELETE FROM local_orders WHERE syncStatus = 'synced';");
 
     for (const o of orders) {
@@ -435,7 +437,9 @@ export function updateLocalOrderStatus(
       [orderId],
     );
   } else if (status === 'voided') {
-    db.runSync("UPDATE local_orders SET status = 'voided', syncStatus = 'pending' WHERE id = ?;", [orderId]);
+    db.runSync("UPDATE local_orders SET status = 'voided', syncStatus = 'pending' WHERE id = ?;", [
+      orderId,
+    ]);
   }
 }
 
@@ -482,7 +486,7 @@ export function markOutboxMutationsSynced(localIds: string[]): void {
 export function markOutboxMutationFailed(localId: string): void {
   const db = getLocalDb();
   db.runSync(
-    'UPDATE sync_outbox SET retryCount = retryCount + 1, lastAttemptAt = ? WHERE localId = ?;',
+    "UPDATE sync_outbox SET retryCount = retryCount + 1, status = CASE WHEN retryCount >= 5 THEN 'failed' ELSE 'pending' END, lastAttemptAt = ? WHERE localId = ?;",
     [new Date().toISOString(), localId],
   );
 }
