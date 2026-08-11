@@ -15,6 +15,7 @@
     "mobile": "turbo run dev --filter=mobile",
     "server": "turbo run dev --filter=server",
     "db:wipe": "npm --prefix apps/server run db:wipe",
+    "db:seed-frozen": "npm --prefix apps/server run db:seed-frozen",
     "release": "git add . && git commit -m \"APP - [release] release build\" && git push origin main"
   },
   "devDependencies": {
