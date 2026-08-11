@@ -1,17 +1,32 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  TextInput,
+  Alert,
+} from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import { fmt } from '../../components/common/constants';
 import { StatCard } from '../../components/analytics/StatCard';
 import { ProfitBreakdown } from '../../components/analytics/ProfitBreakdown';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
-import { getLocalOrders, getLocalMenuItems, getLocalInventory } from '../../lib/db';
+import {
+  getLocalOrders,
+  getLocalMenuItems,
+  getLocalInventory,
+  getAnalyticsPasswordFromDb,
+  clearAllLocalData,
+} from '../../lib/db';
 import { syncEngine } from '../../lib/syncEngine';
 import { getLocalDateStr, getUtcRangeForLocalDate } from '../../lib/dateUtils';
 import { calculateMenuItemCost } from '../../lib/stock';
+import { useToastStore } from '../../store/toast';
 
 type DateFilter = 'today' | 'yesterday' | 'this_week' | 'all' | 'custom';
 type ViewTab = 'menu_items' | 'inventory_expenses';
@@ -47,6 +62,13 @@ function getDateRange(filter: DateFilter, customDate?: string) {
 }
 
 export default function AnalyticsScreen() {
+  const queryClient = useQueryClient();
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [enteredPassword, setEnteredPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const targetPassword = useMemo(() => getAnalyticsPasswordFromDb(), []);
+
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [selectedCustomDate, setSelectedCustomDate] = useState<string>('');
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
@@ -54,6 +76,22 @@ export default function AnalyticsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isManualSyncing, setIsManualSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState(() => syncEngine.getStatus());
+
+  const handleUnlock = () => {
+    if (!enteredPassword) {
+      setPasswordError('Please enter the password');
+      return;
+    }
+
+    if (enteredPassword === targetPassword) {
+      setIsUnlocked(true);
+      setPasswordError('');
+      useToastStore.getState().showToast('Analytics unlocked', 'success');
+    } else {
+      setPasswordError('Incorrect password. Access denied.');
+      useToastStore.getState().showToast('Incorrect password', 'error');
+    }
+  };
 
   useEffect(() => {
     return syncEngine.subscribe((status) => {
@@ -375,6 +413,73 @@ export default function AnalyticsScreen() {
     return items.filter((i: any) => (i?.name || '').toLowerCase().includes(q));
   }, [analyticsData?.allInventory, searchQuery]);
 
+  if (!isUnlocked) {
+    return (
+      <View className="flex-1 bg-[#F9F8F6] pt-12 px-5 items-center justify-center">
+        <View className="w-full max-w-sm bg-white rounded-3xl p-6 border border-border/80 shadow-md items-center">
+          <View className="w-16 h-16 rounded-2xl bg-[#1B4332]/10 items-center justify-center mb-4 border border-[#1B4332]/20">
+            <Ionicons name="lock-closed" size={30} color="#1B4332" />
+          </View>
+
+          <Text className="text-text-primary font-sans-bold text-xl text-center">
+            Analytics Security Lock
+          </Text>
+          <Text className="text-text-muted font-sans text-xs text-center mt-1 mb-6 px-1">
+            Enter the 10-character password to unlock sales, expenses, and profit reports.
+          </Text>
+
+          <View className="w-full mb-4">
+            <View className="flex-row items-center justify-between mb-1.5 px-1">
+              <Text className="text-text-primary font-sans-semibold text-xs">Password</Text>
+              <Text className="text-text-muted font-sans-medium text-[11px]">
+                {enteredPassword.length}/10
+              </Text>
+            </View>
+            <View className="flex-row items-center bg-surface border border-border/80 rounded-2xl px-3 py-1.5">
+              <Ionicons name="key-outline" size={18} color="#6B7280" />
+              <TextInput
+                value={enteredPassword}
+                onChangeText={(txt) => {
+                  setEnteredPassword(txt);
+                  if (passwordError) setPasswordError('');
+                }}
+                placeholder="Enter 10-char password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry={!showPassword}
+                maxLength={10}
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="flex-1 font-sans text-sm text-text-primary px-2.5 py-1.5"
+                onSubmitEditing={handleUnlock}
+              />
+              <Pressable onPress={() => setShowPassword(!showPassword)} className="p-1">
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={18}
+                  color="#6B7280"
+                />
+              </Pressable>
+            </View>
+            {passwordError ? (
+              <Text className="text-rose-600 font-sans text-xs mt-1.5 px-1">{passwordError}</Text>
+            ) : null}
+          </View>
+
+          <Pressable
+            onPress={handleUnlock}
+            className="w-full py-3.5 bg-[#1B4332] rounded-2xl items-center justify-center shadow-sm"
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="lock-open-outline" size={18} color="#FFFFFF" />
+              <Text className="text-white font-sans-bold text-sm">Unlock Analytics</Text>
+            </View>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-white pt-10 px-4">
       {/* Header */}
@@ -385,18 +490,32 @@ export default function AnalyticsScreen() {
             Sales, Expenses, Profits & Inventory Costs
           </Text>
         </View>
-        <Pressable
-          onPress={handleReload}
-          disabled={isSyncingActive}
-          className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border/40"
-          style={({ pressed }) => ({ opacity: pressed || isSyncingActive ? 0.7 : 1 })}
-        >
-          {isSyncingActive ? (
-            <ActivityIndicator size="small" color="#1B4332" />
-          ) : (
-            <Ionicons name="refresh" size={16} color="#1B4332" />
-          )}
-        </Pressable>
+
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            onPress={() => {
+              setIsUnlocked(false);
+              setEnteredPassword('');
+            }}
+            className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border/40"
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <Ionicons name="lock-closed-outline" size={15} color="#1B4332" />
+          </Pressable>
+
+          <Pressable
+            onPress={handleReload}
+            disabled={isSyncingActive}
+            className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border/40"
+            style={({ pressed }) => ({ opacity: pressed || isSyncingActive ? 0.7 : 1 })}
+          >
+            {isSyncingActive ? (
+              <ActivityIndicator size="small" color="#1B4332" />
+            ) : (
+              <Ionicons name="refresh" size={16} color="#1B4332" />
+            )}
+          </Pressable>
+        </View>
       </View>
 
       {/* Date Selector Pills */}

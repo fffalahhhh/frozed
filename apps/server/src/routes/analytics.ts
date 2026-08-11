@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import { orders, orderItems, shopExpenses } from '../db/schema.js';
+import { orders, orderItems, shopExpenses, analyticsSecurity } from '../db/schema.js';
 import { eq, gte, lte, and, sql, desc } from 'drizzle-orm';
 
 export const analyticsRouter = new Hono();
@@ -240,4 +240,51 @@ analyticsRouter.get('/summary', async (c) => {
       netProfit: (totalRevenue - totalCOGS - shopExpTotal).toFixed(2),
     },
   });
+});
+
+async function ensureAnalyticsSecurityTable() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "analytics_security" (
+        "key" TEXT PRIMARY KEY DEFAULT 'analytics_password',
+        "password" TEXT NOT NULL DEFAULT 'Frozed2026',
+        "updated_at" TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+  } catch (err) {
+    console.error('[DB] ensureAnalyticsSecurityTable warning:', err);
+  }
+}
+
+// GET /analytics/security — get analytics password from PostgreSQL
+analyticsRouter.get('/security', async (c) => {
+  await ensureAnalyticsSecurityTable();
+  const rows = await db.select().from(analyticsSecurity);
+  if (rows.length > 0) {
+    return c.json({ success: true, password: rows[0].password });
+  }
+  await db.insert(analyticsSecurity).values({
+    key: 'analytics_password',
+    password: 'Frozed2026',
+  });
+  return c.json({ success: true, password: 'Frozed2026' });
+});
+
+// POST /analytics/security — update analytics password in PostgreSQL
+analyticsRouter.post('/security', async (c) => {
+  await ensureAnalyticsSecurityTable();
+  const { password } = await c.req.json();
+  if (!password || typeof password !== 'string') {
+    return c.json({ success: false, error: 'Password string is required' }, 400);
+  }
+
+  await db
+    .insert(analyticsSecurity)
+    .values({ key: 'analytics_password', password, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: analyticsSecurity.key,
+      set: { password, updatedAt: new Date() },
+    });
+
+  return c.json({ success: true, password });
 });

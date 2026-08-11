@@ -306,3 +306,11 @@ export const preOrders = pgTable('pre_orders', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+// ─── Analytics Security ───────────────────────────────────────────────────────
+
+export const analyticsSecurity = pgTable('analytics_security', {
+  key: text('key').primaryKey().default('analytics_password'),
+  password: text('password').notNull().default('Frozed2026'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+

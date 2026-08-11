@@ -238,6 +238,7 @@ export interface SyncSnapshotData {
   menuItems: MenuItem[];
   inventory: InventoryItem[];
   orders: Order[];
+  analyticsPassword?: string;
 }
 
 export interface SyncOrderPayload {

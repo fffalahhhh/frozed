@@ -11,6 +11,7 @@ import {
   saveOrdersSnapshotToLocal,
   setSyncMeta,
   getSyncMeta,
+  setAnalyticsPasswordInDb,
 } from './db';
 import type { SyncSnapshotData } from '@frozen-shake/shared';
 
@@ -151,6 +152,9 @@ class SyncEngine {
           }
           if (snapshot.orders) {
             saveOrdersSnapshotToLocal(snapshot.orders);
+          }
+          if (snapshot.analyticsPassword) {
+            setAnalyticsPasswordInDb(snapshot.analyticsPassword);
           }
         }
 

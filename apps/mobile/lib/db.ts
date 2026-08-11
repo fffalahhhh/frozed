@@ -115,7 +115,18 @@ function initLocalDbInternal(db: SQLite.SQLiteDatabase): void {
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS analytics_security (
+        key TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
     `);
+
+    db.runSync(
+      "INSERT OR IGNORE INTO analytics_security (key, password, updatedAt) VALUES ('analytics_password', 'Frozed2026', ?);",
+      [new Date().toISOString()],
+    );
   } catch (err) {
     console.error('[LOCAL DB] DDL Init Error:', err);
   }
@@ -196,6 +207,10 @@ export function getLocalMenuItems(): MenuItem[] {
 export function saveInventorySnapshotToLocal(items: InventoryItem[]): void {
   const db = getLocalDb();
   db.withTransactionSync(() => {
+    if (!items || items.length === 0) {
+      db.execSync('DELETE FROM local_inventory;');
+      return;
+    }
     db.execSync("DELETE FROM local_inventory WHERE syncStatus = 'synced';");
     for (const i of items) {
       const pendingRow = db.getFirstSync<{ id: string }>(
@@ -269,6 +284,11 @@ export function getLocalNextOrderNumber(): number {
 export function saveOrdersSnapshotToLocal(orders: Order[]): void {
   const db = getLocalDb();
   db.withTransactionSync(() => {
+    if (!orders || orders.length === 0) {
+      db.execSync('DELETE FROM local_order_items;');
+      db.execSync('DELETE FROM local_orders;');
+      return;
+    }
     db.execSync(
       "DELETE FROM local_order_items WHERE orderId IN (SELECT id FROM local_orders WHERE syncStatus = 'synced');",
     );
@@ -562,5 +582,54 @@ export function getSyncMeta(key: string): string | null {
     return row?.value || null;
   } catch (err) {
     return null;
+  }
+}
+
+export const DEFAULT_ANALYTICS_PASSWORD = 'Frozed2026';
+
+export function getAnalyticsPasswordFromDb(): string {
+  try {
+    const db = getLocalDb();
+    const row = db.getFirstSync<{ password: string }>(
+      "SELECT password FROM analytics_security WHERE key = 'analytics_password';",
+    );
+    if (row && row.password) {
+      return row.password;
+    }
+    db.runSync(
+      "INSERT OR REPLACE INTO analytics_security (key, password, updatedAt) VALUES ('analytics_password', 'Frozed2026', ?);",
+      [new Date().toISOString()],
+    );
+    return DEFAULT_ANALYTICS_PASSWORD;
+  } catch (err) {
+    return DEFAULT_ANALYTICS_PASSWORD;
+  }
+}
+
+export function setAnalyticsPasswordInDb(password: string): void {
+  try {
+    const db = getLocalDb();
+    db.runSync(
+      "INSERT OR REPLACE INTO analytics_security (key, password, updatedAt) VALUES ('analytics_password', ?, ?);",
+      [password, new Date().toISOString()],
+    );
+  } catch (err) {
+    console.error('[LOCAL DB] setAnalyticsPasswordInDb error:', err);
+  }
+}
+
+export function clearAllLocalData(): void {
+  try {
+    const db = getLocalDb();
+    db.withTransactionSync(() => {
+      db.execSync('DELETE FROM local_categories;');
+      db.execSync('DELETE FROM local_menu_items;');
+      db.execSync('DELETE FROM local_inventory;');
+      db.execSync('DELETE FROM local_orders;');
+      db.execSync('DELETE FROM local_order_items;');
+      db.execSync('DELETE FROM sync_outbox;');
+    });
+  } catch (err) {
+    console.error('[LOCAL DB] clearAllLocalData error:', err);
   }
 }

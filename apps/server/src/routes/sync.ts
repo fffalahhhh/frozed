@@ -8,6 +8,7 @@ import {
   inventoryAdjustments,
   shopExpenses,
   recipes,
+  analyticsSecurity,
 } from '../db/schema.js';
 import { eq, sql, inArray } from 'drizzle-orm';
 import type { SyncMutation, SyncResultItem } from '@frozen-shake/shared';
@@ -203,8 +204,31 @@ syncRouter.post('/batch', async (c) => {
   return c.json({ success: true, data: { results } });
 });
 
-// GET /sync/snapshot — pull full seed snapshot of categories, menu, stock & orders for SQLite seeding
+// GET /sync/snapshot — pull full seed snapshot of categories, menu, stock, orders & analytics password for SQLite seeding
 syncRouter.get('/snapshot', async (c) => {
+  let analyticsPwd = 'Frozed2026';
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "analytics_security" (
+        "key" TEXT PRIMARY KEY DEFAULT 'analytics_password',
+        "password" TEXT NOT NULL DEFAULT 'Frozed2026',
+        "updated_at" TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    const secRows = await db.select().from(analyticsSecurity);
+    if (secRows.length > 0 && secRows[0].password) {
+      analyticsPwd = secRows[0].password;
+    } else {
+      await db.insert(analyticsSecurity).values({
+        key: 'analytics_password',
+        password: 'Frozed2026',
+      });
+    }
+  } catch (secErr) {
+    console.warn('[SYNC] analytics_security check error:', secErr);
+  }
+
   const [cats, items, inv, ords] = await Promise.all([
     db.query.categories.findMany({
       orderBy: (t, { asc }) => [asc(t.sortOrder)],
@@ -233,6 +257,7 @@ syncRouter.get('/snapshot', async (c) => {
       menuItems: items,
       inventory: inv,
       orders: ords,
+      analyticsPassword: analyticsPwd,
     },
   });
 });
@@ -296,4 +321,34 @@ syncRouter.get('/menu', async (c) => {
     }),
   ]);
   return c.json({ success: true, data: { categories: cats, items } });
+});
+
+// POST /sync/reset — reset everything: categories, menu items, inventory, stock, orders, expenses to 0
+syncRouter.post('/reset', async (c) => {
+  try {
+    await db.execute(sql`
+      TRUNCATE 
+        "order_items", 
+        "orders", 
+        "bills", 
+        "shop_expenses", 
+        "inventory_adjustments", 
+        "pre_orders", 
+        "recipes", 
+        "making_costs", 
+        "menu_item_flavours", 
+        "menu_items", 
+        "flavours", 
+        "categories", 
+        "inventory_items" 
+      RESTART IDENTITY CASCADE;
+    `);
+    return c.json({
+      success: true,
+      message: 'All database tables (categories, menu items, inventory, expenses, orders) reset to 0.',
+    });
+  } catch (err: any) {
+    console.error('[SYNC RESET] Reset failed:', err);
+    return c.json({ success: false, error: err.message || 'Reset failed' }, 500);
+  }
 });
