@@ -10,19 +10,13 @@ export interface CategoryCardProps {
   onPress: () => void;
 }
 
-export function CategoryCard({
-  name,
-  itemCount,
-  isActive,
-  needsRestock,
-  onPress,
-}: CategoryCardProps) {
+export function CategoryCard({ name, isActive, onPress }: CategoryCardProps) {
   const isAll = name.toLowerCase() === 'all';
 
   return (
     <Pressable
       onPress={onPress}
-      className={`rounded-[18px] px-3.5 py-3 mr-2 min-w-[125px] h-[84px] justify-between border ${
+      className={`rounded-[18px] px-3.5 py-3 mr-2  justify-between border ${
         isActive
           ? 'bg-[#0D4830] border-[#0D4830] shadow-md shadow-[#0D4830]/25 elevation-3'
           : 'bg-white border-[#E5E0D8] shadow-sm elevation-1'
@@ -31,43 +25,7 @@ export function CategoryCard({
         opacity: pressed ? 0.88 : 1,
       })}
     >
-      {/* Top Status Icon & Text (Borderless inline row) */}
-      <View className="flex-row items-center gap-1 self-start">
-        {needsRestock ? (
-          <>
-            <Ionicons
-              name="information-circle"
-              size={12}
-              color={isActive ? '#FFFFFF' : '#FF5A5A'}
-            />
-            <Text
-              className={`text-[9px] font-sans-medium ${
-                isActive ? 'text-white' : 'text-[#FF5A5A]'
-              }`}
-            >
-              Re-stock
-            </Text>
-          </>
-        ) : (
-          <>
-            <Ionicons
-              name="checkmark-circle"
-              size={12}
-              color={isActive ? '#FFFFFF' : '#0D4830'}
-            />
-            <Text
-              className={`text-[9px] font-sans-medium ${
-                isActive ? 'text-white' : 'text-[#0D4830]'
-              }`}
-            >
-              {isAll ? 'All Items' : 'Available'}
-            </Text>
-          </>
-        )}
-      </View>
-
-      {/* Title & Item Count */}
-      <View className="mt-2">
+      <View className="">
         <Text
           className={`font-sans-bold text-xs leading-4 ${
             isActive ? 'text-white' : 'text-gray-900'
@@ -75,13 +33,6 @@ export function CategoryCard({
           numberOfLines={1}
         >
           {name}
-        </Text>
-        <Text
-          className={`font-sans text-[10px] mt-0.5 ${
-            isActive ? 'text-white/80' : 'text-gray-400'
-          }`}
-        >
-          {itemCount} items
         </Text>
       </View>
     </Pressable>
