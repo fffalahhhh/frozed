@@ -548,13 +548,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
       <Text className="text-gray-700 font-sans-medium text-xs mt-3 mb-1.5">Order list</Text>
 
       {/* Stable Height Order List Container */}
-      <Pressable
-        onPress={() => {
-          setShowNamePopover(false);
-          setShowPhonePopover(false);
-        }}
-        className="flex-1 border border-[#E5E0D8] rounded-[24px] px-3.5 py-2 bg-white overflow-hidden my-1 min-h-[180px]"
-      >
+      <View className="flex-1 border border-[#E5E0D8] rounded-[24px] px-3.5 py-2 bg-white overflow-hidden my-1 min-h-[180px]">
         {items.length === 0 ? (
           <View className="flex-1 items-center justify-center py-6">
             <View className="w-14 h-14 rounded-full bg-[#F4F1EA] items-center justify-center mb-2">
@@ -566,7 +560,13 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
             </Text>
           </View>
         ) : (
-          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 8 }}
+          >
             {items.map((item) => {
               const targetMenu = allMenuItems.find((m) => m.id === item.menuItemId);
               const stockInfo = targetMenu
@@ -593,7 +593,7 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
             })}
           </ScrollView>
         )}
-      </Pressable>
+      </View>
 
       {/* Footer Section: Total, Save as Pre-Order, & Confirm Order Button */}
       <View>
