@@ -1,5 +1,29 @@
+export const formatIndianNumber = (num: number, decimals = 0): string => {
+  if (isNaN(num)) return '0';
+  const fixedStr = num.toFixed(decimals);
+  const parts = fixedStr.split('.');
+  let integerPart = parts[0];
+  const decimalPart = parts[1];
+
+  const isNegative = integerPart.startsWith('-');
+  if (isNegative) {
+    integerPart = integerPart.slice(1);
+  }
+
+  let formattedInteger = integerPart;
+  if (integerPart.length > 3) {
+    const lastThree = integerPart.substring(integerPart.length - 3);
+    const otherDigits = integerPart.substring(0, integerPart.length - 3);
+    formattedInteger = otherDigits.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+  }
+
+  const result = isNegative ? `-${formattedInteger}` : formattedInteger;
+  return decimals > 0 && decimalPart !== undefined ? `${result}.${decimalPart}` : result;
+};
+
 export const fmt = (n?: number | string | null, decimals = 0) =>
-  `₹${parseFloat(String(n || 0)).toFixed(decimals)}`;
+  `₹${formatIndianNumber(parseFloat(String(n || 0)), decimals)}`;
+
 
 export const COLORS = {
   primary: '#0D4830',
