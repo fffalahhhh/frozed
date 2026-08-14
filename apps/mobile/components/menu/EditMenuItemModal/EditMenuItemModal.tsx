@@ -10,7 +10,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import type { MenuItem, RecipeItem } from '@frozen-shake/shared';
 import { api } from '../../../lib/api';
@@ -32,6 +32,7 @@ export function EditMenuItemModal({
   categories,
   onSuccess,
 }: EditMenuItemModalProps) {
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
@@ -97,6 +98,7 @@ export function EditMenuItemModal({
         ingredients: formattedIngredients,
       });
 
+      await queryClient.invalidateQueries({ queryKey: ['menu'] });
       useToastStore.getState().showToast(`"${name}" updated!`, 'success');
       onSuccess();
       onClose();

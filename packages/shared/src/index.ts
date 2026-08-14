@@ -54,6 +54,7 @@ export interface MenuItem {
   maxAvailable?: number; // max portions available based on recipe inventory
   flavours?: MenuItemFlavour[];
   recipes?: RecipeItem[];
+  createdAt?: string | Date;
 }
 
 export interface MenuItemFlavour {

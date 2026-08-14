@@ -14,6 +14,7 @@ menuRouter.get('/', async (c) => {
     }),
     db.query.menuItems.findMany({
       where: eq(menuItems.isDeleted, false),
+      orderBy: (t, { desc, asc }) => [desc(t.createdAt), asc(t.id)],
       with: {
         flavours: { with: { flavour: true } },
         recipes: true,

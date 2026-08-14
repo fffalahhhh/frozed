@@ -16,9 +16,15 @@ import { api } from '../../lib/api';
 import type { MenuWithCategories, MenuItem, RecipeItem } from '@frozen-shake/shared';
 import { useToastStore } from '../../store/toast';
 import { fmt } from '../../components/common/constants';
+import { formatDateLocalized } from '../../lib/dateUtils';
 import { AddMenuItemModal } from '../../components/menu/AddMenuItemModal';
 import { EditMenuItemModal } from '../../components/menu/EditMenuItemModal';
-import { getLocalCategories, getLocalMenuItems, getLocalInventory } from '../../lib/db';
+import {
+  getLocalCategories,
+  getLocalMenuItems,
+  getLocalInventory,
+  saveMenuSnapshotToLocal,
+} from '../../lib/db';
 
 function MenuItemThumbnail({ item }: { item: MenuItem }) {
   const [imgErr, setImgErr] = useState(false);
@@ -62,6 +68,11 @@ export default function MenuManagementScreen() {
     queryFn: async () => {
       try {
         const remote = await api.get<MenuWithCategories[]>('/menu');
+        if (Array.isArray(remote)) {
+          const cats = remote.map((r) => r.category);
+          const items = remote.flatMap((r) => r.items);
+          saveMenuSnapshotToLocal(cats, items);
+        }
         return remote;
       } catch (e) {
         const cats = getLocalCategories();
@@ -110,7 +121,14 @@ export default function MenuManagementScreen() {
         items.push({ ...item, categoryName: section.category.name });
       });
     });
-    return items;
+    return items.sort((a, b) => {
+      const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (tA !== tB && !isNaN(tA) && !isNaN(tB)) {
+        return tB - tA;
+      }
+      return a.id.localeCompare(b.id);
+    });
   }, [menuData]);
 
   const filteredItems = allItemsWithCategory.filter((item) => {

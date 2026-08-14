@@ -11,7 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../lib/api';
 import { useToastStore } from '../../../store/toast';
@@ -29,6 +29,7 @@ export function AddMenuItemModal({
   categories,
   onSuccess,
 }: AddMenuItemModalProps) {
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
@@ -122,6 +123,7 @@ export function AddMenuItemModal({
         sellingPrice: priceNum,
         ingredients: formattedIngredients,
       });
+      await queryClient.invalidateQueries({ queryKey: ['menu'] });
       onSuccess();
     } catch (err: any) {
       useToastStore.getState().showToast(err.message || 'Failed to create menu item', 'error');

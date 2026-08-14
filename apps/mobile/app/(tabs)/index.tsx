@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { useRootNavigationState } from 'expo-router';
+import { useRootNavigationState, useFocusEffect } from 'expo-router';
 import { api } from '../../lib/api';
 import { useCartStore } from '../../store/cart';
 import { useToastStore } from '../../store/toast';
@@ -26,7 +26,12 @@ import { CartPanel } from '../../components/pos/CartPanel';
 import { AddMenuItemModal } from '../../components/pos/AddMenuItemModal';
 import { PendingPreOrdersBar } from '../../components/pos/PendingPreOrdersBar/PendingPreOrdersBar';
 
-import { getLocalCategories, getLocalMenuItems, getLocalInventory } from '../../lib/db';
+import {
+  getLocalCategories,
+  getLocalMenuItems,
+  getLocalInventory,
+  saveMenuSnapshotToLocal,
+} from '../../lib/db';
 
 // ─── Main POS Screen ──────────────────────────────────────────────────────────
 export default function FOHScreen() {
@@ -90,6 +95,11 @@ export default function FOHScreen() {
     queryFn: async () => {
       try {
         const remote = await api.get<MenuWithCategories[]>('/menu');
+        if (Array.isArray(remote)) {
+          const cats = remote.map((r) => r.category);
+          const items = remote.flatMap((r) => r.items);
+          saveMenuSnapshotToLocal(cats, items);
+        }
         return remote;
       } catch (e) {
         const cats = getLocalCategories();
@@ -101,8 +111,14 @@ export default function FOHScreen() {
         }));
       }
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchMenu();
+    }, [refetchMenu]),
+  );
 
   // Query inventory stock items for real-time menu availability calculation
   const { data: stockItems } = useQuery<any[]>({
