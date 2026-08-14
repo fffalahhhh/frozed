@@ -16,8 +16,7 @@ import { OrderHistoryCard } from '../../components/history/OrderHistoryCard';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
 import { parseDbDate, getLocalDateStr } from '../../lib/dateUtils';
 
-import { getLocalOrders, updateLocalOrderStatus, enqueueOutboxMutation } from '../../lib/db';
-import { syncEngine } from '../../lib/syncEngine';
+import { getLocalOrders, updateLocalOrderStatus } from '../../lib/db';
 
 export default function HistoryScreen() {
   const queryClient = useQueryClient();
@@ -62,12 +61,7 @@ export default function HistoryScreen() {
       // 1. Instant local SQLite update (preserves existing paymentMethod)
       updateLocalOrderStatus(orderId, 'paid');
 
-      // 2. Queue mutation in outbox for background batch sync (without forcing paymentMethod)
-      enqueueOutboxMutation(`pay_${orderId}_${Date.now()}`, 'PAY_ORDER', {
-        orderId,
-      });
-
-      // 3. Instant 0ms Optimistic UI cache mutation in React Query (preserves paymentMethod)
+      // 2. Instant 0ms Optimistic UI cache mutation in React Query (preserves paymentMethod)
       queryClient.setQueryData<any[]>(['orders'], (oldOrders) => {
         if (!oldOrders || !Array.isArray(oldOrders)) return getLocalOrders();
         return oldOrders.map((o) =>
@@ -83,9 +77,6 @@ export default function HistoryScreen() {
       });
 
       useToastStore.getState().showToast('Order marked as Paid successfully!', 'success');
-
-      // 4. Trigger background batch sync engine
-      syncEngine.triggerSync();
     } catch (err: any) {
       useToastStore.getState().showToast(err.message || 'Failed to update order', 'error');
     }
@@ -95,11 +86,6 @@ export default function HistoryScreen() {
     try {
       // 1. Instant local SQLite update back to billed
       updateLocalOrderStatus(orderId, 'billed');
-
-      // 2. Queue UNPAY_ORDER mutation in outbox
-      enqueueOutboxMutation(`unpay_${orderId}_${Date.now()}`, 'UNPAY_ORDER', {
-        orderId,
-      });
 
       // 3. Instant 0ms Optimistic UI cache mutation in React Query
       queryClient.setQueryData<any[]>(['orders'], (oldOrders) => {
@@ -116,9 +102,6 @@ export default function HistoryScreen() {
       });
 
       useToastStore.getState().showToast('Payment reverted back to Unpaid/Credit!', 'success');
-
-      // 4. Trigger background batch sync engine
-      syncEngine.triggerSync();
     } catch (err: any) {
       useToastStore.getState().showToast(err.message || 'Failed to revert payment', 'error');
     }

@@ -75,14 +75,15 @@ export function OrderHistoryCard({ order, onMarkAsPaid, onRevertPayment }: Order
   const payInfo = getPaymentBadge(order.paymentMethod);
   const items = Array.isArray(order.items) ? order.items : [];
   const isPaid = (order.status || '').toLowerCase() === 'paid';
+  const isCreditOrder = (order.paymentMethod || '').toLowerCase() === 'credit';
 
-  // 5-minute window check for reverting paid status
+  // 5-minute window check for reverting paid status (ONLY for Credit orders)
   const canRevert = useMemo(() => {
-    if (!isPaid || !order.paidAt) return false;
+    if (!isPaid || !order.paidAt || !isCreditOrder) return false;
     const paidTime = new Date(order.paidAt).getTime();
     const diffMinutes = (now - paidTime) / (1000 * 60);
     return diffMinutes >= 0 && diffMinutes < 5;
-  }, [isPaid, order.paidAt, now]);
+  }, [isPaid, order.paidAt, isCreditOrder, now]);
 
   const formatDate = (dateStr: string) => {
     return formatDateLocalized(dateStr);

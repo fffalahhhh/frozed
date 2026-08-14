@@ -1,13 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-  TextInput,
-  Alert,
-} from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,9 +13,7 @@ import {
   getLocalMenuItems,
   getLocalInventory,
   getAnalyticsPasswordFromDb,
-  clearAllLocalData,
 } from '../../lib/db';
-import { syncEngine } from '../../lib/syncEngine';
 import { getLocalDateStr, getUtcRangeForLocalDate } from '../../lib/dateUtils';
 import { calculateMenuItemCost } from '../../lib/stock';
 import { useToastStore } from '../../store/toast';
@@ -75,7 +65,6 @@ export default function AnalyticsScreen() {
   const [activeTab, setActiveTab] = useState<ViewTab>('menu_items');
   const [searchQuery, setSearchQuery] = useState('');
   const [isManualSyncing, setIsManualSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState(() => syncEngine.getStatus());
 
   const handleUnlock = () => {
     if (!enteredPassword) {
@@ -92,12 +81,6 @@ export default function AnalyticsScreen() {
       useToastStore.getState().showToast('Incorrect password', 'error');
     }
   };
-
-  useEffect(() => {
-    return syncEngine.subscribe((status) => {
-      setSyncStatus(status);
-    });
-  }, []);
 
   const dateRange = useMemo(
     () => getDateRange(dateFilter, selectedCustomDate),
@@ -126,15 +109,14 @@ export default function AnalyticsScreen() {
     queryFn: () => api.get(queryPath),
   });
 
-  const isSyncingActive = isManualSyncing || isFetching || syncStatus.isSyncing;
+  const isSyncingActive = isManualSyncing || isFetching;
 
   const handleReload = useCallback(async () => {
     setIsManualSyncing(true);
     try {
-      await syncEngine.triggerSync({ forceSnapshot: true });
       await refetch();
     } catch (err) {
-      console.error('[Analytics] Sync/Refetch error:', err);
+      console.error('[Analytics] Refetch error:', err);
     } finally {
       setIsManualSyncing(false);
     }

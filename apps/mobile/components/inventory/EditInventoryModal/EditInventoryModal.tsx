@@ -15,12 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useToastStore } from '../../../store/toast';
 import { UNITS } from '../../common/constants';
 
-import {
-  getLocalInventory,
-  updateLocalInventoryStock,
-  enqueueOutboxMutation,
-} from '../../../lib/db';
-import { syncEngine } from '../../../lib/syncEngine';
+import { getLocalInventory, updateLocalInventoryStock } from '../../../lib/db';
 
 export interface EditInventoryModalProps {
   item: any | null;
@@ -67,15 +62,7 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
           // 1. Instant local SQLite update
           updateLocalInventoryStock(item.id, delta);
 
-          // 2. Queue outbox mutation
-          enqueueOutboxMutation(`adj_${item.id}_${Date.now()}`, 'ADJUST_STOCK', {
-            inventoryItemId: item.id,
-            type: 'manual_correction',
-            quantityDelta: delta,
-            note: `Added ${delta} ${unit} to stock (Previous: ${oldStockNum}, New Total: ${calculatedTotalStock})`,
-          });
-
-          // 3. Instant 0ms Optimistic UI cache mutation in React Query
+          // 2. Instant 0ms Optimistic UI cache mutation in React Query
           queryClient.setQueryData<any[]>(['inventory-stock'], (old) => {
             if (!old || !Array.isArray(old)) return getLocalInventory();
             const reorderNum = parseFloat(reorderLevel || '0');
@@ -93,9 +80,6 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
                 : i,
             );
           });
-
-          // 4. Trigger background sync
-          syncEngine.triggerSync();
         }
       }
 

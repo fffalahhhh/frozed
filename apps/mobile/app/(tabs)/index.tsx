@@ -1,5 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, useWindowDimensions, StatusBar, FlatList } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  useWindowDimensions,
+  StatusBar,
+  FlatList,
+  Pressable,
+  Modal,
+  Animated,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useRootNavigationState } from 'expo-router';
@@ -31,6 +42,45 @@ export default function FOHScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPreOrders, setShowPreOrders] = useState(true);
 
+  // Small screen cart drawer state & slide animation
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const slideAnim = useRef(new Animated.Value(width)).current;
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isCartOpen) {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isCartOpen, slideAnim, backdropAnim]);
+
+  const handleCloseCart = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: width,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setIsCartOpen(false);
+    });
+  };
+
   const {
     data: menuData,
     isLoading,
@@ -59,13 +109,12 @@ export default function FOHScreen() {
     queryKey: ['inventory-stock'],
     queryFn: async () => {
       try {
-        const remote = await api.get<any[]>('/inventory');
-        return remote;
+        return await api.get('/inventory');
       } catch (e) {
         return getLocalInventory();
       }
     },
-    staleTime: 1000 * 5,
+    staleTime: 1000 * 30,
   });
 
   // Query pending pre-orders count for the top-right header toggle badge
@@ -92,6 +141,8 @@ export default function FOHScreen() {
   const setCustomerName = useCartStore((s) => s.setCustomerName);
   const setCustomerPhone = useCartStore((s) => s.setCustomerPhone);
   const setPaymentMethod = useCartStore((s) => s.setPaymentMethod);
+
+  const totalCartItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   // Compute all menu items across all categories
   const allItems: MenuItem[] = React.useMemo(() => {
@@ -141,11 +192,11 @@ export default function FOHScreen() {
   };
 
   async function handleProcessPreOrder(preOrder: any) {
-    // Optimistic UI mutation: transfer items and remove card immediately in 0ms
+    if (!preOrder) return;
     clearCart();
-    if (preOrder.customerName) setCustomerName(preOrder.customerName);
-    if (preOrder.customerPhone) setCustomerPhone(preOrder.customerPhone);
-    if (preOrder.paymentMethod) setPaymentMethod(preOrder.paymentMethod);
+    setCustomerName(preOrder.customerName || '');
+    setCustomerPhone(preOrder.customerPhone || '');
+    setPaymentMethod((preOrder.paymentMethod as any) || 'cash');
 
     if (Array.isArray(preOrder.items)) {
       for (const item of preOrder.items) {
@@ -171,7 +222,9 @@ export default function FOHScreen() {
 
     // Silent background sync
     try {
-      await api.delete(`/pre-orders/${preOrder.id}`);
+      if (preOrder.id && !String(preOrder.id).startsWith('temp-')) {
+        await api.delete(`/pre-orders/${preOrder.id}`);
+      }
       queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
     } catch (err: any) {
       if (previousPreOrders) {
@@ -184,12 +237,12 @@ export default function FOHScreen() {
   const MenuPanel = (
     <View className="flex-1 overflow-hidden">
       {/* Category Cards Horizontal Scroll Section */}
-      <View className="pt-1 pb-2">
+      <View className="pt-1 pb-2 flex-row items-center">
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="pl-1"
-          contentContainerStyle={{ paddingRight: 16 }}
+          className="flex-1 pl-1"
+          contentContainerStyle={{ paddingRight: 12 }}
         >
           {isLoading ? (
             [1, 2, 3, 4].map((i) => (
@@ -224,6 +277,27 @@ export default function FOHScreen() {
             </>
           )}
         </ScrollView>
+
+        {/* Small Screen Cart Toggle Button */}
+        {!isTablet && (
+          <Pressable
+            onPress={() => setIsCartOpen(true)}
+            className="flex-row items-center gap-1.5 bg-[#0D4830] px-3.5 py-2.5 rounded-[18px] border border-[#0D4830] shadow-sm elevation-2 mr-1"
+            style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+          >
+            <View className="relative">
+              <Ionicons name="cart" size={18} color="#FFFFFF" />
+              {totalCartItems > 0 && (
+                <View className="absolute -top-2 -right-2.5 bg-amber-500 rounded-full px-1.5 py-0.2 border border-white">
+                  <Text className="text-white font-sans-bold text-[9px]">
+                    {totalCartItems > 99 ? '99+' : totalCartItems}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text className="text-white font-sans-bold text-xs">Cart</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Menu Items Grid: Flex-bounded scroll area */}
@@ -313,6 +387,39 @@ export default function FOHScreen() {
             )}
           </View>
         ))}
+
+      {/* Mobile Cart Panel Drawer (Slide-in from Right Side) */}
+      {!isTablet && isCartOpen && (
+        <Modal
+          transparent
+          visible={isCartOpen}
+          onRequestClose={handleCloseCart}
+          animationType="none"
+        >
+          <View className="flex-1 flex-row justify-end">
+            {/* Semi-transparent Backdrop */}
+            <Animated.View
+              style={{ opacity: backdropAnim }}
+              className="absolute inset-0 bg-black/50"
+            >
+              <Pressable className="flex-1" onPress={handleCloseCart} />
+            </Animated.View>
+
+            {/* Slide-in Cart Drawer Panel from Right Side */}
+            <Animated.View
+              style={{
+                transform: [{ translateX: slideAnim }],
+                width: Math.min(width * 0.9, 400),
+              }}
+              className="h-full bg-[#F4F1EA] shadow-2xl z-50 p-2"
+            >
+              <SafeAreaView className="flex-1" edges={['top', 'bottom', 'right']}>
+                <CartPanel onClose={handleCloseCart} />
+              </SafeAreaView>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
 
       {/* Add Menu Item Modal */}
       <AddMenuItemModal

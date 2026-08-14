@@ -61,9 +61,21 @@ async function requestOnce<T>(path: string, options?: RequestInit): Promise<T> {
     });
     clearTimeout(timeoutId);
 
-    const json = await res.json();
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      throw new ApiError(
+        !res.ok
+          ? `Server error ${res.status}: ${text || res.statusText}`
+          : `Invalid JSON response from ${path}`,
+        { status: res.status },
+      );
+    }
+
     if (!res.ok || !json.success) {
-      throw new ApiError(json.error ?? `Request failed with status ${res.status}`, {
+      throw new ApiError(json?.error ?? `Request failed with status ${res.status}`, {
         status: res.status,
       });
     }

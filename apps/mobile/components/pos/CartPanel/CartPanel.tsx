@@ -11,15 +11,14 @@ import { fmt } from '../../common/constants';
 import { CartItemRow } from '../CartItemRow';
 import {
   saveLocalOrder,
-  enqueueOutboxMutation,
   getLocalNextOrderNumber,
   getLocalMenuItems,
   getLocalInventory,
 } from '../../../lib/db';
-import { syncEngine } from '../../../lib/syncEngine';
 
 export interface CartPanelProps {
   receiptNumber?: string;
+  onClose?: () => void;
 }
 
 function HighlightMatch({ text, query }: { text: string; query: string }) {
@@ -64,7 +63,7 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
   );
 }
 
-export function CartPanel({ receiptNumber }: CartPanelProps) {
+export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
   const queryClient = useQueryClient();
   const {
     items,
@@ -324,39 +323,10 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     // 2. Write to local SQLite database instantly (0ms latency)
     try {
       saveLocalOrder(newOrderPayload, 'pending');
-      enqueueOutboxMutation(localId, 'CREATE_ORDER', {
-        order: {
-          cashierId: '',
-          orderType: 'dine_in',
-          paymentMethod: pMethod,
-          customerName: cName || null,
-          customerPhone: cPhone || null,
-          subtotal: tot,
-          discountAmount,
-          totalAmount: tot,
-          notes: null,
-          status: pMethod === 'credit' ? 'billed' : 'paid',
-          createdAt: newOrderPayload.createdAt,
-        },
-        items: mappedOrderItems.map((i) => ({
-          menuItemId: i.menuItemId,
-          menuItemName: i.menuItemName,
-          flavourId: i.flavourId,
-          flavourName: i.flavourName,
-          quantity: i.quantity,
-          unitPrice: Number(i.unitPrice),
-          itemCost: Number(i.itemCost),
-          lineTotal: Number(i.lineTotal),
-          notes: i.notes,
-        })),
-      });
 
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
       queryClient.invalidateQueries({ queryKey: ['menu'] });
-
-      // Trigger background batch sync engine
-      syncEngine.triggerSync();
     } catch (err: any) {
       console.error('[CART] Local DB order save failed:', err);
     }
@@ -364,14 +334,19 @@ export function CartPanel({ receiptNumber }: CartPanelProps) {
     setTimeout(() => {
       setIsSuccessOrder(false);
       clearCart();
+      if (onClose) onClose();
     }, 1800);
   };
 
   return (
-    <View className="bg-white rounded-[32px] flex-1 border border-[#E5E0D8] p-5 shadow-sm elevation-2 h-full min-h-[600px] justify-between z-40 mb-2">
+    <View className="bg-white rounded-[32px] flex-1 border border-[#E5E0D8] p-5 shadow-sm elevation-2 h-full min-h-[450px] justify-between z-40 mb-2">
       {/* Header Bar */}
       <View className="flex-row items-center justify-between pb-3 border-b border-[#E5E0D8]/60">
-        <Pressable className="w-10 h-10 rounded-full bg-[#0D4830] items-center justify-center">
+        <Pressable
+          onPress={onClose}
+          className="w-10 h-10 rounded-full bg-[#0D4830] items-center justify-center"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
           <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
         </Pressable>
 

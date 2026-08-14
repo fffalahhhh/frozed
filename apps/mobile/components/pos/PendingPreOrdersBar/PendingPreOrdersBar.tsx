@@ -40,7 +40,9 @@ export function PendingPreOrdersBar({
 
     // Silent background sync
     try {
-      await api.delete(`/pre-orders/${id}`);
+      if (id && !String(id).startsWith('temp-')) {
+        await api.delete(`/pre-orders/${id}`);
+      }
       queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
     } catch (err: any) {
       if (previousPreOrders) {

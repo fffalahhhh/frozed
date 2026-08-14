@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, Image, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -18,6 +18,9 @@ export function TopLogoHeader({
   showPreOrders = true,
   onTogglePreOrders,
 }: TopLogoHeaderProps) {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -58,14 +61,17 @@ export function TopLogoHeader({
             />
           </View>
 
-          {/* Vertical Separator */}
-          <View className="w-[1px] h-6 bg-[#0D4830]/20 mx-1" />
+          {/* Vertical Separator and Live Date/Time (Only shown on tablet devices) */}
+          {isTablet && (
+            <>
+              <View className="w-[1px] h-6 bg-[#0D4830]/20 mx-1" />
 
-          {/* Running Date and Time */}
-          <Text className="text-[#0D4830] font-sans-semibold text-xs tracking-tight">
-            {dateString} <Text className="text-[#0D4830]/60">•</Text>{' '}
-            <Text className="font-sans-bold">{timeString}</Text>
-          </Text>
+              <Text className="text-[#0D4830] font-sans-semibold text-xs tracking-tight">
+                {dateString} <Text className="text-[#0D4830]/60">•</Text>{' '}
+                <Text className="font-sans-bold">{timeString}</Text>
+              </Text>
+            </>
+          )}
         </View>
 
         {/* Right side: Pre-Orders Toggle Button & Refresh Button */}
