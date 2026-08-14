@@ -1,11 +1,13 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Platform, Pressable, View, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
+import { backgroundSync } from '../../lib/syncEngine';
 
 function CustomTabBarButton(props: BottomTabBarButtonProps) {
-  const { children, onPress, onLongPress, style, accessibilityState, accessibilityLabel, testID } = props;
+  const { children, onPress, onLongPress, style, accessibilityState, accessibilityLabel, testID } =
+    props;
   const isSelected = accessibilityState?.selected;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
@@ -77,6 +79,10 @@ function CustomTabBarButton(props: BottomTabBarButtonProps) {
 }
 
 export default function TabLayout() {
+  useEffect(() => {
+    backgroundSync.init();
+  }, []);
+
   return (
     <View style={{ flex: 1 }}>
       <Tabs

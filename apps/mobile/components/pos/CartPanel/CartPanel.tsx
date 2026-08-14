@@ -11,10 +11,12 @@ import { fmt } from '../../common/constants';
 import { CartItemRow } from '../CartItemRow';
 import {
   saveLocalOrder,
+  enqueueOutboxMutation,
   getLocalNextOrderNumber,
   getLocalMenuItems,
   getLocalInventory,
 } from '../../../lib/db';
+import { backgroundSync } from '../../../lib/syncEngine';
 
 export interface CartPanelProps {
   receiptNumber?: string;
@@ -324,9 +326,39 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
     try {
       saveLocalOrder(newOrderPayload, 'pending');
 
+      enqueueOutboxMutation(localId, 'CREATE_ORDER', {
+        order: {
+          cashierId: '',
+          orderType: 'dine_in',
+          paymentMethod: pMethod,
+          customerName: cName || null,
+          customerPhone: cPhone || null,
+          subtotal: tot,
+          discountAmount,
+          totalAmount: tot,
+          notes: null,
+          status: pMethod === 'credit' ? 'billed' : 'paid',
+          createdAt: newOrderPayload.createdAt,
+        },
+        items: mappedOrderItems.map((i) => ({
+          menuItemId: i.menuItemId,
+          menuItemName: i.menuItemName,
+          flavourId: i.flavourId,
+          flavourName: i.flavourName,
+          quantity: i.quantity,
+          unitPrice: Number(i.unitPrice),
+          itemCost: Number(i.itemCost),
+          lineTotal: Number(i.lineTotal),
+          notes: i.notes,
+        })),
+      });
+
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
       queryClient.invalidateQueries({ queryKey: ['menu'] });
+
+      // Trigger background sequential sync quietly under the hood
+      backgroundSync.processQueueSequentially();
     } catch (err: any) {
       console.error('[CART] Local DB order save failed:', err);
     }

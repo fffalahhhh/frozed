@@ -16,7 +16,8 @@ import { OrderHistoryCard } from '../../components/history/OrderHistoryCard';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
 import { parseDbDate, getLocalDateStr } from '../../lib/dateUtils';
 
-import { getLocalOrders, updateLocalOrderStatus } from '../../lib/db';
+import { getLocalOrders, updateLocalOrderStatus, enqueueOutboxMutation } from '../../lib/db';
+import { backgroundSync } from '../../lib/syncEngine';
 
 export default function HistoryScreen() {
   const queryClient = useQueryClient();
@@ -61,7 +62,14 @@ export default function HistoryScreen() {
       // 1. Instant local SQLite update (preserves existing paymentMethod)
       updateLocalOrderStatus(orderId, 'paid');
 
-      // 2. Instant 0ms Optimistic UI cache mutation in React Query (preserves paymentMethod)
+      // 2. Enqueue background outbox mutation
+      enqueueOutboxMutation(`pay_${orderId}_${Date.now()}`, 'PAY_ORDER', {
+        orderId,
+        paymentMethod: existingPaymentMethod || 'cash',
+      });
+      backgroundSync.processQueueSequentially();
+
+      // 3. Instant 0ms Optimistic UI cache mutation in React Query (preserves paymentMethod)
       queryClient.setQueryData<any[]>(['orders'], (oldOrders) => {
         if (!oldOrders || !Array.isArray(oldOrders)) return getLocalOrders();
         return oldOrders.map((o) =>
@@ -86,6 +94,12 @@ export default function HistoryScreen() {
     try {
       // 1. Instant local SQLite update back to billed
       updateLocalOrderStatus(orderId, 'billed');
+
+      // 2. Enqueue background outbox mutation
+      enqueueOutboxMutation(`unpay_${orderId}_${Date.now()}`, 'UNPAY_ORDER', {
+        orderId,
+      });
+      backgroundSync.processQueueSequentially();
 
       // 3. Instant 0ms Optimistic UI cache mutation in React Query
       queryClient.setQueryData<any[]>(['orders'], (oldOrders) => {

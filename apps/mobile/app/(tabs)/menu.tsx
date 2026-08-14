@@ -13,10 +13,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
-import type { MenuWithCategories, MenuItem, RecipeItem } from '@frozen-shake/shared';
+import type { MenuWithCategories, MenuItem } from '@frozen-shake/shared';
 import { useToastStore } from '../../store/toast';
 import { fmt } from '../../components/common/constants';
-import { formatDateLocalized } from '../../lib/dateUtils';
 import { AddMenuItemModal } from '../../components/menu/AddMenuItemModal';
 import { EditMenuItemModal } from '../../components/menu/EditMenuItemModal';
 import {
@@ -54,7 +53,9 @@ export default function MenuManagementScreen() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('ALL');
-  const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE' | 'UNAVAILABLE'>('ALL');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE' | 'UNAVAILABLE'>(
+    'ALL',
+  );
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editItem, setEditItem] = useState<(MenuItem & { categoryName: string }) | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
