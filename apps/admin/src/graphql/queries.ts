@@ -284,3 +284,107 @@ export const UPDATE_ORDER_STATUS = gql`
     }
   }
 `;
+
+// ─── POS Operations ─────────────────────────────────────────────────────────
+
+export const GET_ORDERS = gql`
+  query GetOrders($limit: Int) {
+    orders(limit: $limit) {
+      orders {
+        id
+        orderNumber
+        customerName
+        customerPhone
+        status
+        paymentMethod
+        subtotal
+        discountAmount
+        totalAmount
+        notes
+        createdAt
+        paidAt
+        items {
+          id
+          menuItemId
+          menuItemName
+          flavourId
+          flavourName
+          quantity
+          unitPrice
+          lineTotal
+        }
+      }
+    }
+  }
+`;
+
+export const CREATE_ORDER = gql`
+  mutation CreateOrder($input: CreateOrderInput!) {
+    createOrder(input: $input) {
+      id
+      orderNumber
+      cashierName
+      tableRef
+      orderType
+      customerName
+      customerPhone
+      status
+      paymentMethod
+      subtotal
+      discountAmount
+      totalAmount
+      notes
+      createdAt
+      paidAt
+      items {
+        id
+        orderId
+        menuItemId
+        menuItemName
+        flavourId
+        flavourName
+        quantity
+        unitPrice
+        lineTotal
+      }
+    }
+  }
+`;
+
+export const GET_PRE_ORDERS = gql`
+  query GetPreOrders {
+    preOrders {
+      id
+      customerName
+      customerPhone
+      paymentMethod
+      items
+      subtotal
+      totalAmount
+      status
+      createdAt
+    }
+  }
+`;
+
+export const CREATE_PRE_ORDER = gql`
+  mutation CreatePreOrder($input: CreatePreOrderInput!) {
+    createPreOrder(input: $input) {
+      id
+      customerName
+      customerPhone
+      paymentMethod
+      items
+      subtotal
+      totalAmount
+      status
+      createdAt
+    }
+  }
+`;
+
+export const DELETE_PRE_ORDER = gql`
+  mutation DeletePreOrder($id: ID!) {
+    deletePreOrder(id: $id)
+  }
+`;

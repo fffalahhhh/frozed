@@ -54,29 +54,36 @@ async function deductInventoryAsync(
   allRecipes: { menuItemId: string; ingredientName: string; quantity: string }[],
 ) {
   try {
-    const recipesByItem = new Map<string, typeof allRecipes>();
+    const qtyByItem = new Map<string, number>();
+    for (const ci of cartItems) {
+      qtyByItem.set(ci.menuItemId, (qtyByItem.get(ci.menuItemId) || 0) + ci.quantity);
+    }
+
+    const totalNeededByIngredient = new Map<string, number>();
     for (const r of allRecipes) {
-      if (!recipesByItem.has(r.menuItemId)) recipesByItem.set(r.menuItemId, []);
-      recipesByItem.get(r.menuItemId)!.push(r);
+      const itemQty = qtyByItem.get(r.menuItemId) ?? 0;
+      if (itemQty > 0) {
+        const totalQtyNeeded = parseFloat(r.quantity) * itemQty;
+        const key = r.ingredientName.trim();
+        totalNeededByIngredient.set(key, (totalNeededByIngredient.get(key) ?? 0) + totalQtyNeeded);
+      }
     }
 
     const updates: Promise<unknown>[] = [];
-    for (const ci of cartItems) {
-      const recs = recipesByItem.get(ci.menuItemId) ?? [];
-      for (const rec of recs) {
-        const totalQtyNeeded = parseFloat(rec.quantity) * ci.quantity;
-        updates.push(
-          db
-            .update(inventoryItems)
-            .set({
-              currentStock: sql`${inventoryItems.currentStock} - ${totalQtyNeeded}`,
-              updatedAt: new Date(),
-            })
-            .where(ilike(inventoryItems.name, rec.ingredientName)),
-        );
-      }
+    for (const [ingName, delta] of totalNeededByIngredient.entries()) {
+      updates.push(
+        db
+          .update(inventoryItems)
+          .set({
+            currentStock: sql`${inventoryItems.currentStock} - ${delta}`,
+            updatedAt: new Date(),
+          })
+          .where(ilike(inventoryItems.name, ingName)),
+      );
     }
-    await Promise.all(updates);
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
   } catch (err) {
     console.error('[GraphQL Resolvers] Background inventory deduction failed:', err);
   }
@@ -734,7 +741,8 @@ export const resolvers = {
     },
 
     createMenuItem: async (_: unknown, { input }: { input: any }) => {
-      const { categoryId, name, description, imageUrl, sellingPrice, isAvailable, ingredients } = input;
+      const { categoryId, name, description, imageUrl, sellingPrice, isAvailable, ingredients } =
+        input;
       const invIds: string[] = Array.isArray(ingredients)
         ? ingredients.map((ing: any) => ing.inventoryItemId).filter(Boolean)
         : [];
@@ -949,13 +957,12 @@ export const resolvers = {
         }
 
         if (menuItemIds.length > 0) {
-          Promise.all([
+          const [allRecipes, allMakingCosts] = await Promise.all([
             db.select().from(recipes).where(inArray(recipes.menuItemId, menuItemIds)),
             db.select().from(makingCosts).where(inArray(makingCosts.menuItemId, menuItemIds)),
-          ]).then(([allRecipes, allMakingCosts]) => {
-            deductInventoryAsync(validCartItems, allRecipes);
-            patchItemCostsAsync(order.id, validCartItems, allRecipes, allMakingCosts);
-          });
+          ]);
+          await deductInventoryAsync(validCartItems, allRecipes);
+          patchItemCostsAsync(order.id, validCartItems, allRecipes, allMakingCosts);
         }
 
         return {

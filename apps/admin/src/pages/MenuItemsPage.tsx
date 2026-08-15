@@ -292,37 +292,34 @@ export const MenuItemsPage: React.FC = () => {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleDropZoneDrop = useCallback(
-    async (_dropFiles: File[], acceptedFiles: File[]) => {
-      if (acceptedFiles.length === 0) return;
-      const file = acceptedFiles[0];
-      try {
-        setIsUploadingImage(true);
-        setUploadError(null);
+  const handleDropZoneDrop = useCallback(async (_dropFiles: File[], acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+    const file = acceptedFiles[0];
+    try {
+      setIsUploadingImage(true);
+      setUploadError(null);
 
-        const formData = new FormData();
-        formData.append('file', file);
+      const formData = new FormData();
+      formData.append('file', file);
 
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-        const data = await response.json();
-        if (data.success && data.url) {
-          setItemImageUrl(data.url);
-        } else {
-          setUploadError(data.error || 'Failed to upload image to CDN');
-        }
-      } catch (err: any) {
-        console.error('Image upload failed:', err);
-        setUploadError(err.message || 'Image CDN upload failed');
-      } finally {
-        setIsUploadingImage(false);
+      const data = await response.json();
+      if (data.success && data.url) {
+        setItemImageUrl(data.url);
+      } else {
+        setUploadError(data.error || 'Failed to upload image to CDN');
       }
-    },
-    [],
-  );
+    } catch (err: any) {
+      console.error('Image upload failed:', err);
+      setUploadError(err.message || 'Image CDN upload failed');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!itemName || !itemPrice || !itemCategory) return;
@@ -389,7 +386,14 @@ export const MenuItemsPage: React.FC = () => {
     const imageChanged = itemImageUrl.trim() !== (editingItem.imageUrl || '').trim();
     const availableChanged = itemAvailable !== editingItem.isAvailable;
 
-    if (nameChanged || categoryChanged || priceChanged || descriptionChanged || imageChanged || availableChanged) {
+    if (
+      nameChanged ||
+      categoryChanged ||
+      priceChanged ||
+      descriptionChanged ||
+      imageChanged ||
+      availableChanged
+    ) {
       return true;
     }
 
@@ -447,7 +451,11 @@ export const MenuItemsPage: React.FC = () => {
       </IndexTable.Cell>
       <IndexTable.Cell>{item.categoryName || 'Uncategorized'}</IndexTable.Cell>
       <IndexTable.Cell>
-        ₹{item.priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ₹
+        {item.priceNum.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
       </IndexTable.Cell>
       <IndexTable.Cell>
         <Badge tone={item.isAvailable ? 'success' : 'critical'}>
@@ -472,16 +480,26 @@ export const MenuItemsPage: React.FC = () => {
       </IndexTable.Cell>
     </IndexTable.Row>
   ));
-  
+
   const menuSkeletonMarkup = useMemo(
     () =>
       Array.from({ length: 5 }).map((_, index) => (
         <IndexTable.Row id={`skel-menu-${index}`} key={`skel-menu-${index}`} position={index}>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
         </IndexTable.Row>
       )),
     [],
@@ -608,7 +626,10 @@ export const MenuItemsPage: React.FC = () => {
                           CDN Image Uploaded
                         </Text>
                         <Text as="span" variant="bodySm" tone="subdued">
-                          Hosted CDN URL: {itemImageUrl.length > 40 ? `${itemImageUrl.slice(0, 40)}...` : itemImageUrl}
+                          Hosted CDN URL:{' '}
+                          {itemImageUrl.length > 40
+                            ? `${itemImageUrl.slice(0, 40)}...`
+                            : itemImageUrl}
                         </Text>
                       </BlockStack>
                     </InlineStack>
@@ -618,9 +639,17 @@ export const MenuItemsPage: React.FC = () => {
                   </InlineStack>
                 </Card>
               ) : (
-                <DropZone onDrop={handleDropZoneDrop} accept="image/*" type="image" allowMultiple={false} disabled={isUploadingImage}>
+                <DropZone
+                  onDrop={handleDropZoneDrop}
+                  accept="image/*"
+                  type="image"
+                  allowMultiple={false}
+                  disabled={isUploadingImage}
+                >
                   <DropZone.FileUpload
-                    actionTitle={isUploadingImage ? "Uploading to Free CDN..." : "Upload Image from Device"}
+                    actionTitle={
+                      isUploadingImage ? 'Uploading to Free CDN...' : 'Upload Image from Device'
+                    }
                     actionHint="Accepts .png, .jpg, .jpeg, .webp, .svg (Auto-hosted on Free CDN)"
                   />
                 </DropZone>

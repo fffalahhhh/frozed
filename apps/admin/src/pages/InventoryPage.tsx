@@ -301,7 +301,12 @@ export const InventoryPage: React.FC = () => {
         {item.reorderNum.toLocaleString()} {item.unit}
       </IndexTable.Cell>
       <IndexTable.Cell>
-        ₹{item.costNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {item.unit}
+        ₹
+        {item.costNum.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}{' '}
+        / {item.unit}
       </IndexTable.Cell>
       <IndexTable.Cell>
         <Badge tone={item.needsRestock ? 'critical' : 'success'}>
@@ -331,12 +336,24 @@ export const InventoryPage: React.FC = () => {
     () =>
       Array.from({ length: 5 }).map((_, index) => (
         <IndexTable.Row id={`skel-inv-${index}`} key={`skel-inv-${index}`} position={index}>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
         </IndexTable.Row>
       )),
     [],
