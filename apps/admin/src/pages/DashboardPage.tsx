@@ -13,6 +13,9 @@ import {
   Box,
   Tooltip,
   SkeletonDisplayText,
+  Select,
+  TextField,
+  Button,
 } from '@shopify/polaris';
 import { RefreshIcon } from '@shopify/polaris-icons';
 import { useQuery } from '@apollo/client';
@@ -72,7 +75,8 @@ const getFormattedDateLabel = (from: string, to: string): string => {
     year: 'numeric',
   });
   return `${formattedFrom} – ${formattedTo}`;
-};const formatCurrency = (val: number | string): string => {
+};
+const formatCurrency = (val: number | string): string => {
   const num = typeof val === 'number' ? val : parseFloat(String(val || '0'));
   if (isNaN(num)) return '₹0.00';
   return `₹${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -92,10 +96,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
   const [toDate, setToDate] = useState<string>(() => formatLocalDateStr(new Date()));
   const [ordersPage, setOrdersPage] = useState<number>(1);
 
+  // Orders List Filter & Sort states
+  const [searchOrderQuery, setSearchOrderQuery] = useState('');
+  const [selectedCustomerFilter, setSelectedCustomerFilter] = useState('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
+  const [selectedSortOption, setSelectedSortOption] = useState('time_desc');
+
   const handleDateChange = useCallback((from: string, to: string) => {
     setFromDate(from);
     setToDate(to);
     setOrdersPage(1);
+    setSearchOrderQuery('');
+    setSelectedCustomerFilter('all');
+    setSelectedStatusFilter('all');
+    setSelectedSortOption('time_desc');
   }, []);
 
   const {
@@ -137,14 +151,118 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
 
   const activePeriodLabel = getFormattedDateLabel(fromDate, toDate);
 
+  // Dynamic Options for Customer Filter
+  const customerOptions = useMemo(() => {
+    const names = new Set<string>();
+    selectedRangeOrders.forEach((o: any) => {
+      names.add(o.customerName || 'Walk-in Customer');
+    });
+    const sortedNames = Array.from(names).sort();
+    return [
+      { label: 'All Customers', value: 'all' },
+      ...sortedNames.map((name) => ({ label: name, value: name })),
+    ];
+  }, [selectedRangeOrders]);
+
+  const statusOptions = useMemo(
+    () => [
+      { label: 'All Statuses', value: 'all' },
+      { label: 'Paid', value: 'paid' },
+      { label: 'Pending / Open', value: 'open' },
+      { label: 'Voided', value: 'voided' },
+    ],
+    [],
+  );
+
+  const sortOptions = useMemo(
+    () => [
+      { label: 'Time (Newest First)', value: 'time_desc' },
+      { label: 'Time (Oldest First)', value: 'time_asc' },
+      { label: 'Amount (High to Low)', value: 'amount_desc' },
+      { label: 'Amount (Low to High)', value: 'amount_asc' },
+      { label: 'Customer Name (A to Z)', value: 'customer_asc' },
+    ],
+    [],
+  );
+
+  // Filter & Sort Orders
+  const filteredAndSortedOrders = useMemo(() => {
+    let list = [...selectedRangeOrders];
+
+    if (searchOrderQuery.trim()) {
+      const q = searchOrderQuery.toLowerCase();
+      list = list.filter((order: any) => {
+        const orderNum = (order.orderNumber || order.id || '').toLowerCase();
+        const customer = (order.customerName || 'walk-in customer').toLowerCase();
+        const itemMatch =
+          Array.isArray(order.items) &&
+          order.items.some((i: any) => (i.menuItemName || '').toLowerCase().includes(q));
+        return orderNum.includes(q) || customer.includes(q) || itemMatch;
+      });
+    }
+
+    if (selectedCustomerFilter !== 'all') {
+      list = list.filter((order: any) => {
+        const name = order.customerName || 'Walk-in Customer';
+        return name === selectedCustomerFilter;
+      });
+    }
+
+    if (selectedStatusFilter !== 'all') {
+      list = list.filter((order: any) => {
+        const st = (order.status || 'open').toLowerCase();
+        return st === selectedStatusFilter.toLowerCase();
+      });
+    }
+
+    list.sort((a: any, b: any) => {
+      const amountA = parseFloat(a.totalAmount) || 0;
+      const amountB = parseFloat(b.totalAmount) || 0;
+      const timeA = parseValidDate(a.createdAt)?.getTime() || 0;
+      const timeB = parseValidDate(b.createdAt)?.getTime() || 0;
+      const nameA = (a.customerName || 'Walk-in Customer').toLowerCase();
+      const nameB = (b.customerName || 'Walk-in Customer').toLowerCase();
+
+      if (selectedSortOption === 'time_asc') return timeA - timeB;
+      if (selectedSortOption === 'amount_desc') return amountB - amountA;
+      if (selectedSortOption === 'amount_asc') return amountA - amountB;
+      if (selectedSortOption === 'customer_asc') return nameA.localeCompare(nameB);
+      return timeB - timeA;
+    });
+
+    return list;
+  }, [
+    selectedRangeOrders,
+    searchOrderQuery,
+    selectedCustomerFilter,
+    selectedStatusFilter,
+    selectedSortOption,
+  ]);
+
+  const hasActiveOrderFilters =
+    searchOrderQuery.trim() !== '' ||
+    selectedCustomerFilter !== 'all' ||
+    selectedStatusFilter !== 'all' ||
+    selectedSortOption !== 'time_desc';
+
+  const showOrderFiltersBar = selectedRangeOrders.length > ORDERS_PER_PAGE || hasActiveOrderFilters;
+
+  const handleClearOrderFilters = useCallback(() => {
+    setSearchOrderQuery('');
+    setSelectedCustomerFilter('all');
+    setSelectedStatusFilter('all');
+    setSelectedSortOption('time_desc');
+    setOrdersPage(1);
+  }, []);
+
   // Paginated Orders Calculation
-  const totalOrderPages = Math.ceil(selectedRangeOrders.length / ORDERS_PER_PAGE) || 1;
+  const totalOrderPages = Math.ceil(filteredAndSortedOrders.length / ORDERS_PER_PAGE) || 1;
   const currentOrdersPage = Math.min(ordersPage, totalOrderPages);
 
   const paginatedOrders = useMemo(() => {
     const start = (currentOrdersPage - 1) * ORDERS_PER_PAGE;
-    return selectedRangeOrders.slice(start, start + ORDERS_PER_PAGE);
-  }, [selectedRangeOrders, currentOrdersPage]);
+    return filteredAndSortedOrders.slice(start, start + ORDERS_PER_PAGE);
+  }, [filteredAndSortedOrders, currentOrdersPage]);
 
   const ordersRowMarkup = paginatedOrders.map((order: any, index: number) => {
     const total = parseFloat(order.totalAmount) || 0;
@@ -165,7 +283,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
         <div style={{ textAlign: 'left', padding: '2px 4px' }}>
           {order.items.map((i: any, idx: number) => (
             <div key={idx} style={{ marginBottom: idx === order.items.length - 1 ? 0 : '4px' }}>
-              • {i.menuItemName}{i.flavourName ? ` (${i.flavourName})` : ''} × {formatCount(i.quantity)}
+              • {i.menuItemName}
+              {i.flavourName ? ` (${i.flavourName})` : ''} × {formatCount(i.quantity)}
             </div>
           ))}
         </div>
@@ -255,12 +374,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     () =>
       Array.from({ length: 5 }).map((_, index) => (
         <IndexTable.Row id={`skel-order-${index}`} key={`skel-order-${index}`} position={index}>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
         </IndexTable.Row>
       )),
     [],
@@ -272,9 +403,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     () =>
       Array.from({ length: 5 }).map((_, index) => (
         <IndexTable.Row id={`skel-item-${index}`} key={`skel-item-${index}`} position={index}>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
-          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>
+            <SkeletonDisplayText size="small" />
+          </IndexTable.Cell>
         </IndexTable.Row>
       )),
     [],
@@ -294,7 +431,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
         {analyticsError && (
           <Banner title="Analytics Connection Note" tone="warning">
             <p>
-              Unable to fetch analytics: {analyticsError.message}. Ensure `npm run server:admin` is running.
+              Unable to fetch analytics: {analyticsError.message}. Ensure `npm run server:admin` is
+              running.
             </p>
           </Banner>
         )}
@@ -337,7 +475,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
                 </Box>
               ) : (
                 <Text as="p" variant="headingLg">
-                  {formatCount(summary.orderCount)} {summary.orderCount === 1 ? 'Order' : 'Orders'}
+                  {formatCount(summary.orderCount)}
                 </Text>
               )}
             </BlockStack>
@@ -383,22 +521,88 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
           <Layout.Section>
             <Card padding="0">
               <Box padding="400">
-                <BlockStack gap="100">
-                  <Text as="h2" variant="headingMd">
-                    Orders List ({activePeriodLabel})
-                  </Text>
-                  <Text as="p" variant="bodySm" tone="subdued">
-                    Showing {selectedRangeOrders.length === 0 ? 0 : formatCount((currentOrdersPage - 1) * ORDERS_PER_PAGE + 1)}–
-                    {formatCount(Math.min(currentOrdersPage * ORDERS_PER_PAGE, selectedRangeOrders.length))} of{' '}
-                    {formatCount(selectedRangeOrders.length)} {selectedRangeOrders.length === 1 ? 'order' : 'orders'} for{' '}
-                    {activePeriodLabel}. Hover over total items badge to view item breakdown.
-                  </Text>
+                <BlockStack gap="300">
+                  <InlineStack align="space-between" blockAlign="center">
+                    <BlockStack gap="100">
+                      <Text as="h2" variant="headingMd">
+                        Orders List ({activePeriodLabel})
+                      </Text>
+                      <Text as="p" variant="bodySm" tone="subdued">
+                        Showing{' '}
+                        {filteredAndSortedOrders.length === 0
+                          ? 0
+                          : formatCount((currentOrdersPage - 1) * ORDERS_PER_PAGE + 1)}
+                        –
+                        {formatCount(
+                          Math.min(
+                            currentOrdersPage * ORDERS_PER_PAGE,
+                            filteredAndSortedOrders.length,
+                          ),
+                        )}{' '}
+                        of {formatCount(filteredAndSortedOrders.length)}{' '}
+                        {filteredAndSortedOrders.length === 1 ? 'order' : 'orders'} for{' '}
+                        {activePeriodLabel}. Hover over total items badge to view item breakdown.
+                      </Text>
+                    </BlockStack>
+                    {hasActiveOrderFilters && (
+                      <Button variant="plain" onClick={handleClearOrderFilters}>
+                        Clear Filters
+                      </Button>
+                    )}
+                  </InlineStack>
+
+                  {showOrderFiltersBar && (
+                    <InlineGrid columns={{ xs: 1, sm: 2, md: 4 }} gap="300">
+                      <TextField
+                        label="Search Orders"
+                        value={searchOrderQuery}
+                        onChange={(val) => {
+                          setSearchOrderQuery(val);
+                          setOrdersPage(1);
+                        }}
+                        placeholder="Search by order #, customer..."
+                        autoComplete="off"
+                        clearButton
+                        onClearButtonClick={() => {
+                          setSearchOrderQuery('');
+                          setOrdersPage(1);
+                        }}
+                      />
+                      <Select
+                        label="Filter by Customer"
+                        options={customerOptions}
+                        value={selectedCustomerFilter}
+                        onChange={(val) => {
+                          setSelectedCustomerFilter(val);
+                          setOrdersPage(1);
+                        }}
+                      />
+                      <Select
+                        label="Payment Status"
+                        options={statusOptions}
+                        value={selectedStatusFilter}
+                        onChange={(val) => {
+                          setSelectedStatusFilter(val);
+                          setOrdersPage(1);
+                        }}
+                      />
+                      <Select
+                        label="Sort By"
+                        options={sortOptions}
+                        value={selectedSortOption}
+                        onChange={(val) => {
+                          setSelectedSortOption(val);
+                          setOrdersPage(1);
+                        }}
+                      />
+                    </InlineGrid>
+                  )}
                 </BlockStack>
               </Box>
 
               <IndexTable
                 resourceName={{ singular: 'order', plural: 'orders' }}
-                itemCount={ordersLoading ? 5 : selectedRangeOrders.length}
+                itemCount={ordersLoading ? 5 : filteredAndSortedOrders.length}
                 selectable={false}
                 loading={ordersLoading}
                 headings={[
@@ -410,7 +614,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
                   { title: 'Total Amount' },
                 ]}
                 pagination={
-                  ordersLoading
+                  ordersLoading || totalOrderPages <= 1
                     ? undefined
                     : {
                         hasNext: currentOrdersPage < totalOrderPages,
@@ -438,8 +642,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
                       Item Sales Summary ({activePeriodLabel})
                     </Text>
                     <Text as="p" variant="bodySm" tone="subdued">
-                      Total {formatCount(grandTotalQuantitySold)} {grandTotalQuantitySold === 1 ? 'item' : 'items'} sold across{' '}
-                      {formatCount(itemSalesSummary.length)} unique items ({activePeriodLabel}). Total Amount: {formatCurrency(grandTotalAmountSold)}
+                      Total {formatCount(grandTotalQuantitySold)}{' '}
+                      {grandTotalQuantitySold === 1 ? 'item' : 'items'} sold across{' '}
+                      {formatCount(itemSalesSummary.length)} unique items ({activePeriodLabel}).
+                      Total Amount: {formatCurrency(grandTotalAmountSold)}
                     </Text>
                   </BlockStack>
                 </InlineStack>
