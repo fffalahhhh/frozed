@@ -1,8 +1,10 @@
-import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { ApolloClient, InMemoryCache, createHttpLink, ApolloLink } from '@apollo/client';
+import { onError } from '@apollo/client/link/error';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { persistCache, AsyncStorageWrapper } from 'apollo3-cache-persist';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { captureFrontendException } from './posthog';
 
 function getGraphQLUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) {
@@ -33,6 +35,25 @@ const httpLink = createHttpLink({
   uri: GRAPHQL_URL,
 });
 
+const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
+  if (graphQLErrors) {
+    graphQLErrors.forEach(({ message, locations, path }) => {
+      captureFrontendException(new Error(`[GraphQL Error]: ${message}`), {
+        component: 'ApolloClient',
+        action: operation.operationName,
+        extra: { locations, path },
+      });
+    });
+  }
+  if (networkError) {
+    captureFrontendException(new Error(`[Network Error]: ${networkError.message || 'Network request failed'}`), {
+      component: 'ApolloClient',
+      action: operation.operationName,
+      extra: { type: 'NetworkError', targetUrl: GRAPHQL_URL },
+    });
+  }
+});
+
 export const cache = new InMemoryCache({
   typePolicies: {
     Query: {
@@ -58,7 +79,7 @@ export const cache = new InMemoryCache({
 });
 
 export const apolloClient = new ApolloClient({
-  link: httpLink,
+  link: ApolloLink.from([errorLink, httpLink]),
   cache,
   defaultOptions: {
     watchQuery: {

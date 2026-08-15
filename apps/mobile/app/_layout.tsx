@@ -12,11 +12,24 @@ import {
 } from '@expo-google-fonts/inter';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
+import { PostHogProvider, usePostHog } from 'posthog-react-native';
+import { POSTHOG_API_KEY, posthogOptions, setPostHogInstance } from '../lib/posthog';
+import { PostHogErrorBoundary } from '../components/common/ErrorBoundary';
 import AnimatedSplashScreen from '../components/common/SplashScreen';
 import { ToastBanner } from '../components/common/Toast';
 import '../global.css';
 
 ExpoSplashScreen.preventAutoHideAsync();
+
+function PostHogInitializer({ children }: { children: React.ReactNode }) {
+  const posthog = usePostHog();
+  useEffect(() => {
+    if (posthog) {
+      setPostHogInstance(posthog);
+    }
+  }, [posthog]);
+  return <>{children}</>;
+}
 
 export default function RootLayout() {
   const [showSplash, setShowSplash] = useState(true);
@@ -43,11 +56,17 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ApolloProvider client={apolloClient}>
-          <Stack screenOptions={{ headerShown: false }} />
-          <ToastBanner />
-          {showSplash && <AnimatedSplashScreen onDone={() => setShowSplash(false)} />}
-        </ApolloProvider>
+        <PostHogProvider apiKey={POSTHOG_API_KEY} options={posthogOptions} autocapture={true}>
+          <PostHogInitializer>
+            <PostHogErrorBoundary>
+              <ApolloProvider client={apolloClient}>
+                <Stack screenOptions={{ headerShown: false }} />
+                <ToastBanner />
+                {showSplash && <AnimatedSplashScreen onDone={() => setShowSplash(false)} />}
+              </ApolloProvider>
+            </PostHogErrorBoundary>
+          </PostHogInitializer>
+        </PostHogProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
