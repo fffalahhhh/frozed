@@ -18,6 +18,7 @@ import {
   Banner,
   Tabs,
   Divider,
+  SkeletonDisplayText,
 } from '@shopify/polaris';
 import { PlusIcon, EditIcon, DeleteIcon, RefreshIcon } from '@shopify/polaris-icons';
 import { useQuery, useMutation } from '@apollo/client';
@@ -300,7 +301,7 @@ export const InventoryPage: React.FC = () => {
         {item.reorderNum.toLocaleString()} {item.unit}
       </IndexTable.Cell>
       <IndexTable.Cell>
-        ₹{item.costNum.toFixed(2)} / {item.unit}
+        ₹{item.costNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {item.unit}
       </IndexTable.Cell>
       <IndexTable.Cell>
         <Badge tone={item.needsRestock ? 'critical' : 'success'}>
@@ -325,6 +326,21 @@ export const InventoryPage: React.FC = () => {
       </IndexTable.Cell>
     </IndexTable.Row>
   ));
+
+  const inventorySkeletonMarkup = useMemo(
+    () =>
+      Array.from({ length: 5 }).map((_, index) => (
+        <IndexTable.Row id={`skel-inv-${index}`} key={`skel-inv-${index}`} position={index}>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+        </IndexTable.Row>
+      )),
+    [],
+  );
 
   return (
     <Page
@@ -364,7 +380,7 @@ export const InventoryPage: React.FC = () => {
 
               <IndexTable
                 resourceName={{ singular: 'inventory item', plural: 'inventory items' }}
-                itemCount={filteredInventory.length}
+                itemCount={loading ? 5 : filteredInventory.length}
                 selectedItemsCount={allResourcesSelected ? 'All' : selectedResources.length}
                 onSelectionChange={handleSelectionChange}
                 loading={loading}
@@ -377,7 +393,7 @@ export const InventoryPage: React.FC = () => {
                   { title: 'Actions', alignment: 'end' },
                 ]}
               >
-                {rowMarkup}
+                {loading ? inventorySkeletonMarkup : rowMarkup}
               </IndexTable>
             </Card>
           </BlockStack>

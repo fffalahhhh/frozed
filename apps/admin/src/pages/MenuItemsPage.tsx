@@ -20,6 +20,7 @@ import {
   Banner,
   Divider,
   DropZone,
+  SkeletonDisplayText,
 } from '@shopify/polaris';
 import { PlusIcon, EditIcon, DeleteIcon, ImageIcon } from '@shopify/polaris-icons';
 import { useQuery, useMutation } from '@apollo/client';
@@ -445,7 +446,9 @@ export const MenuItemsPage: React.FC = () => {
         </InlineStack>
       </IndexTable.Cell>
       <IndexTable.Cell>{item.categoryName || 'Uncategorized'}</IndexTable.Cell>
-      <IndexTable.Cell>₹{item.priceNum.toFixed(2)}</IndexTable.Cell>
+      <IndexTable.Cell>
+        ₹{item.priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </IndexTable.Cell>
       <IndexTable.Cell>
         <Badge tone={item.isAvailable ? 'success' : 'critical'}>
           {item.isAvailable ? 'Available' : 'Unavailable'}
@@ -469,11 +472,25 @@ export const MenuItemsPage: React.FC = () => {
       </IndexTable.Cell>
     </IndexTable.Row>
   ));
+  
+  const menuSkeletonMarkup = useMemo(
+    () =>
+      Array.from({ length: 5 }).map((_, index) => (
+        <IndexTable.Row id={`skel-menu-${index}`} key={`skel-menu-${index}`} position={index}>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+        </IndexTable.Row>
+      )),
+    [],
+  );
 
   return (
     <Page
       title="Menu Items Management"
-      subtitle="Edit pricing, image URLs, ingredients, and availability"
+      subtitle="Organize shop items, prices, availability, and ingredient recipes"
       primaryAction={{
         content: 'Add Menu Item',
         icon: PlusIcon,
@@ -484,9 +501,10 @@ export const MenuItemsPage: React.FC = () => {
         <Layout.Section>
           <BlockStack gap="400">
             {error && (
-              <Banner tone="warning" title="Backend Connection Note">
+              <Banner tone="warning" title="GraphQL Menu Fetch Warning">
                 <p>
-                  Error querying GraphQL API: {error.message}. Please verify backend server status.
+                  Unable to connect to GraphQL backend: {error.message}. Ensure `npm run
+                  server:admin` is running.
                 </p>
               </Banner>
             )}
@@ -507,7 +525,7 @@ export const MenuItemsPage: React.FC = () => {
 
               <IndexTable
                 resourceName={{ singular: 'menu item', plural: 'menu items' }}
-                itemCount={filteredItems.length}
+                itemCount={loading ? 5 : filteredItems.length}
                 selectedItemsCount={allResourcesSelected ? 'All' : selectedResources.length}
                 onSelectionChange={handleSelectionChange}
                 loading={loading}
@@ -519,7 +537,7 @@ export const MenuItemsPage: React.FC = () => {
                   { title: 'Actions', alignment: 'end' },
                 ]}
               >
-                {rowMarkup}
+                {loading ? menuSkeletonMarkup : rowMarkup}
               </IndexTable>
             </Card>
           </BlockStack>

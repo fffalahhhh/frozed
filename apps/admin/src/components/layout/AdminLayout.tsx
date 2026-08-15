@@ -1,57 +1,50 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { Frame, TopBar, Navigation, Box } from '@shopify/polaris';
-import { HomeIcon, ProductIcon, InventoryIcon, StoreIcon } from '@shopify/polaris-icons';
+import { HomeIcon, ProductIcon, InventoryIcon } from '@shopify/polaris-icons';
+import { useNavigate, useLocation } from 'react-router-dom';
 import logoImage from '@/assets/logo.png';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  activePath: 'dashboard' | 'menu-items' | 'inventory';
-  onNavigate: (path: 'dashboard' | 'menu-items' | 'inventory') => void;
 }
 
-export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activePath, onNavigate }) => {
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
-  const toggleUserMenu = useCallback(() => setIsUserMenuOpen((open) => !open), []);
-
+export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const userMenuMarkup = (
     <TopBar.UserMenu
-      actions={[
-        {
-          items: [{ content: 'Back to Store', icon: StoreIcon }],
-        },
-      ]}
+      actions={[]}
       name="Admin Manager"
       detail="Frozen Shake HQ"
       initials="FS"
-      open={isUserMenuOpen}
-      onToggle={toggleUserMenu}
+      open={false}
+      onToggle={() => {}}
     />
   );
 
   const topBarMarkup = <TopBar showNavigationToggle userMenu={userMenuMarkup} />;
 
   const navigationMarkup = (
-    <Navigation location="/">
+    <Navigation location={location.pathname}>
       <Navigation.Section
         items={[
           {
             label: 'Dashboard',
             icon: HomeIcon,
-            selected: activePath === 'dashboard',
-            onClick: () => onNavigate('dashboard'),
+            selected: location.pathname === '/' || location.pathname === '/dashboard',
+            onClick: () => navigate('/'),
           },
           {
             label: 'Menu Items',
             icon: ProductIcon,
-            selected: activePath === 'menu-items',
-            onClick: () => onNavigate('menu-items'),
+            selected: location.pathname.startsWith('/menu-items'),
+            onClick: () => navigate('/menu-items'),
           },
           {
             label: 'Inventory',
             icon: InventoryIcon,
-            selected: activePath === 'inventory',
-            onClick: () => onNavigate('inventory'),
+            selected: location.pathname.startsWith('/inventory'),
+            onClick: () => navigate('/inventory'),
           },
         ]}
       />
@@ -61,7 +54,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activePath, 
   const logo = {
     width: 40,
     topBarSource: logoImage,
-    url: '#',
+    url: '/',
     accessibilityLabel: 'Frozen Shake Admin',
   };
 

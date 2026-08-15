@@ -7,7 +7,6 @@ import {
   BlockStack,
   InlineStack,
   InlineGrid,
-  Button,
   Badge,
   Banner,
   IndexTable,
@@ -15,13 +14,13 @@ import {
   Tooltip,
   SkeletonDisplayText,
 } from '@shopify/polaris';
-import { ProductIcon, RefreshIcon } from '@shopify/polaris-icons';
+import { RefreshIcon } from '@shopify/polaris-icons';
 import { useQuery } from '@apollo/client';
 import { GET_ANALYTICS_SUMMARY, GET_RECENT_ORDERS } from '../graphql/queries';
 import { DateRangeSelector } from '../components/dashboard/DateRangeSelector';
 
 interface DashboardPageProps {
-  onNavigateToMenuItems: () => void;
+  onNavigateToMenuItems?: () => void;
 }
 
 const parseValidDate = (rawDate: any): Date | null => {
@@ -34,10 +33,10 @@ const parseValidDate = (rawDate: any): Date | null => {
 };
 
 // Formats Date to YYYY-MM-DD in LOCAL timezone
-const formatLocalDateStr = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+const formatLocalDateStr = (dateObj: Date): string => {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
@@ -73,16 +72,30 @@ const getFormattedDateLabel = (from: string, to: string): string => {
     year: 'numeric',
   });
   return `${formattedFrom} – ${formattedTo}`;
+};const formatCurrency = (val: number | string): string => {
+  const num = typeof val === 'number' ? val : parseFloat(String(val || '0'));
+  if (isNaN(num)) return '₹0.00';
+  return `₹${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuItems }) => {
+const formatCount = (val: number | string): string => {
+  const num = typeof val === 'number' ? val : parseInt(String(val || '0'), 10);
+  if (isNaN(num)) return '0';
+  return num.toLocaleString('en-US');
+};
+
+const ORDERS_PER_PAGE = 10;
+
+export const DashboardPage: React.FC<DashboardPageProps> = () => {
   // Date Range state (default: Today in local timezone)
   const [fromDate, setFromDate] = useState<string>(() => formatLocalDateStr(new Date()));
   const [toDate, setToDate] = useState<string>(() => formatLocalDateStr(new Date()));
+  const [ordersPage, setOrdersPage] = useState<number>(1);
 
   const handleDateChange = useCallback((from: string, to: string) => {
     setFromDate(from);
     setToDate(to);
+    setOrdersPage(1);
   }, []);
 
   const {
@@ -124,7 +137,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
 
   const activePeriodLabel = getFormattedDateLabel(fromDate, toDate);
 
-  const ordersRowMarkup = selectedRangeOrders.map((order: any, index: number) => {
+  // Paginated Orders Calculation
+  const totalOrderPages = Math.ceil(selectedRangeOrders.length / ORDERS_PER_PAGE) || 1;
+  const currentOrdersPage = Math.min(ordersPage, totalOrderPages);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (currentOrdersPage - 1) * ORDERS_PER_PAGE;
+    return selectedRangeOrders.slice(start, start + ORDERS_PER_PAGE);
+  }, [selectedRangeOrders, currentOrdersPage]);
+
+  const ordersRowMarkup = paginatedOrders.map((order: any, index: number) => {
     const total = parseFloat(order.totalAmount) || 0;
     const dateFormatted = safeGetTimeString(order.createdAt);
 
@@ -143,8 +165,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
         <div style={{ textAlign: 'left', padding: '2px 4px' }}>
           {order.items.map((i: any, idx: number) => (
             <div key={idx} style={{ marginBottom: idx === order.items.length - 1 ? 0 : '4px' }}>
-              • {i.menuItemName}
-              {i.flavourName ? ` (${i.flavourName})` : ''} × {i.quantity}
+              • {i.menuItemName}{i.flavourName ? ` (${i.flavourName})` : ''} × {formatCount(i.quantity)}
             </div>
           ))}
         </div>
@@ -163,7 +184,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
         <IndexTable.Cell>
           <Tooltip content={itemsTooltipContent} dismissOnMouseOut>
             <Badge tone="info">
-              {`${totalItemsCount} ${totalItemsCount === 1 ? 'Item' : 'Items'}`}
+              {`${formatCount(totalItemsCount)} ${totalItemsCount === 1 ? 'Item' : 'Items'}`}
             </Badge>
           </Tooltip>
         </IndexTable.Cell>
@@ -171,34 +192,109 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
         <IndexTable.Cell>
           <Badge tone={statusTone}>{order.status ? order.status.toUpperCase() : 'PENDING'}</Badge>
         </IndexTable.Cell>
-        <IndexTable.Cell>₹{total.toFixed(2)}</IndexTable.Cell>
+        <IndexTable.Cell>{formatCurrency(total)}</IndexTable.Cell>
       </IndexTable.Row>
     );
   });
 
+  // Aggregate item sales summary (Shake / Item -> Total Count -> Total Amount)
+  const itemSalesSummary = useMemo(() => {
+    const map = new Map<string, { name: string; totalQuantity: number; totalAmount: number }>();
+
+    selectedRangeOrders.forEach((order: any) => {
+      if (Array.isArray(order.items)) {
+        order.items.forEach((item: any) => {
+          const name = item.menuItemName || 'Item';
+          const qty = Number(item.quantity) || 1;
+          const price = parseFloat(item.price) || 0;
+          const lineTotal = item.lineTotal ? parseFloat(item.lineTotal) : price * qty;
+
+          const existing = map.get(name);
+          if (existing) {
+            existing.totalQuantity += qty;
+            existing.totalAmount += lineTotal;
+          } else {
+            map.set(name, {
+              name,
+              totalQuantity: qty,
+              totalAmount: lineTotal,
+            });
+          }
+        });
+      }
+    });
+
+    const list = Array.from(map.values());
+    list.sort((a, b) => b.totalQuantity - a.totalQuantity || a.name.localeCompare(b.name));
+    return list;
+  }, [selectedRangeOrders]);
+
+  const grandTotalQuantitySold = useMemo(() => {
+    return itemSalesSummary.reduce((sum, item) => sum + item.totalQuantity, 0);
+  }, [itemSalesSummary]);
+
+  const grandTotalAmountSold = useMemo(() => {
+    return itemSalesSummary.reduce((sum, item) => sum + item.totalAmount, 0);
+  }, [itemSalesSummary]);
+
+  const itemSalesRowMarkup = itemSalesSummary.map((item, index) => (
+    <IndexTable.Row id={`item-summary-${index}`} key={item.name} position={index}>
+      <IndexTable.Cell>
+        <Text variant="bodyMd" fontWeight="bold" as="span">
+          {item.name}
+        </Text>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <Badge tone="info">{`${formatCount(item.totalQuantity)} sold`}</Badge>
+      </IndexTable.Cell>
+      <IndexTable.Cell>{formatCurrency(item.totalAmount)}</IndexTable.Cell>
+    </IndexTable.Row>
+  ));
+
+  const ordersSkeletonMarkup = useMemo(
+    () =>
+      Array.from({ length: 5 }).map((_, index) => (
+        <IndexTable.Row id={`skel-order-${index}`} key={`skel-order-${index}`} position={index}>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+        </IndexTable.Row>
+      )),
+    [],
+  );
+
+  const isItemSummaryLoading = ordersLoading || analyticsLoading;
+
+  const itemSalesSkeletonMarkup = useMemo(
+    () =>
+      Array.from({ length: 5 }).map((_, index) => (
+        <IndexTable.Row id={`skel-item-${index}`} key={`skel-item-${index}`} position={index}>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+          <IndexTable.Cell><SkeletonDisplayText size="small" /></IndexTable.Cell>
+        </IndexTable.Row>
+      )),
+    [],
+  );
+
   return (
     <Page
-      title="Live Analytics & Orders Dashboard"
-      subtitle="Real-time sales performance, revenue metrics, and order streams"
+      title="Analytics & Orders Dashboard"
+      subtitle="Sales performance, revenue metrics, and order streams"
       primaryAction={{
-        content: 'Refresh Live Data',
+        content: 'Refresh Data',
         icon: RefreshIcon,
         onAction: handleRefresh,
       }}
-      secondaryActions={[
-        {
-          content: 'Manage Menu Items',
-          icon: ProductIcon,
-          onAction: onNavigateToMenuItems,
-        },
-      ]}
     >
       <BlockStack gap="500">
         {analyticsError && (
-          <Banner title="Live Analytics Note" tone="warning">
+          <Banner title="Analytics Connection Note" tone="warning">
             <p>
-              Unable to fetch live analytics: {analyticsError.message}. Ensure `npm run
-              server:admin` is running.
+              Unable to fetch analytics: {analyticsError.message}. Ensure `npm run server:admin` is running.
             </p>
           </Banner>
         )}
@@ -224,7 +320,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
                 </Box>
               ) : (
                 <Text as="p" variant="headingLg">
-                  ₹{summary.totalRevenue ? parseFloat(summary.totalRevenue).toFixed(2) : '0.00'}
+                  {formatCurrency(summary.totalRevenue)}
                 </Text>
               )}
             </BlockStack>
@@ -241,7 +337,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
                 </Box>
               ) : (
                 <Text as="p" variant="headingLg">
-                  {summary.orderCount ?? 0} {summary.orderCount === 1 ? 'Order' : 'Orders'}
+                  {formatCount(summary.orderCount)} {summary.orderCount === 1 ? 'Order' : 'Orders'}
                 </Text>
               )}
             </BlockStack>
@@ -258,7 +354,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
                 </Box>
               ) : (
                 <Text as="p" variant="headingLg">
-                  ₹{summary.netProfit ? parseFloat(summary.netProfit).toFixed(2) : '0.00'}
+                  {formatCurrency(summary.netProfit)}
                 </Text>
               )}
             </BlockStack>
@@ -275,38 +371,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
                 </Box>
               ) : (
                 <Text as="p" variant="headingLg">
-                  ₹{summary.unpaidAmount ? parseFloat(summary.unpaidAmount).toFixed(2) : '0.00'}
+                  {formatCurrency(summary.unpaidAmount)}
                 </Text>
               )}
             </BlockStack>
           </Card>
         </InlineGrid>
 
-        {/* Orders List Filtered By Date Selection */}
+        {/* 1. Orders List Filtered By Date Selection (Paginated) */}
         <Layout>
           <Layout.Section>
             <Card padding="0">
               <Box padding="400">
-                <InlineStack align="space-between" blockAlign="center">
-                  <BlockStack gap="100">
-                    <Text as="h2" variant="headingMd">
-                      Orders List ({activePeriodLabel})
-                    </Text>
-                    <Text as="p" variant="bodySm" tone="subdued">
-                      Displaying {selectedRangeOrders.length}{' '}
-                      {selectedRangeOrders.length === 1 ? 'order' : 'orders'} for{' '}
-                      {activePeriodLabel}. Hover over total items badge to view item breakdown.
-                    </Text>
-                  </BlockStack>
-                  <Button icon={RefreshIcon} onClick={handleRefresh}>
-                    Refresh Orders
-                  </Button>
-                </InlineStack>
+                <BlockStack gap="100">
+                  <Text as="h2" variant="headingMd">
+                    Orders List ({activePeriodLabel})
+                  </Text>
+                  <Text as="p" variant="bodySm" tone="subdued">
+                    Showing {selectedRangeOrders.length === 0 ? 0 : formatCount((currentOrdersPage - 1) * ORDERS_PER_PAGE + 1)}–
+                    {formatCount(Math.min(currentOrdersPage * ORDERS_PER_PAGE, selectedRangeOrders.length))} of{' '}
+                    {formatCount(selectedRangeOrders.length)} {selectedRangeOrders.length === 1 ? 'order' : 'orders'} for{' '}
+                    {activePeriodLabel}. Hover over total items badge to view item breakdown.
+                  </Text>
+                </BlockStack>
               </Box>
 
               <IndexTable
                 resourceName={{ singular: 'order', plural: 'orders' }}
-                itemCount={selectedRangeOrders.length}
+                itemCount={ordersLoading ? 5 : selectedRangeOrders.length}
                 selectable={false}
                 loading={ordersLoading}
                 headings={[
@@ -317,8 +409,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
                   { title: 'Status' },
                   { title: 'Total Amount' },
                 ]}
+                pagination={
+                  ordersLoading
+                    ? undefined
+                    : {
+                        hasNext: currentOrdersPage < totalOrderPages,
+                        hasPrevious: currentOrdersPage > 1,
+                        onNext: () => setOrdersPage((p) => Math.min(p + 1, totalOrderPages)),
+                        onPrevious: () => setOrdersPage((p) => Math.max(p - 1, 1)),
+                        label: `Page ${formatCount(currentOrdersPage)} of ${formatCount(totalOrderPages)}`,
+                      }
+                }
               >
-                {ordersRowMarkup}
+                {ordersLoading ? ordersSkeletonMarkup : ordersRowMarkup}
+              </IndexTable>
+            </Card>
+          </Layout.Section>
+        </Layout>
+
+        {/* 2. Item Sales Summary Table (Shake - Total Count - Amount) below Orders List */}
+        <Layout>
+          <Layout.Section>
+            <Card padding="0">
+              <Box padding="400">
+                <InlineStack align="space-between" blockAlign="center">
+                  <BlockStack gap="100">
+                    <Text as="h2" variant="headingMd">
+                      Item Sales Summary ({activePeriodLabel})
+                    </Text>
+                    <Text as="p" variant="bodySm" tone="subdued">
+                      Total {formatCount(grandTotalQuantitySold)} {grandTotalQuantitySold === 1 ? 'item' : 'items'} sold across{' '}
+                      {formatCount(itemSalesSummary.length)} unique items ({activePeriodLabel}). Total Amount: {formatCurrency(grandTotalAmountSold)}
+                    </Text>
+                  </BlockStack>
+                </InlineStack>
+              </Box>
+
+              <IndexTable
+                resourceName={{ singular: 'item summary', plural: 'item summaries' }}
+                itemCount={isItemSummaryLoading ? 5 : itemSalesSummary.length}
+                selectable={false}
+                loading={isItemSummaryLoading}
+                headings={[
+                  { title: 'Shake / Item' },
+                  { title: 'Total Count' },
+                  { title: 'Total Amount' },
+                ]}
+              >
+                {isItemSummaryLoading ? itemSalesSkeletonMarkup : itemSalesRowMarkup}
               </IndexTable>
             </Card>
           </Layout.Section>
