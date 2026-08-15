@@ -28,7 +28,9 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, loading })
   }
 
   // Ensure dataset is sorted by date ascending
-  const chartData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const chartData = [...data].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
 
   if (chartData.length === 0) {
     return (
@@ -316,13 +318,23 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, loading })
                     year: 'numeric',
                   })}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#388bfd' }} />
-                  <span>Revenue: <strong>₹{activePoint.item.revenue.toFixed(2)}</strong></span>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}
+                >
+                  <span
+                    style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#388bfd' }}
+                  />
+                  <span>
+                    Revenue: <strong>₹{activePoint.item.revenue.toFixed(2)}</strong>
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3fb950' }} />
-                  <span>Orders: <strong>{activePoint.item.orderCount} orders</strong></span>
+                  <span
+                    style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3fb950' }}
+                  />
+                  <span>
+                    Orders: <strong>{activePoint.item.orderCount} orders</strong>
+                  </span>
                 </div>
               </div>
             )}

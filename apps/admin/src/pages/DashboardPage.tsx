@@ -143,7 +143,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
         <div style={{ textAlign: 'left', padding: '2px 4px' }}>
           {order.items.map((i: any, idx: number) => (
             <div key={idx} style={{ marginBottom: idx === order.items.length - 1 ? 0 : '4px' }}>
-              • {i.menuItemName}{i.flavourName ? ` (${i.flavourName})` : ''} × {i.quantity}
+              • {i.menuItemName}
+              {i.flavourName ? ` (${i.flavourName})` : ''} × {i.quantity}
             </div>
           ))}
         </div>
@@ -195,17 +196,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
       <BlockStack gap="500">
         {analyticsError && (
           <Banner title="Live Analytics Note" tone="warning">
-            <p>Unable to fetch live analytics: {analyticsError.message}. Ensure `npm run server:admin` is running.</p>
+            <p>
+              Unable to fetch live analytics: {analyticsError.message}. Ensure `npm run
+              server:admin` is running.
+            </p>
           </Banner>
         )}
 
         {/* Date Selector Header Bar */}
         <InlineStack align="space-between" blockAlign="center">
-          <DateRangeSelector
-            fromDate={fromDate}
-            toDate={toDate}
-            onDateChange={handleDateChange}
-          />
+          <DateRangeSelector fromDate={fromDate} toDate={toDate} onDateChange={handleDateChange} />
           <Text as="span" variant="bodySm" tone="subdued">
             Selected Period: <strong>{activePeriodLabel}</strong>
           </Text>
@@ -293,7 +293,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToMenuIt
                       Orders List ({activePeriodLabel})
                     </Text>
                     <Text as="p" variant="bodySm" tone="subdued">
-                      Displaying {selectedRangeOrders.length} {selectedRangeOrders.length === 1 ? 'order' : 'orders'} for {activePeriodLabel}. Hover over total items badge to view item breakdown.
+                      Displaying {selectedRangeOrders.length}{' '}
+                      {selectedRangeOrders.length === 1 ? 'order' : 'orders'} for{' '}
+                      {activePeriodLabel}. Hover over total items badge to view item breakdown.
                     </Text>
                   </BlockStack>
                   <Button icon={RefreshIcon} onClick={handleRefresh}>

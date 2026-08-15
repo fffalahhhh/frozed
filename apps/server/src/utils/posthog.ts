@@ -32,12 +32,15 @@ export function captureBackendException(
     method?: string;
     statusCode?: number;
     extra?: Record<string, any>;
-  } = {}
+  } = {},
 ) {
   const errObj = error instanceof Error ? error : new Error(String(error));
   const distinctId = context.distinctId || 'server-system';
 
-  console.error(`[PostHog Backend Error] ${context.method || ''} ${context.path || ''}:`, errObj.message);
+  console.error(
+    `[PostHog Backend Error] ${context.method || ''} ${context.path || ''}:`,
+    errObj.message,
+  );
 
   if (client) {
     client.capture({

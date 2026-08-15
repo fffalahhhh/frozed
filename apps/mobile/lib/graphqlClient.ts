@@ -46,11 +46,14 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
     });
   }
   if (networkError) {
-    captureFrontendException(new Error(`[Network Error]: ${networkError.message || 'Network request failed'}`), {
-      component: 'ApolloClient',
-      action: operation.operationName,
-      extra: { type: 'NetworkError', targetUrl: GRAPHQL_URL },
-    });
+    captureFrontendException(
+      new Error(`[Network Error]: ${networkError.message || 'Network request failed'}`),
+      {
+        component: 'ApolloClient',
+        action: operation.operationName,
+        extra: { type: 'NetworkError', targetUrl: GRAPHQL_URL },
+      },
+    );
   }
 });
 

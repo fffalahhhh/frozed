@@ -153,14 +153,13 @@ export const MenuItemsPage: React.FC = () => {
     if (!searchQuery.trim()) return itemsList;
     const q = searchQuery.toLowerCase();
     return itemsList.filter(
-      (item) =>
-        item.name.toLowerCase().includes(q) ||
-        item.categoryName?.toLowerCase().includes(q)
+      (item) => item.name.toLowerCase().includes(q) || item.categoryName?.toLowerCase().includes(q),
     );
   }, [itemsList, searchQuery]);
 
-  const { selectedResources, allResourcesSelected, handleSelectionChange } =
-    useIndexResourceState(filteredItems as any);
+  const { selectedResources, allResourcesSelected, handleSelectionChange } = useIndexResourceState(
+    filteredItems as any,
+  );
 
   const handleOpenAddModal = useCallback(() => {
     setEditingItem(null);
@@ -174,35 +173,38 @@ export const MenuItemsPage: React.FC = () => {
     setIsModalOpen(true);
   }, [categoryOptions]);
 
-  const handleOpenEditModal = useCallback((item: MenuItemData) => {
-    setEditingItem(item);
-    setItemName(item.name);
-    setItemCategory(item.categoryId);
-    setItemPrice(item.sellingPrice);
-    setItemDescription(item.description || '');
-    setItemImageUrl(item.imageUrl || '');
-    setItemAvailable(item.isAvailable);
+  const handleOpenEditModal = useCallback(
+    (item: MenuItemData) => {
+      setEditingItem(item);
+      setItemName(item.name);
+      setItemCategory(item.categoryId);
+      setItemPrice(item.sellingPrice);
+      setItemDescription(item.description || '');
+      setItemImageUrl(item.imageUrl || '');
+      setItemAvailable(item.isAvailable);
 
-    // Map existing recipes to actual inventory item IDs by matching ingredientName
-    if (item.recipes && item.recipes.length > 0) {
-      const invList = inventoryData?.inventory || [];
-      setIngredients(
-        item.recipes.map((r: any) => {
-          const match = invList.find(
-            (inv: any) => inv.name.toLowerCase().trim() === r.ingredientName.toLowerCase().trim()
-          );
-          return {
-            inventoryItemId: match ? match.id : (invList[0]?.id || ''),
-            quantity: r.quantity || '1',
-          };
-        })
-      );
-    } else {
-      setIngredients([]);
-    }
+      // Map existing recipes to actual inventory item IDs by matching ingredientName
+      if (item.recipes && item.recipes.length > 0) {
+        const invList = inventoryData?.inventory || [];
+        setIngredients(
+          item.recipes.map((r: any) => {
+            const match = invList.find(
+              (inv: any) => inv.name.toLowerCase().trim() === r.ingredientName.toLowerCase().trim(),
+            );
+            return {
+              inventoryItemId: match ? match.id : invList[0]?.id || '',
+              quantity: r.quantity || '1',
+            };
+          }),
+        );
+      } else {
+        setIngredients([]);
+      }
 
-    setIsModalOpen(true);
-  }, [inventoryData]);
+      setIsModalOpen(true);
+    },
+    [inventoryData],
+  );
 
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
@@ -210,32 +212,42 @@ export const MenuItemsPage: React.FC = () => {
   }, []);
 
   // Confirmation Modal Trigger Handlers
-  const triggerToggleConfirm = useCallback((item: MenuItemData) => {
-    const actionLabel = item.isAvailable ? 'Disable' : 'Enable';
-    setConfirmTitle(`${actionLabel} Menu Item?`);
-    setConfirmMessage(
-      `Are you sure you want to ${actionLabel.toLowerCase()} "${item.name}"? ${
-        item.isAvailable ? 'Customers will not be able to order this item.' : 'Item will become visible for ordering.'
-      }`
-    );
-    setConfirmActionLabel(actionLabel);
-    setConfirmTone(item.isAvailable ? 'critical' : 'primary');
-    setPendingAction(() => async () => {
-      await toggleAvailability({ variables: { id: item.id } });
-    });
-    setIsConfirmOpen(true);
-  }, [toggleAvailability]);
+  const triggerToggleConfirm = useCallback(
+    (item: MenuItemData) => {
+      const actionLabel = item.isAvailable ? 'Disable' : 'Enable';
+      setConfirmTitle(`${actionLabel} Menu Item?`);
+      setConfirmMessage(
+        `Are you sure you want to ${actionLabel.toLowerCase()} "${item.name}"? ${
+          item.isAvailable
+            ? 'Customers will not be able to order this item.'
+            : 'Item will become visible for ordering.'
+        }`,
+      );
+      setConfirmActionLabel(actionLabel);
+      setConfirmTone(item.isAvailable ? 'critical' : 'primary');
+      setPendingAction(() => async () => {
+        await toggleAvailability({ variables: { id: item.id } });
+      });
+      setIsConfirmOpen(true);
+    },
+    [toggleAvailability],
+  );
 
-  const triggerDeleteConfirm = useCallback((item: MenuItemData) => {
-    setConfirmTitle(`Delete "${item.name}"?`);
-    setConfirmMessage(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`);
-    setConfirmActionLabel('Delete Item');
-    setConfirmTone('critical');
-    setPendingAction(() => async () => {
-      await deleteMenuItem({ variables: { id: item.id } });
-    });
-    setIsConfirmOpen(true);
-  }, [deleteMenuItem]);
+  const triggerDeleteConfirm = useCallback(
+    (item: MenuItemData) => {
+      setConfirmTitle(`Delete "${item.name}"?`);
+      setConfirmMessage(
+        `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+      );
+      setConfirmActionLabel('Delete Item');
+      setConfirmTone('critical');
+      setPendingAction(() => async () => {
+        await deleteMenuItem({ variables: { id: item.id } });
+      });
+      setIsConfirmOpen(true);
+    },
+    [deleteMenuItem],
+  );
 
   const handleExecuteConfirm = useCallback(async () => {
     if (!pendingAction) return;
@@ -270,7 +282,7 @@ export const MenuItemsPage: React.FC = () => {
         return next;
       });
     },
-    []
+    [],
   );
 
   const handleSave = useCallback(async () => {
@@ -323,6 +335,57 @@ export const MenuItemsPage: React.FC = () => {
     updateMenuItem,
   ]);
 
+  const hasChanges = useMemo(() => {
+    if (!editingItem) {
+      return Boolean(itemName.trim() && itemPrice.trim() && itemCategory);
+    }
+
+    const nameChanged = itemName.trim() !== (editingItem.name || '').trim();
+    const categoryChanged = itemCategory !== editingItem.categoryId;
+    const priceChanged = itemPrice.trim() !== (editingItem.sellingPrice || '').trim();
+    const descriptionChanged = itemDescription.trim() !== (editingItem.description || '').trim();
+    const availableChanged = itemAvailable !== editingItem.isAvailable;
+
+    if (nameChanged || categoryChanged || priceChanged || descriptionChanged || availableChanged) {
+      return true;
+    }
+
+    const invList = inventoryData?.inventory || [];
+    const initialIngredients = (editingItem.recipes || []).map((r: any) => {
+      const match = invList.find(
+        (inv: any) => inv.name.toLowerCase().trim() === r.ingredientName.toLowerCase().trim(),
+      );
+      return {
+        inventoryItemId: match ? match.id : invList[0]?.id || '',
+        quantity: String(r.quantity || '1'),
+      };
+    });
+
+    if (ingredients.length !== initialIngredients.length) {
+      return true;
+    }
+
+    for (let i = 0; i < ingredients.length; i++) {
+      if (
+        ingredients[i].inventoryItemId !== initialIngredients[i].inventoryItemId ||
+        String(ingredients[i].quantity) !== String(initialIngredients[i].quantity)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [
+    editingItem,
+    itemName,
+    itemCategory,
+    itemPrice,
+    itemDescription,
+    itemAvailable,
+    ingredients,
+    inventoryData,
+  ]);
+
   const rowMarkup = filteredItems.map((item, index) => (
     <IndexTable.Row
       id={item.id}
@@ -332,11 +395,7 @@ export const MenuItemsPage: React.FC = () => {
     >
       <IndexTable.Cell>
         <InlineStack gap="300" blockAlign="center">
-          <Thumbnail
-            source={item.imageUrl || ImageIcon}
-            alt={item.name}
-            size="small"
-          />
+          <Thumbnail source={item.imageUrl || ImageIcon} alt={item.name} size="small" />
           <Text variant="bodyMd" fontWeight="bold" as="span">
             {item.name}
           </Text>
@@ -352,17 +411,10 @@ export const MenuItemsPage: React.FC = () => {
       <IndexTable.Cell>
         <div onClick={(e) => e.stopPropagation()}>
           <InlineStack gap="200" align="end">
-            <Button
-              size="micro"
-              onClick={() => triggerToggleConfirm(item)}
-            >
+            <Button size="micro" onClick={() => triggerToggleConfirm(item)}>
               {item.isAvailable ? 'Disable' : 'Enable'}
             </Button>
-            <Button
-              icon={EditIcon}
-              size="micro"
-              onClick={() => handleOpenEditModal(item)}
-            />
+            <Button icon={EditIcon} size="micro" onClick={() => handleOpenEditModal(item)} />
             <Button
               icon={DeleteIcon}
               size="micro"
@@ -413,9 +465,7 @@ export const MenuItemsPage: React.FC = () => {
               <IndexTable
                 resourceName={{ singular: 'menu item', plural: 'menu items' }}
                 itemCount={filteredItems.length}
-                selectedItemsCount={
-                  allResourcesSelected ? 'All' : selectedResources.length
-                }
+                selectedItemsCount={allResourcesSelected ? 'All' : selectedResources.length}
                 onSelectionChange={handleSelectionChange}
                 loading={loading}
                 headings={[
@@ -442,6 +492,7 @@ export const MenuItemsPage: React.FC = () => {
           content: editingItem ? 'Save Changes' : 'Create Item',
           onAction: handleSave,
           loading: createLoading || updateLoading,
+          disabled: !hasChanges,
         }}
         secondaryActions={[
           {
@@ -489,11 +540,7 @@ export const MenuItemsPage: React.FC = () => {
                   <Text as="span" variant="bodySm">
                     Image Preview:
                   </Text>
-                  <Thumbnail
-                    source={itemImageUrl}
-                    alt="Preview"
-                    size="medium"
-                  />
+                  <Thumbnail source={itemImageUrl} alt="Preview" size="medium" />
                 </InlineStack>
               </Box>
             )}
@@ -541,20 +588,16 @@ export const MenuItemsPage: React.FC = () => {
                         labelHidden
                         options={inventoryOptions}
                         value={ing.inventoryItemId}
-                        onChange={(val) =>
-                          handleIngredientChange(idx, 'inventoryItemId', val)
-                        }
+                        onChange={(val) => handleIngredientChange(idx, 'inventoryItemId', val)}
                       />
                     </Box>
-                    <Box width="25%">
+                    <Box width="30%">
                       <TextField
                         label="Quantity"
                         labelHidden
                         type="number"
                         value={ing.quantity}
-                        onChange={(val) =>
-                          handleIngredientChange(idx, 'quantity', val)
-                        }
+                        onChange={(val) => handleIngredientChange(idx, 'quantity', val)}
                         placeholder="Qty"
                         autoComplete="off"
                       />

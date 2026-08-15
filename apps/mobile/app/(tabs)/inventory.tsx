@@ -116,8 +116,7 @@ export default function InventoryScreen() {
             useToastStore.getState().showToast(`"${item.name}" deleted`, 'success');
           } catch (err: any) {
             const warningMsg =
-              err?.message ||
-              'Cannot delete item because it is referenced in recipes or history.';
+              err?.message || 'Cannot delete item because it is referenced in recipes or history.';
             useToastStore.getState().showToast(warningMsg, 'error');
           } finally {
             setDeletingId(null);

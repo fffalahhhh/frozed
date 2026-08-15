@@ -1,10 +1,25 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, Animated, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  Pressable,
+  Animated,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { MenuWithCategories, Order } from '@frozen-shake/shared';
 import { useQuery } from '@apollo/client';
 import { apolloClient } from '../../../lib/graphqlClient';
-import { CREATE_ORDER, CREATE_PRE_ORDER, GET_ORDERS, GET_MENU, GET_INVENTORY, GET_PRE_ORDERS } from '../../../lib/queries';
+import {
+  CREATE_ORDER,
+  CREATE_PRE_ORDER,
+  GET_ORDERS,
+  GET_MENU,
+  GET_INVENTORY,
+  GET_PRE_ORDERS,
+} from '../../../lib/queries';
 import { useCartStore } from '../../../store/cart';
 import { useToastStore } from '../../../store/toast';
 import { fmt } from '../../common/constants';
@@ -523,7 +538,9 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
           disabled={items.length === 0 || isSuccessOrder || isSavingPreOrder || isSubmittingOrder}
           onPress={handleSavePreOrder}
           className="w-full py-2 mb-2 rounded-full border border-[#0D4830] bg-[#F4F1EA] items-center justify-center flex-row gap-1.5"
-          style={({ pressed }) => ({ opacity: pressed || items.length === 0 || isSavingPreOrder ? 0.6 : 1 })}
+          style={({ pressed }) => ({
+            opacity: pressed || items.length === 0 || isSavingPreOrder ? 0.6 : 1,
+          })}
         >
           {isSavingPreOrder ? (
             <ActivityIndicator size="small" color="#0D4830" />

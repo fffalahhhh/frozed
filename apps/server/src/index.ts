@@ -87,5 +87,3 @@ console.log(`🧃 Frozen Shake API running on http://0.0.0.0:${port}`);
 console.log(`🚀 GraphQL Endpoint ready at http://0.0.0.0:${port}/graphql`);
 
 serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });
-
-

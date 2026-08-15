@@ -249,4 +249,3 @@ export interface SyncOrderPayload {
     items: Array<Omit<OrderItem, 'id' | 'orderId'>>;
   }>;
 }
-

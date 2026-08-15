@@ -18,7 +18,12 @@ export const yoga = createYoga({
   plugins: [
     {
       onExecutionResult({ result, args }: any) {
-        if (result && typeof result === 'object' && 'errors' in result && Array.isArray(result.errors)) {
+        if (
+          result &&
+          typeof result === 'object' &&
+          'errors' in result &&
+          Array.isArray(result.errors)
+        ) {
           for (const err of result.errors) {
             captureBackendException(err.originalError || err, {
               path: '/graphql',
@@ -34,5 +39,3 @@ export const yoga = createYoga({
     },
   ],
 });
-
-

@@ -1,13 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import {
-  Popover,
-  Button,
-  BlockStack,
-  InlineStack,
-  Box,
-  Text,
-  TextField,
-} from '@shopify/polaris';
+import { Popover, Button, BlockStack, InlineStack, Box, Text, TextField } from '@shopify/polaris';
 import { CalendarIcon } from '@shopify/polaris-icons';
 
 interface DateRangeSelectorProps {
@@ -33,10 +25,7 @@ export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
   const [tempFrom, setTempFrom] = useState(fromDate);
   const [tempTo, setTempTo] = useState(toDate);
 
-  const togglePopoverActive = useCallback(
-    () => setPopoverActive((active) => !active),
-    []
-  );
+  const togglePopoverActive = useCallback(() => setPopoverActive((active) => !active), []);
 
   const handleSelectPreset = useCallback(
     (preset: 'today' | 'week' | 'month') => {
@@ -70,7 +59,7 @@ export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
       onDateChange(newFrom, newTo);
       setPopoverActive(false);
     },
-    [onDateChange]
+    [onDateChange],
   );
 
   const handleApplyCustom = useCallback(() => {

@@ -84,8 +84,8 @@ export function TopLogoHeader({
                 isDisabled
                   ? 'bg-gray-100/70 border-gray-200 opacity-60'
                   : isSelected
-                  ? 'bg-[#0D4830] border-[#0D4830]'
-                  : 'bg-white border-[#E5E0D8]'
+                    ? 'bg-[#0D4830] border-[#0D4830]'
+                    : 'bg-white border-[#E5E0D8]'
               }`}
               style={({ pressed }) => ({
                 opacity: isDisabled ? 0.5 : pressed ? 0.7 : 1,
@@ -98,11 +98,7 @@ export function TopLogoHeader({
               />
               <Text
                 className={`font-sans-semibold text-xs ${
-                  isDisabled
-                    ? 'text-gray-400'
-                    : isSelected
-                    ? 'text-white'
-                    : 'text-[#0D4830]'
+                  isDisabled ? 'text-gray-400' : isSelected ? 'text-white' : 'text-[#0D4830]'
                 }`}
               >
                 Pre-Orders

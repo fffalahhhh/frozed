@@ -348,12 +348,14 @@ export default function FOHScreen() {
 
       {/* Small Screen Slide-over Cart Drawer Modal */}
       {!isTablet && isCartOpen && (
-        <Modal visible={isCartOpen} transparent animationType="none" onRequestClose={handleCloseCart}>
+        <Modal
+          visible={isCartOpen}
+          transparent
+          animationType="none"
+          onRequestClose={handleCloseCart}
+        >
           <View className="flex-1 flex-row">
-            <Animated.View
-              style={{ opacity: backdropAnim }}
-              className="flex-1 bg-black/50"
-            >
+            <Animated.View style={{ opacity: backdropAnim }} className="flex-1 bg-black/50">
               <Pressable className="flex-1" onPress={handleCloseCart} />
             </Animated.View>
 

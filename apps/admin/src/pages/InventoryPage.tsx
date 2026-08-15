@@ -123,12 +123,13 @@ export const InventoryPage: React.FC = () => {
     if (!searchQuery.trim()) return inventoryList;
     const q = searchQuery.toLowerCase();
     return inventoryList.filter(
-      (item) => item.name.toLowerCase().includes(q) || item.unit.toLowerCase().includes(q)
+      (item) => item.name.toLowerCase().includes(q) || item.unit.toLowerCase().includes(q),
     );
   }, [inventoryList, searchQuery]);
 
-  const { selectedResources, allResourcesSelected, handleSelectionChange } =
-    useIndexResourceState(filteredInventory as any);
+  const { selectedResources, allResourcesSelected, handleSelectionChange } = useIndexResourceState(
+    filteredInventory as any,
+  );
 
   // Item Modal Handlers
   const handleOpenAddModal = useCallback(() => {
@@ -189,7 +190,16 @@ export const InventoryPage: React.FC = () => {
         },
       });
     }
-  }, [editingItem, name, unit, currentStock, reorderLevel, costPerUnit, createInventoryItem, updateInventoryItem]);
+  }, [
+    editingItem,
+    name,
+    unit,
+    currentStock,
+    reorderLevel,
+    costPerUnit,
+    createInventoryItem,
+    updateInventoryItem,
+  ]);
 
   // Adjust Modal Handlers
   const handleOpenAdjustModal = useCallback((item: InventoryItemData) => {
@@ -239,20 +249,25 @@ export const InventoryPage: React.FC = () => {
       { id: 'add', content: 'Add Stock (+)' },
       { id: 'decrease', content: 'Decrease Stock (-)' },
     ],
-    []
+    [],
   );
 
   // Confirmation Trigger for Delete Inventory Item
-  const triggerDeleteItemConfirm = useCallback((item: InventoryItemData) => {
-    setConfirmTitle(`Delete Inventory Item "${item.name}"?`);
-    setConfirmMessage(`Are you sure you want to delete "${item.name}"? This action will permanently remove it from inventory.`);
-    setConfirmActionLabel('Delete Item');
-    setConfirmTone('critical');
-    setPendingAction(() => async () => {
-      await deleteInventoryItem({ variables: { id: item.id } });
-    });
-    setIsConfirmOpen(true);
-  }, [deleteInventoryItem]);
+  const triggerDeleteItemConfirm = useCallback(
+    (item: InventoryItemData) => {
+      setConfirmTitle(`Delete Inventory Item "${item.name}"?`);
+      setConfirmMessage(
+        `Are you sure you want to delete "${item.name}"? This action will permanently remove it from inventory.`,
+      );
+      setConfirmActionLabel('Delete Item');
+      setConfirmTone('critical');
+      setPendingAction(() => async () => {
+        await deleteInventoryItem({ variables: { id: item.id } });
+      });
+      setIsConfirmOpen(true);
+    },
+    [deleteInventoryItem],
+  );
 
   const handleExecuteConfirm = useCallback(async () => {
     if (!pendingAction) return;
@@ -284,7 +299,9 @@ export const InventoryPage: React.FC = () => {
       <IndexTable.Cell>
         {item.reorderNum.toLocaleString()} {item.unit}
       </IndexTable.Cell>
-      <IndexTable.Cell>₹{item.costNum.toFixed(2)} / {item.unit}</IndexTable.Cell>
+      <IndexTable.Cell>
+        ₹{item.costNum.toFixed(2)} / {item.unit}
+      </IndexTable.Cell>
       <IndexTable.Cell>
         <Badge tone={item.needsRestock ? 'critical' : 'success'}>
           {item.needsRestock ? 'Low Stock' : 'Sufficient'}
@@ -293,18 +310,10 @@ export const InventoryPage: React.FC = () => {
       <IndexTable.Cell>
         <div onClick={(e) => e.stopPropagation()}>
           <InlineStack gap="200" align="end">
-            <Button
-              icon={RefreshIcon}
-              size="micro"
-              onClick={() => handleOpenAdjustModal(item)}
-            >
+            <Button icon={RefreshIcon} size="micro" onClick={() => handleOpenAdjustModal(item)}>
               Adjust Stock
             </Button>
-            <Button
-              icon={EditIcon}
-              size="micro"
-              onClick={() => handleOpenEditModal(item)}
-            />
+            <Button icon={EditIcon} size="micro" onClick={() => handleOpenEditModal(item)} />
             <Button
               icon={DeleteIcon}
               size="micro"
@@ -332,7 +341,10 @@ export const InventoryPage: React.FC = () => {
           <BlockStack gap="400">
             {error && (
               <Banner tone="warning" title="Inventory Load Error">
-                <p>Unable to connect to GraphQL inventory API: {error.message}. Ensure `npm run server:admin` is running.</p>
+                <p>
+                  Unable to connect to GraphQL inventory API: {error.message}. Ensure `npm run
+                  server:admin` is running.
+                </p>
               </Banner>
             )}
 
@@ -353,9 +365,7 @@ export const InventoryPage: React.FC = () => {
               <IndexTable
                 resourceName={{ singular: 'inventory item', plural: 'inventory items' }}
                 itemCount={filteredInventory.length}
-                selectedItemsCount={
-                  allResourcesSelected ? 'All' : selectedResources.length
-                }
+                selectedItemsCount={allResourcesSelected ? 'All' : selectedResources.length}
                 onSelectionChange={handleSelectionChange}
                 loading={loading}
                 headings={[
@@ -462,11 +472,7 @@ export const InventoryPage: React.FC = () => {
       >
         <Modal.Section>
           <BlockStack gap="400">
-            <Tabs
-              tabs={adjustTabs}
-              selected={selectedAdjustTab}
-              onSelect={setSelectedAdjustTab}
-            />
+            <Tabs tabs={adjustTabs} selected={selectedAdjustTab} onSelect={setSelectedAdjustTab} />
 
             <FormLayout>
               <TextField
@@ -486,7 +492,9 @@ export const InventoryPage: React.FC = () => {
                   Stock Calculation Breakdown
                 </Text>
                 <InlineStack align="space-between">
-                  <Text as="span" tone="subdued">Current Inventory Stock:</Text>
+                  <Text as="span" tone="subdued">
+                    Current Inventory Stock:
+                  </Text>
                   <Text as="span" fontWeight="bold">
                     {currentStockVal.toLocaleString()} {adjustingItem?.unit}
                   </Text>
@@ -500,7 +508,8 @@ export const InventoryPage: React.FC = () => {
                     fontWeight="bold"
                     tone={selectedAdjustTab === 0 ? 'success' : 'critical'}
                   >
-                    {selectedAdjustTab === 0 ? '+' : '-'}{inputDeltaVal.toLocaleString()} {adjustingItem?.unit}
+                    {selectedAdjustTab === 0 ? '+' : '-'}
+                    {inputDeltaVal.toLocaleString()} {adjustingItem?.unit}
                   </Text>
                 </InlineStack>
                 <Divider />
@@ -516,8 +525,8 @@ export const InventoryPage: React.FC = () => {
                       selectedAdjustTab === 0
                         ? 'success'
                         : calculatedNewStock < (adjustingItem?.reorderNum || 0)
-                        ? 'critical'
-                        : undefined
+                          ? 'critical'
+                          : undefined
                     }
                   >
                     {calculatedNewStock.toLocaleString()} {adjustingItem?.unit}

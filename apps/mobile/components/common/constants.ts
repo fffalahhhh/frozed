@@ -24,7 +24,6 @@ export const formatIndianNumber = (num: number, decimals = 0): string => {
 export const fmt = (n?: number | string | null, decimals = 0) =>
   `₹${formatIndianNumber(parseFloat(String(n || 0)), decimals)}`;
 
-
 export const COLORS = {
   primary: '#0D4830',
   primaryLight: '#1B5E43',

@@ -94,7 +94,9 @@ export function IngredientSection({
           const selectedStockNum = selected ? parseFloat(selected.currentStock || '0') : 0;
           const selectedReorderNum = selected ? parseFloat(selected.reorderLevel || '0') : 0;
           const selectedIsOutOfStock = selected ? selectedStockNum <= 0 : false;
-          const selectedIsLowStock = selected ? !selectedIsOutOfStock && selectedStockNum <= selectedReorderNum : false;
+          const selectedIsLowStock = selected
+            ? !selectedIsOutOfStock && selectedStockNum <= selectedReorderNum
+            : false;
 
           return (
             <View key={idx} className="bg-white border border-border/60 rounded-xl p-3 mb-2.5">
@@ -127,12 +129,16 @@ export function IngredientSection({
                     {selectedIsOutOfStock ? (
                       <View className="bg-amber-100 border border-amber-300 rounded-lg px-2 py-0.5 flex-row items-center gap-1">
                         <Ionicons name="warning" size={12} color="#D97706" />
-                        <Text className="text-amber-800 text-[10px] font-sans-bold">Out of Stock</Text>
+                        <Text className="text-amber-800 text-[10px] font-sans-bold">
+                          Out of Stock
+                        </Text>
                       </View>
                     ) : selectedIsLowStock ? (
                       <View className="bg-orange-100 border border-orange-300 rounded-lg px-2 py-0.5 flex-row items-center gap-1">
                         <Ionicons name="alert-circle" size={12} color="#EA580C" />
-                        <Text className="text-orange-800 text-[10px] font-sans-bold">Low Stock</Text>
+                        <Text className="text-orange-800 text-[10px] font-sans-bold">
+                          Low Stock
+                        </Text>
                       </View>
                     ) : null}
                   </View>
@@ -179,10 +185,10 @@ export function IngredientSection({
                               isThisSelected
                                 ? 'bg-[#1B4332] border-[#1B4332]'
                                 : isOutOfStock
-                                ? 'bg-amber-50 border-amber-300'
-                                : isLowStock
-                                ? 'bg-orange-50 border-orange-200'
-                                : 'bg-[#F9FAFB] border-[#E5E7EB]'
+                                  ? 'bg-amber-50 border-amber-300'
+                                  : isLowStock
+                                    ? 'bg-orange-50 border-orange-200'
+                                    : 'bg-[#F9FAFB] border-[#E5E7EB]'
                             }`}
                           >
                             {isThisSelected ? (
@@ -198,13 +204,14 @@ export function IngredientSection({
                                 color: isThisSelected
                                   ? '#FFFFFF'
                                   : isOutOfStock
-                                  ? '#B45309'
-                                  : isLowStock
-                                  ? '#C2410C'
-                                  : '#1F2937',
+                                    ? '#B45309'
+                                    : isLowStock
+                                      ? '#C2410C'
+                                      : '#1F2937',
                               }}
                             >
-                              {s?.name || 'Ingredient'} ({s?.unit || 'unit'}){isOutOfStock ? ' • Out of Stock' : isLowStock ? ' • Low Stock' : ''}
+                              {s?.name || 'Ingredient'} ({s?.unit || 'unit'})
+                              {isOutOfStock ? ' • Out of Stock' : isLowStock ? ' • Low Stock' : ''}
                             </Text>
                           </TouchableOpacity>
                         );

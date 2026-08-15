@@ -63,10 +63,12 @@ export function AddMenuItemModal({
     setIngredients((prev) => [...prev, { inventoryItemId: stockItems[0].id, quantity: '1' }]);
   };
 
-  const updateIngredientRow = (index: number, field: 'inventoryItemId' | 'quantity', val: string) => {
-    setIngredients((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: val } : row)),
-    );
+  const updateIngredientRow = (
+    index: number,
+    field: 'inventoryItemId' | 'quantity',
+    val: string,
+  ) => {
+    setIngredients((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: val } : row)));
   };
 
   const removeIngredientRow = (index: number) => {

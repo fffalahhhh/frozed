@@ -1,11 +1,5 @@
 import { db } from './index.js';
-import {
-  users,
-  categories,
-  menuItems,
-  recipes,
-  inventoryItems,
-} from './schema.js';
+import { users, categories, menuItems, recipes, inventoryItems } from './schema.js';
 import { sql } from 'drizzle-orm';
 import 'dotenv/config';
 
@@ -17,9 +11,7 @@ export async function seedFrozenShakeData() {
     console.log('Inserting default user...');
     await db
       .insert(users)
-      .values([
-        { name: 'Default Cashier', email: 'cashier@frozenshake.com', role: 'cashier' },
-      ])
+      .values([{ name: 'Default Cashier', email: 'cashier@frozenshake.com', role: 'cashier' }])
       .onConflictDoNothing();
 
     // 2. Clear old data completely to guarantee 100% fresh seed
@@ -49,30 +41,174 @@ export async function seedFrozenShakeData() {
     // 4. Inventory Stock Items (from Handwritten Notepad + Excel Specs)
     console.log('Inserting Inventory Stock Items...');
     const inventoryData = [
-      { name: 'Mango Pulp', unit: 'kg', currentStock: '8.00', reorderLevel: '2.00', costPerUnit: '210.00' },
-      { name: 'Chiku Pulp', unit: 'kg', currentStock: '8.00', reorderLevel: '2.00', costPerUnit: '150.00' },
-      { name: 'Sitaphal Pulp', unit: 'kg', currentStock: '7.00', reorderLevel: '2.00', costPerUnit: '230.00' },
-      { name: 'Strawberry', unit: 'kg', currentStock: '7.00', reorderLevel: '2.00', costPerUnit: '180.00' },
-      { name: 'Jamun Pulp', unit: 'kg', currentStock: '3.00', reorderLevel: '1.00', costPerUnit: '190.00' },
-      { name: 'Coconut Pulp', unit: 'kg', currentStock: '7.00', reorderLevel: '2.00', costPerUnit: '240.00' },
-      { name: 'Oreo Biscuit', unit: 'packs', currentStock: '100.00', reorderLevel: '15.00', costPerUnit: '9.00' },
-      { name: 'Boost Powder', unit: 'packs', currentStock: '100.00', reorderLevel: '15.00', costPerUnit: '5.00' },
-      { name: 'Coffee Powder', unit: 'packs', currentStock: '150.00', reorderLevel: '20.00', costPerUnit: '5.00' },
-      { name: 'Vanilla Syrup', unit: 'bottles', currentStock: '2.00', reorderLevel: '1.00', costPerUnit: '150.00' },
-      { name: 'Butterscotch Syrup', unit: 'bottles', currentStock: '2.00', reorderLevel: '1.00', costPerUnit: '150.00' },
-      { name: 'Strawberry Syrup', unit: 'bottles', currentStock: '2.00', reorderLevel: '1.00', costPerUnit: '150.00' },
-      { name: 'Chocolate Syrup', unit: 'bottles', currentStock: '2.00', reorderLevel: '1.00', costPerUnit: '150.00' },
-      { name: 'Kaju', unit: 'kg', currentStock: '1.00', reorderLevel: '0.20', costPerUnit: '700.00' },
-      { name: 'Badam', unit: 'kg', currentStock: '1.00', reorderLevel: '0.20', costPerUnit: '800.00' },
-      { name: 'Dates', unit: 'kg', currentStock: '5.00', reorderLevel: '1.00', costPerUnit: '130.00' },
-      { name: 'Anjeer', unit: 'kg', currentStock: '1.00', reorderLevel: '0.20', costPerUnit: '1000.00' },
-      { name: 'Nutella Chocolate', unit: 'jars', currentStock: '3.00', reorderLevel: '1.00', costPerUnit: '321.00' },
-      { name: 'Banana', unit: 'kg', currentStock: '5.00', reorderLevel: '1.00', costPerUnit: '40.00' },
-      { name: 'Apple', unit: 'kg', currentStock: '5.00', reorderLevel: '1.00', costPerUnit: '120.00' },
-      { name: 'Dragon Fruit', unit: 'kg', currentStock: '3.00', reorderLevel: '1.00', costPerUnit: '150.00' },
-      { name: 'Milk', unit: 'liters', currentStock: '50.00', reorderLevel: '10.00', costPerUnit: '50.00' },
-      { name: 'Sugar', unit: 'kg', currentStock: '10.00', reorderLevel: '2.00', costPerUnit: '44.00' },
-      { name: 'Glass/Straw/Lid', unit: 'sets', currentStock: '500.00', reorderLevel: '50.00', costPerUnit: '3.00' },
+      {
+        name: 'Mango Pulp',
+        unit: 'kg',
+        currentStock: '8.00',
+        reorderLevel: '2.00',
+        costPerUnit: '210.00',
+      },
+      {
+        name: 'Chiku Pulp',
+        unit: 'kg',
+        currentStock: '8.00',
+        reorderLevel: '2.00',
+        costPerUnit: '150.00',
+      },
+      {
+        name: 'Sitaphal Pulp',
+        unit: 'kg',
+        currentStock: '7.00',
+        reorderLevel: '2.00',
+        costPerUnit: '230.00',
+      },
+      {
+        name: 'Strawberry',
+        unit: 'kg',
+        currentStock: '7.00',
+        reorderLevel: '2.00',
+        costPerUnit: '180.00',
+      },
+      {
+        name: 'Jamun Pulp',
+        unit: 'kg',
+        currentStock: '3.00',
+        reorderLevel: '1.00',
+        costPerUnit: '190.00',
+      },
+      {
+        name: 'Coconut Pulp',
+        unit: 'kg',
+        currentStock: '7.00',
+        reorderLevel: '2.00',
+        costPerUnit: '240.00',
+      },
+      {
+        name: 'Oreo Biscuit',
+        unit: 'packs',
+        currentStock: '100.00',
+        reorderLevel: '15.00',
+        costPerUnit: '9.00',
+      },
+      {
+        name: 'Boost Powder',
+        unit: 'packs',
+        currentStock: '100.00',
+        reorderLevel: '15.00',
+        costPerUnit: '5.00',
+      },
+      {
+        name: 'Coffee Powder',
+        unit: 'packs',
+        currentStock: '150.00',
+        reorderLevel: '20.00',
+        costPerUnit: '5.00',
+      },
+      {
+        name: 'Vanilla Syrup',
+        unit: 'bottles',
+        currentStock: '2.00',
+        reorderLevel: '1.00',
+        costPerUnit: '150.00',
+      },
+      {
+        name: 'Butterscotch Syrup',
+        unit: 'bottles',
+        currentStock: '2.00',
+        reorderLevel: '1.00',
+        costPerUnit: '150.00',
+      },
+      {
+        name: 'Strawberry Syrup',
+        unit: 'bottles',
+        currentStock: '2.00',
+        reorderLevel: '1.00',
+        costPerUnit: '150.00',
+      },
+      {
+        name: 'Chocolate Syrup',
+        unit: 'bottles',
+        currentStock: '2.00',
+        reorderLevel: '1.00',
+        costPerUnit: '150.00',
+      },
+      {
+        name: 'Kaju',
+        unit: 'kg',
+        currentStock: '1.00',
+        reorderLevel: '0.20',
+        costPerUnit: '700.00',
+      },
+      {
+        name: 'Badam',
+        unit: 'kg',
+        currentStock: '1.00',
+        reorderLevel: '0.20',
+        costPerUnit: '800.00',
+      },
+      {
+        name: 'Dates',
+        unit: 'kg',
+        currentStock: '5.00',
+        reorderLevel: '1.00',
+        costPerUnit: '130.00',
+      },
+      {
+        name: 'Anjeer',
+        unit: 'kg',
+        currentStock: '1.00',
+        reorderLevel: '0.20',
+        costPerUnit: '1000.00',
+      },
+      {
+        name: 'Nutella Chocolate',
+        unit: 'jars',
+        currentStock: '3.00',
+        reorderLevel: '1.00',
+        costPerUnit: '321.00',
+      },
+      {
+        name: 'Banana',
+        unit: 'kg',
+        currentStock: '5.00',
+        reorderLevel: '1.00',
+        costPerUnit: '40.00',
+      },
+      {
+        name: 'Apple',
+        unit: 'kg',
+        currentStock: '5.00',
+        reorderLevel: '1.00',
+        costPerUnit: '120.00',
+      },
+      {
+        name: 'Dragon Fruit',
+        unit: 'kg',
+        currentStock: '3.00',
+        reorderLevel: '1.00',
+        costPerUnit: '150.00',
+      },
+      {
+        name: 'Milk',
+        unit: 'liters',
+        currentStock: '50.00',
+        reorderLevel: '10.00',
+        costPerUnit: '50.00',
+      },
+      {
+        name: 'Sugar',
+        unit: 'kg',
+        currentStock: '10.00',
+        reorderLevel: '2.00',
+        costPerUnit: '44.00',
+      },
+      {
+        name: 'Glass/Straw/Lid',
+        unit: 'sets',
+        currentStock: '500.00',
+        reorderLevel: '50.00',
+        costPerUnit: '3.00',
+      },
     ];
 
     const insertedInventory = await db.insert(inventoryItems).values(inventoryData).returning();
@@ -86,7 +222,8 @@ export async function seedFrozenShakeData() {
         name: 'Mango Shake',
         description: 'Thick fresh Alphonso Mango Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1635716279493-d1e30afc25a0?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1635716279493-d1e30afc25a0?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -94,7 +231,8 @@ export async function seedFrozenShakeData() {
         name: 'Chiku Shake',
         description: 'Natural fresh Sapota Chiku Milkshake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1699863164964-13805b27bc42?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1699863164964-13805b27bc42?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -102,7 +240,8 @@ export async function seedFrozenShakeData() {
         name: 'Sitaphal Shake',
         description: 'Exotic Custard Apple Sitaphal Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1680008702737-aad40d0f1e56?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1680008702737-aad40d0f1e56?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -110,7 +249,8 @@ export async function seedFrozenShakeData() {
         name: 'Strawberry Shake',
         description: 'Fresh pink Strawberry Milkshake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?q=80&w=1315&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?q=80&w=1315&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -118,7 +258,8 @@ export async function seedFrozenShakeData() {
         name: 'Jamun Shake',
         description: 'Vibrant purple Black Plum Jamun Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://plus.unsplash.com/premium_photo-1675365352000-0ed2b799d7b3?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://plus.unsplash.com/premium_photo-1675365352000-0ed2b799d7b3?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -126,7 +267,8 @@ export async function seedFrozenShakeData() {
         name: 'Tender Coconut Shake',
         description: 'Refreshing Tender Coconut Elaneer Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1603779046675-2eccbab9b982?q=80&w=1333&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1603779046675-2eccbab9b982?q=80&w=1333&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -134,7 +276,8 @@ export async function seedFrozenShakeData() {
         name: 'Banana Shake',
         description: 'Creamy fresh Banana Milkshake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -142,7 +285,8 @@ export async function seedFrozenShakeData() {
         name: 'Apple Shake',
         description: 'Fresh Red Apple Milkshake',
         sellingPrice: '50.00',
-        imageUrl: 'https://plus.unsplash.com/premium_photo-1724249990837-f6dfcb7f3eaa?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://plus.unsplash.com/premium_photo-1724249990837-f6dfcb7f3eaa?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -150,7 +294,8 @@ export async function seedFrozenShakeData() {
         name: 'Dragon Fruit Shake',
         description: 'Exotic magenta Pink Dragon Fruit Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1698546690393-45482eb06942?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1698546690393-45482eb06942?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -158,7 +303,8 @@ export async function seedFrozenShakeData() {
         name: 'Mix Fruit Shake',
         description: 'Special multi-fruit shake blend',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1628689469838-524a4a973b8e?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1628689469838-524a4a973b8e?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -166,7 +312,8 @@ export async function seedFrozenShakeData() {
         name: 'Oreo Shake',
         description: 'Rich thick chocolate Oreo Shake with crushed biscuits',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1672753261221-608b9d15d597?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1672753261221-608b9d15d597?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -174,7 +321,8 @@ export async function seedFrozenShakeData() {
         name: 'Chocolate Shake',
         description: 'Decadent thick Belgian Chocolate Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1623660053975-cf75a8be0908?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1623660053975-cf75a8be0908?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -182,7 +330,8 @@ export async function seedFrozenShakeData() {
         name: 'Boost Shake',
         description: 'Malty chocolate Boost Shake with malt powder',
         sellingPrice: '50.00',
-        imageUrl: 'https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRlXLUx4qd2J_ij_WgBoYmgPr5hRxvgfLe809pQN6xDMsRgPudTPnC76teZXjWinu25sFPh3tuwxdGsEWj4hgFT8VWEQTQ-5_qssnWpgtzaJYn4WAxrcC8Fa1c',
+        imageUrl:
+          'https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRlXLUx4qd2J_ij_WgBoYmgPr5hRxvgfLe809pQN6xDMsRgPudTPnC76teZXjWinu25sFPh3tuwxdGsEWj4hgFT8VWEQTQ-5_qssnWpgtzaJYn4WAxrcC8Fa1c',
         isAvailable: true,
       },
       {
@@ -190,7 +339,8 @@ export async function seedFrozenShakeData() {
         name: 'Cold Coffee',
         description: 'Smooth frosted Cold Coffee with creamy foam',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?q=80&w=1961&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1447933601403-0c6688de566e?q=80&w=1961&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -198,7 +348,8 @@ export async function seedFrozenShakeData() {
         name: 'Vanilla Shake',
         description: 'Classic creamy French Vanilla Milkshake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1581524674552-80462a204517?q=80&w=988&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1581524674552-80462a204517?q=80&w=988&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -206,7 +357,8 @@ export async function seedFrozenShakeData() {
         name: 'Butterscotch Shake',
         description: 'Golden Butterscotch Shake with crunchy praline',
         sellingPrice: '50.00',
-        imageUrl: 'https://icecreambakery.in/wp-content/uploads/2025/02/butterscotch-ice-cream-recipe.jpg',
+        imageUrl:
+          'https://icecreambakery.in/wp-content/uploads/2025/02/butterscotch-ice-cream-recipe.jpg',
         isAvailable: true,
       },
       {
@@ -214,7 +366,8 @@ export async function seedFrozenShakeData() {
         name: 'Dry Fruits Shake',
         description: 'Royal Dry Fruit Shake with figs, dates, kaju & badam',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1607664608695-45aaa6d621fc?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1607664608695-45aaa6d621fc?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -222,7 +375,8 @@ export async function seedFrozenShakeData() {
         name: 'Dates Shake',
         description: 'Rich healthy Arabian Date Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://images.unsplash.com/photo-1614061811858-dde54a522f5e?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1614061811858-dde54a522f5e?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -230,7 +384,8 @@ export async function seedFrozenShakeData() {
         name: 'Anjeer Shake',
         description: 'Luxurious dried Fig Anjeer Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://plus.unsplash.com/premium_photo-1669205340693-755739ea443d?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://plus.unsplash.com/premium_photo-1669205340693-755739ea443d?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
       {
@@ -238,7 +393,8 @@ export async function seedFrozenShakeData() {
         name: 'Kaaju Badam Shake',
         description: 'Nutty Cashew and Almond Shake',
         sellingPrice: '50.00',
-        imageUrl: 'https://plus.unsplash.com/premium_photo-1675237626334-5cf9d9d8b30c?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://plus.unsplash.com/premium_photo-1675237626334-5cf9d9d8b30c?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
 
@@ -248,7 +404,8 @@ export async function seedFrozenShakeData() {
         name: 'Nutella Shake',
         description: 'Indulgent thick Nutella Hazelnut Chocolate Shake',
         sellingPrice: '70.00',
-        imageUrl: 'https://images.unsplash.com/photo-1543254077-8bd7c22afbf1?q=80&w=1364&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        imageUrl:
+          'https://images.unsplash.com/photo-1543254077-8bd7c22afbf1?q=80&w=1364&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         isAvailable: true,
       },
     ];
@@ -259,9 +416,16 @@ export async function seedFrozenShakeData() {
     console.log('Inserting Recipes...');
     const recipeList: any[] = [];
 
-    const getMenuItemId = (name: string) => insertedMenuItems.find((m) => m.name.toLowerCase() === name.toLowerCase())?.id;
+    const getMenuItemId = (name: string) =>
+      insertedMenuItems.find((m) => m.name.toLowerCase() === name.toLowerCase())?.id;
 
-    const addRecipe = (menuItemName: string, ingredientName: string, qty: string, unit: string, costPerUnit: string) => {
+    const addRecipe = (
+      menuItemName: string,
+      ingredientName: string,
+      qty: string,
+      unit: string,
+      costPerUnit: string,
+    ) => {
       const menuItemId = getMenuItemId(menuItemName);
       if (menuItemId) {
         recipeList.push({
@@ -413,7 +577,9 @@ export async function seedFrozenShakeData() {
       await db.insert(recipes).values(recipeList);
     }
 
-    console.log(`✅ Seeding finished successfully! Inserted ${insertedMenuItems.length} Menu Items with custom image URLs and ${insertedInventory.length} Inventory Stock Items.`);
+    console.log(
+      `✅ Seeding finished successfully! Inserted ${insertedMenuItems.length} Menu Items with custom image URLs and ${insertedInventory.length} Inventory Stock Items.`,
+    );
   } catch (err) {
     console.error('Error seeding Frozen Shake data:', err);
   } finally {

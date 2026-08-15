@@ -313,4 +313,3 @@ export const analyticsSecurity = pgTable('analytics_security', {
   password: text('password').notNull().default('Frozed2026'),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
-

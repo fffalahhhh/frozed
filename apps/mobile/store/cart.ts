@@ -61,7 +61,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       if (targetQty > maxAvailable) {
         useToastStore
           .getState()
-          .showToast(`Stock limit reached! Only ${maxAvailable} available in inventory.`, 'warning');
+          .showToast(
+            `Stock limit reached! Only ${maxAvailable} available in inventory.`,
+            'warning',
+          );
         const allowed = maxAvailable - currentQty;
         if (allowed <= 0) return;
         newItem = { ...newItem, quantity: allowed };

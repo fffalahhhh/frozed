@@ -97,48 +97,226 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%', maxWidth: 440, backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden' }}>
-          <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#E8E2D9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontFamily: 'Inter_700Bold', color: '#1B4332' }}>Edit Inventory Item</Text>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 16,
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{
+            width: '100%',
+            maxWidth: 440,
+            backgroundColor: '#FFF',
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
+          <View
+            style={{
+              padding: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: '#E8E2D9',
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 18, fontFamily: 'Inter_700Bold', color: '#1B4332' }}>
+              Edit Inventory Item
+            </Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color="#6B7280" />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={{ padding: 16, maxHeight: 400 }}>
-            <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#374151', marginBottom: 4 }}>Item Name</Text>
-            <TextInput value={name} onChangeText={setName} style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 10, fontSize: 14, marginBottom: 12 }} />
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: 'Inter_600SemiBold',
+                color: '#374151',
+                marginBottom: 4,
+              }}
+            >
+              Item Name
+            </Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              style={{
+                borderWidth: 1,
+                borderColor: '#D1D5DB',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 14,
+                marginBottom: 12,
+              }}
+            />
 
-            <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#374151', marginBottom: 4 }}>Unit</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 12 }}>
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: 'Inter_600SemiBold',
+                color: '#374151',
+                marginBottom: 4,
+              }}
+            >
+              Unit
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexDirection: 'row', marginBottom: 12 }}
+            >
               {UNITS.map((u) => (
-                <TouchableOpacity key={u} onPress={() => setUnit(u)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: unit === u ? '#1B4332' : '#F3F4F6', marginRight: 6 }}>
-                  <Text style={{ fontSize: 12, color: unit === u ? '#FFF' : '#374151', fontFamily: 'Inter_600SemiBold' }}>{u}</Text>
+                <TouchableOpacity
+                  key={u}
+                  onPress={() => setUnit(u)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 6,
+                    backgroundColor: unit === u ? '#1B4332' : '#F3F4F6',
+                    marginRight: 6,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: unit === u ? '#FFF' : '#374151',
+                      fontFamily: 'Inter_600SemiBold',
+                    }}
+                  >
+                    {u}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#374151', marginBottom: 4 }}>
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: 'Inter_600SemiBold',
+                color: '#374151',
+                marginBottom: 4,
+              }}
+            >
               Adjust Stock (+ / -) (Current: {oldStockNum} {unit})
             </Text>
-            <TextInput value={addedStock} onChangeText={setAddedStock} keyboardType="numeric" placeholder="e.g. 50 or -10" style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 10, fontSize: 14, marginBottom: 4 }} />
-            <Text style={{ fontSize: 11, color: '#6B7280', marginBottom: 12 }}>New Total Stock will be: {calculatedTotalStock} {unit}</Text>
+            <TextInput
+              value={addedStock}
+              onChangeText={setAddedStock}
+              keyboardType="numeric"
+              placeholder="e.g. 50 or -10"
+              style={{
+                borderWidth: 1,
+                borderColor: '#D1D5DB',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 14,
+                marginBottom: 4,
+              }}
+            />
+            <Text style={{ fontSize: 11, color: '#6B7280', marginBottom: 12 }}>
+              New Total Stock will be: {calculatedTotalStock} {unit}
+            </Text>
 
-            <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#374151', marginBottom: 4 }}>Reorder Alert Level</Text>
-            <TextInput value={reorderLevel} onChangeText={setReorderLevel} keyboardType="numeric" style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 10, fontSize: 14, marginBottom: 12 }} />
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: 'Inter_600SemiBold',
+                color: '#374151',
+                marginBottom: 4,
+              }}
+            >
+              Reorder Alert Level
+            </Text>
+            <TextInput
+              value={reorderLevel}
+              onChangeText={setReorderLevel}
+              keyboardType="numeric"
+              style={{
+                borderWidth: 1,
+                borderColor: '#D1D5DB',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 14,
+                marginBottom: 12,
+              }}
+            />
 
-            <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#374151', marginBottom: 4 }}>Cost Per Unit (₹)</Text>
-            <TextInput value={costPerUnit} onChangeText={setCostPerUnit} keyboardType="numeric" style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 10, fontSize: 14, marginBottom: 16 }} />
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: 'Inter_600SemiBold',
+                color: '#374151',
+                marginBottom: 4,
+              }}
+            >
+              Cost Per Unit (₹)
+            </Text>
+            <TextInput
+              value={costPerUnit}
+              onChangeText={setCostPerUnit}
+              keyboardType="numeric"
+              style={{
+                borderWidth: 1,
+                borderColor: '#D1D5DB',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 14,
+                marginBottom: 16,
+              }}
+            />
           </ScrollView>
 
-          <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#E8E2D9', flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-            <TouchableOpacity onPress={onClose} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#F3F4F6' }}>
-              <Text style={{ fontSize: 14, color: '#374151', fontFamily: 'Inter_600SemiBold' }}>Cancel</Text>
+          <View
+            style={{
+              padding: 16,
+              borderTopWidth: 1,
+              borderTopColor: '#E8E2D9',
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              gap: 8,
+            }}
+          >
+            <TouchableOpacity
+              onPress={onClose}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 8,
+                backgroundColor: '#F3F4F6',
+              }}
+            >
+              <Text style={{ fontSize: 14, color: '#374151', fontFamily: 'Inter_600SemiBold' }}>
+                Cancel
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} disabled={isSubmitting} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: '#1B4332', opacity: isSubmitting ? 0.7 : 1, flexDirection: 'row', alignItems: 'center' }}>
-              {isSubmitting && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 6 }} />}
-              <Text style={{ fontSize: 14, color: '#FFF', fontFamily: 'Inter_600SemiBold' }}>Save Changes</Text>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isSubmitting}
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 8,
+                backgroundColor: '#1B4332',
+                opacity: isSubmitting ? 0.7 : 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              {isSubmitting && (
+                <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 6 }} />
+              )}
+              <Text style={{ fontSize: 14, color: '#FFF', fontFamily: 'Inter_600SemiBold' }}>
+                Save Changes
+              </Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
