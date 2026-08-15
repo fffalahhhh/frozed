@@ -209,7 +209,7 @@ export const resolvers = {
           .select()
           .from(menuItems)
           .where(eq(menuItems.isDeleted, false))
-          .orderBy(desc(menuItems.createdAt)),
+          .orderBy(asc(menuItems.name)),
         db.select().from(inventoryItems),
         db.select().from(menuItemFlavours),
         db.select().from(flavours),
@@ -641,7 +641,7 @@ export const resolvers = {
     },
 
     createMenuItem: async (_: unknown, { input }: { input: any }) => {
-      const { categoryId, name, description, sellingPrice, isAvailable, ingredients } = input;
+      const { categoryId, name, description, imageUrl, sellingPrice, isAvailable, ingredients } = input;
       const invIds: string[] = Array.isArray(ingredients)
         ? ingredients.map((ing: any) => ing.inventoryItemId).filter(Boolean)
         : [];
@@ -653,6 +653,7 @@ export const resolvers = {
             categoryId,
             name: String(name).trim(),
             description: description ? String(description).trim() : null,
+            imageUrl: imageUrl ? String(imageUrl).trim() : null,
             sellingPrice: String(sellingPrice),
             isAvailable: isAvailable ?? true,
           })

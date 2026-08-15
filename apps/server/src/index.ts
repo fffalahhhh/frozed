@@ -23,6 +23,36 @@ app.use(
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (c) => c.json({ ok: true, app: 'Frozen Shake GraphQL API' }));
 
+// ─── Free CDN Image Upload Endpoint ──────────────────────────────────────────
+app.post('/api/upload', async (c) => {
+  try {
+    const body = await c.req.parseBody();
+    const file = body['file'];
+    if (!file || !(file instanceof File)) {
+      return c.json({ success: false, error: 'No file provided' }, 400);
+    }
+
+    const formData = new FormData();
+    formData.append('reqtype', 'fileupload');
+    formData.append('fileToUpload', file);
+
+    const res = await fetch('https://catbox.moe/user/api.php', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error(`CDN upload failed with status ${res.status}`);
+    }
+
+    const cdnUrl = (await res.text()).trim();
+    return c.json({ success: true, url: cdnUrl });
+  } catch (err: any) {
+    console.error('[Upload API] Image upload failed:', err);
+    return c.json({ success: false, error: err.message || 'Upload failed' }, 500);
+  }
+});
+
 // ─── Test Error Tracking Route ────────────────────────────────────────────────
 app.get('/api/test/error', (c) => {
   const testError = new Error('Test backend exception for PostHog telemetry verification');

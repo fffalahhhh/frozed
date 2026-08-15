@@ -19,6 +19,7 @@ import {
   useIndexResourceState,
   Banner,
   Divider,
+  DropZone,
 } from '@shopify/polaris';
 import { PlusIcon, EditIcon, DeleteIcon, ImageIcon } from '@shopify/polaris-icons';
 import { useQuery, useMutation } from '@apollo/client';
@@ -135,6 +136,8 @@ export const MenuItemsPage: React.FC = () => {
         });
       });
     });
+
+    items.sort((a, b) => a.name.localeCompare(b.name));
 
     return { itemsList: items, categoryOptions: catOpts };
   }, [data]);
@@ -285,6 +288,41 @@ export const MenuItemsPage: React.FC = () => {
     [],
   );
 
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleDropZoneDrop = useCallback(
+    async (_dropFiles: File[], acceptedFiles: File[]) => {
+      if (acceptedFiles.length === 0) return;
+      const file = acceptedFiles[0];
+      try {
+        setIsUploadingImage(true);
+        setUploadError(null);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+        if (data.success && data.url) {
+          setItemImageUrl(data.url);
+        } else {
+          setUploadError(data.error || 'Failed to upload image to CDN');
+        }
+      } catch (err: any) {
+        console.error('Image upload failed:', err);
+        setUploadError(err.message || 'Image CDN upload failed');
+      } finally {
+        setIsUploadingImage(false);
+      }
+    },
+    [],
+  );
+
   const handleSave = useCallback(async () => {
     if (!itemName || !itemPrice || !itemCategory) return;
 
@@ -304,6 +342,7 @@ export const MenuItemsPage: React.FC = () => {
             categoryId: itemCategory,
             sellingPrice: itemPrice,
             description: itemDescription,
+            imageUrl: itemImageUrl,
             isAvailable: itemAvailable,
             ingredients: formattedIngredients.length > 0 ? formattedIngredients : undefined,
           },
@@ -317,6 +356,7 @@ export const MenuItemsPage: React.FC = () => {
             categoryId: itemCategory,
             sellingPrice: itemPrice,
             description: itemDescription,
+            imageUrl: itemImageUrl,
             isAvailable: itemAvailable,
             ingredients: formattedIngredients.length > 0 ? formattedIngredients : undefined,
           },
@@ -329,6 +369,7 @@ export const MenuItemsPage: React.FC = () => {
     itemPrice,
     itemCategory,
     itemDescription,
+    itemImageUrl,
     itemAvailable,
     ingredients,
     createMenuItem,
@@ -344,9 +385,10 @@ export const MenuItemsPage: React.FC = () => {
     const categoryChanged = itemCategory !== editingItem.categoryId;
     const priceChanged = itemPrice.trim() !== (editingItem.sellingPrice || '').trim();
     const descriptionChanged = itemDescription.trim() !== (editingItem.description || '').trim();
+    const imageChanged = itemImageUrl.trim() !== (editingItem.imageUrl || '').trim();
     const availableChanged = itemAvailable !== editingItem.isAvailable;
 
-    if (nameChanged || categoryChanged || priceChanged || descriptionChanged || availableChanged) {
+    if (nameChanged || categoryChanged || priceChanged || descriptionChanged || imageChanged || availableChanged) {
       return true;
     }
 
@@ -381,6 +423,7 @@ export const MenuItemsPage: React.FC = () => {
     itemCategory,
     itemPrice,
     itemDescription,
+    itemImageUrl,
     itemAvailable,
     ingredients,
     inventoryData,
@@ -491,8 +534,8 @@ export const MenuItemsPage: React.FC = () => {
         primaryAction={{
           content: editingItem ? 'Save Changes' : 'Create Item',
           onAction: handleSave,
-          loading: createLoading || updateLoading,
-          disabled: !hasChanges,
+          loading: createLoading || updateLoading || isUploadingImage,
+          disabled: !hasChanges || isUploadingImage,
         }}
         secondaryActions={[
           {
@@ -526,24 +569,51 @@ export const MenuItemsPage: React.FC = () => {
               placeholder="120"
               autoComplete="off"
             />
-            <TextField
-              label="Image URL"
-              value={itemImageUrl}
-              onChange={setItemImageUrl}
-              placeholder="https://images.unsplash.com/photo-..."
-              autoComplete="off"
-              helpText="Provide direct image URL link for thumbnail display"
-            />
-            {itemImageUrl && (
-              <Box padding="200">
-                <InlineStack gap="300" blockAlign="center">
-                  <Text as="span" variant="bodySm">
-                    Image Preview:
-                  </Text>
-                  <Thumbnail source={itemImageUrl} alt="Preview" size="medium" />
-                </InlineStack>
-              </Box>
-            )}
+            <BlockStack gap="200">
+              <Text as="span" variant="bodyMd" fontWeight="bold">
+                Menu Item Image
+              </Text>
+              {uploadError && (
+                <Banner tone="critical" onDismiss={() => setUploadError(null)}>
+                  <p>{uploadError}</p>
+                </Banner>
+              )}
+              {itemImageUrl ? (
+                <Card padding="300">
+                  <InlineStack align="space-between" blockAlign="center">
+                    <InlineStack gap="300" blockAlign="center">
+                      <Thumbnail source={itemImageUrl} alt="Preview" size="large" />
+                      <BlockStack gap="050">
+                        <Text as="span" variant="bodyMd" fontWeight="bold">
+                          CDN Image Uploaded
+                        </Text>
+                        <Text as="span" variant="bodySm" tone="subdued">
+                          Hosted CDN URL: {itemImageUrl.length > 40 ? `${itemImageUrl.slice(0, 40)}...` : itemImageUrl}
+                        </Text>
+                      </BlockStack>
+                    </InlineStack>
+                    <Button tone="critical" onClick={() => setItemImageUrl('')}>
+                      Remove Image
+                    </Button>
+                  </InlineStack>
+                </Card>
+              ) : (
+                <DropZone onDrop={handleDropZoneDrop} accept="image/*" type="image" allowMultiple={false} disabled={isUploadingImage}>
+                  <DropZone.FileUpload
+                    actionTitle={isUploadingImage ? "Uploading to Free CDN..." : "Upload Image from Device"}
+                    actionHint="Accepts .png, .jpg, .jpeg, .webp, .svg (Auto-hosted on Free CDN)"
+                  />
+                </DropZone>
+              )}
+              <TextField
+                label="Or enter direct Image CDN URL"
+                value={itemImageUrl}
+                onChange={setItemImageUrl}
+                placeholder="https://files.catbox.moe/..."
+                autoComplete="off"
+                helpText="Upload an image file from your device to Free CDN or paste a direct image URL"
+              />
+            </BlockStack>
             <TextField
               label="Description"
               value={itemDescription}

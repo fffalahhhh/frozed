@@ -199,6 +199,7 @@ export const typeDefs = /* GraphQL */ `
     categoryId: ID!
     name: String!
     description: String
+    imageUrl: String
     sellingPrice: String!
     isAvailable: Boolean
     ingredients: [IngredientInput!]
@@ -208,6 +209,7 @@ export const typeDefs = /* GraphQL */ `
     name: String
     categoryId: ID
     description: String
+    imageUrl: String
     sellingPrice: String
     isAvailable: Boolean
     ingredients: [IngredientInput!]
