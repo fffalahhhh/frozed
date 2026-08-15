@@ -14,6 +14,9 @@
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "mobile": "turbo run dev --filter=mobile",
     "server": "turbo run dev --filter=server",
+    "admin": "turbo run dev --filter=admin",
+    "server:admin": "turbo run dev --filter=server --filter=admin",
+    "dev:admin": "turbo run dev --filter=server --filter=admin",
     "db:wipe": "npm --prefix apps/server run db:wipe",
     "db:seed-frozen": "npm --prefix apps/server run db:seed-frozen",
     "release": "git add . && git commit -m \"APP - [release] release build\" && git push origin main"

@@ -151,6 +151,7 @@ export const typeDefs = /* GraphQL */ `
     grossProfit: String!
     shopExpenses: String!
     netProfit: String!
+    unpaidAmount: String!
   }
 
   type ExpenseBreakdownRow {

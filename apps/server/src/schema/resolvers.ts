@@ -15,7 +15,7 @@ import {
   menuItemFlavours,
   flavours,
 } from '../db/schema.js';
-import { eq, and, desc, asc, sql, inArray, gte, lte, ilike } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, inArray, gte, lte, ilike, ne, or } from 'drizzle-orm';
 
 function isValidUuid(val: any): boolean {
   return (
@@ -25,7 +25,11 @@ function isValidUuid(val: any): boolean {
 }
 
 async function getOrCreateDefaultUser(reqCashierId?: string): Promise<string> {
-  if (reqCashierId && isValidUuid(reqCashierId) && reqCashierId !== '00000000-0000-0000-0000-000000000000') {
+  if (
+    reqCashierId &&
+    isValidUuid(reqCashierId) &&
+    reqCashierId !== '00000000-0000-0000-0000-000000000000'
+  ) {
     return reqCashierId;
   }
   const existing = await db.select().from(users).limit(1);
@@ -81,7 +85,12 @@ async function deductInventoryAsync(
 async function patchItemCostsAsync(
   orderId: string,
   cartItems: { menuItemId: string; flavourId?: string | null }[],
-  allRecipes: { menuItemId: string; flavourId: string | null; quantity: string; costPerUnit: string }[],
+  allRecipes: {
+    menuItemId: string;
+    flavourId: string | null;
+    quantity: string;
+    costPerUnit: string;
+  }[],
   allMakingCosts: { menuItemId: string; amount: string }[],
 ) {
   try {
@@ -121,17 +130,45 @@ async function patchItemCostsAsync(
   }
 }
 
+function parseDateParam(dateStr?: string, isEnd = false): Date | null {
+  if (!dateStr) return null;
+  if (dateStr.includes('T')) {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const timeStr = isEnd ? '23:59:59.999' : '00:00:00.000';
+  const dt = new Date(`${dateStr}T${timeStr}`);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
 function orderDateFilters(from?: string, to?: string) {
   const filters = [eq(orders.status, 'paid')];
   if (from) {
-    const fromDate = new Date(from);
-    if (!isNaN(fromDate.getTime())) {
+    const fromDate = parseDateParam(from, false);
+    if (fromDate) {
       filters.push(gte(orders.createdAt, fromDate));
     }
   }
   if (to) {
-    const toDate = to.includes('T') ? new Date(to) : new Date(to + 'T23:59:59.999Z');
-    if (!isNaN(toDate.getTime())) {
+    const toDate = parseDateParam(to, true);
+    if (toDate) {
+      filters.push(lte(orders.createdAt, toDate));
+    }
+  }
+  return and(...filters);
+}
+
+function unpaidOrderDateFilters(from?: string, to?: string) {
+  const filters = [ne(orders.status, 'paid'), ne(orders.status, 'voided')];
+  if (from) {
+    const fromDate = parseDateParam(from, false);
+    if (fromDate) {
+      filters.push(gte(orders.createdAt, fromDate));
+    }
+  }
+  if (to) {
+    const toDate = parseDateParam(to, true);
+    if (toDate) {
       filters.push(lte(orders.createdAt, toDate));
     }
   }
@@ -168,7 +205,11 @@ export const resolvers = {
     menu: async () => {
       const [cats, items, stockItems, mifList, fls, recipeList] = await Promise.all([
         db.select().from(categories).orderBy(asc(categories.sortOrder)),
-        db.select().from(menuItems).where(eq(menuItems.isDeleted, false)).orderBy(desc(menuItems.createdAt)),
+        db
+          .select()
+          .from(menuItems)
+          .where(eq(menuItems.isDeleted, false))
+          .orderBy(desc(menuItems.createdAt)),
         db.select().from(inventoryItems),
         db.select().from(menuItemFlavours),
         db.select().from(flavours),
@@ -176,7 +217,10 @@ export const resolvers = {
       ]);
 
       const flavourMap = new Map(fls.map((f) => [f.id, f.name]));
-      const flavoursByMenuItem = new Map<string, Array<{ flavourId: string; flavourName: string; extraCost: string }>>();
+      const flavoursByMenuItem = new Map<
+        string,
+        Array<{ flavourId: string; flavourName: string; extraCost: string }>
+      >();
       for (const mif of mifList) {
         if (!flavoursByMenuItem.has(mif.menuItemId)) flavoursByMenuItem.set(mif.menuItemId, []);
         flavoursByMenuItem.get(mif.menuItemId)!.push({
@@ -204,7 +248,9 @@ export const resolvers = {
 
       return cats.map((cat) => {
         const catItems = items.filter((i) => i.categoryId === cat.id);
-        const needsRestock = catItems.some((item) => needsRestockNames.has(item.name.toLowerCase()));
+        const needsRestock = catItems.some((item) =>
+          needsRestockNames.has(item.name.toLowerCase()),
+        );
         return {
           category: cat,
           items: catItems.map((item) => {
@@ -245,7 +291,10 @@ export const resolvers = {
 
     menuItem: async (_: unknown, { id }: { id: string }) => {
       const [items, mifList, fls, recipeList] = await Promise.all([
-        db.select().from(menuItems).where(and(eq(menuItems.id, id), eq(menuItems.isDeleted, false))),
+        db
+          .select()
+          .from(menuItems)
+          .where(and(eq(menuItems.id, id), eq(menuItems.isDeleted, false))),
         db.select().from(menuItemFlavours).where(eq(menuItemFlavours.menuItemId, id)),
         db.select().from(flavours),
         db.select().from(recipes).where(eq(recipes.menuItemId, id)),
@@ -277,7 +326,11 @@ export const resolvers = {
 
     inventoryAdjustments: async () => {
       const [adjustments, items, userList] = await Promise.all([
-        db.select().from(inventoryAdjustments).orderBy(desc(inventoryAdjustments.createdAt)).limit(100),
+        db
+          .select()
+          .from(inventoryAdjustments)
+          .orderBy(desc(inventoryAdjustments.createdAt))
+          .limit(100),
         db.select().from(inventoryItems),
         db.select().from(users),
       ]);
@@ -298,7 +351,9 @@ export const resolvers = {
       const userIds = [...new Set(list.map((o) => o.cashierId).filter(Boolean))];
 
       const [itemRows, userRows] = await Promise.all([
-        orderIds.length > 0 ? db.select().from(orderItems).where(inArray(orderItems.orderId, orderIds)) : [],
+        orderIds.length > 0
+          ? db.select().from(orderItems).where(inArray(orderItems.orderId, orderIds))
+          : [],
         userIds.length > 0 ? db.select().from(users).where(inArray(users.id, userIds)) : [],
       ]);
 
@@ -334,7 +389,11 @@ export const resolvers = {
     },
 
     preOrders: async () => {
-      const list = await db.select().from(preOrders).where(eq(preOrders.status, 'pending')).orderBy(desc(preOrders.createdAt));
+      const list = await db
+        .select()
+        .from(preOrders)
+        .where(eq(preOrders.status, 'pending'))
+        .orderBy(desc(preOrders.createdAt));
       return list.map((po) => ({
         ...po,
         items: typeof po.items === 'string' ? po.items : JSON.stringify(po.items),
@@ -351,65 +410,81 @@ export const resolvers = {
     analyticsSummary: async (_: unknown, { from, to }: { from?: string; to?: string }) => {
       const expFilter = expenseDateFilters(from, to);
 
-      const [salesRows, topItemRows, allItemRows, profitRows, expenseRows] = await Promise.all([
-        db
-          .select({
-            date: sql<string>`DATE(${orders.createdAt})`,
-            revenue: sql<string>`SUM(${orders.totalAmount})`,
-            orderCount: sql<number>`COUNT(*)`,
-          })
-          .from(orders)
-          .where(orderDateFilters(from, to))
-          .groupBy(sql`DATE(${orders.createdAt})`)
-          .orderBy(sql`DATE(${orders.createdAt})`),
+      const [salesRows, topItemRows, allItemRows, revenueRows, cogsRows, expenseRows, unpaidRows] =
+        await Promise.all([
+          db
+            .select({
+              date: sql<string>`DATE(${orders.createdAt})`,
+              revenue: sql<string>`SUM(${orders.totalAmount})`,
+              orderCount: sql<number>`COUNT(*)`,
+            })
+            .from(orders)
+            .where(orderDateFilters(from, to))
+            .groupBy(sql`DATE(${orders.createdAt})`)
+            .orderBy(sql`DATE(${orders.createdAt})`),
 
-        db
-          .select({
-            menuItemId: orderItems.menuItemId,
-            name: orderItems.menuItemName,
-            quantitySold: sql<number>`SUM(${orderItems.quantity})`,
-            revenue: sql<string>`SUM(${orderItems.lineTotal})`,
-          })
-          .from(orderItems)
-          .innerJoin(orders, eq(orderItems.orderId, orders.id))
-          .where(orderDateFilters(from, to))
-          .groupBy(orderItems.menuItemId, orderItems.menuItemName)
-          .orderBy(desc(sql`SUM(${orderItems.quantity})`))
-          .limit(10),
+          db
+            .select({
+              menuItemId: orderItems.menuItemId,
+              name: orderItems.menuItemName,
+              quantitySold: sql<number>`SUM(${orderItems.quantity})`,
+              revenue: sql<string>`SUM(${orderItems.lineTotal})`,
+            })
+            .from(orderItems)
+            .innerJoin(orders, eq(orderItems.orderId, orders.id))
+            .where(orderDateFilters(from, to))
+            .groupBy(orderItems.menuItemId, orderItems.menuItemName)
+            .orderBy(desc(sql`SUM(${orderItems.quantity})`))
+            .limit(10),
 
-        db
-          .select({
-            menuItemId: orderItems.menuItemId,
-            name: orderItems.menuItemName,
-            quantitySold: sql<number>`SUM(${orderItems.quantity})`,
-            netSales: sql<string>`SUM(${orderItems.lineTotal})`,
-            expenses: sql<string>`SUM(${orderItems.itemCost} * ${orderItems.quantity})`,
-          })
-          .from(orderItems)
-          .innerJoin(orders, eq(orderItems.orderId, orders.id))
-          .where(orderDateFilters(from, to))
-          .groupBy(orderItems.menuItemId, orderItems.menuItemName)
-          .orderBy(desc(sql`SUM(${orderItems.lineTotal})`)),
+          db
+            .select({
+              menuItemId: orderItems.menuItemId,
+              name: orderItems.menuItemName,
+              quantitySold: sql<number>`SUM(${orderItems.quantity})`,
+              netSales: sql<string>`SUM(${orderItems.lineTotal})`,
+              expenses: sql<string>`SUM(${orderItems.itemCost} * ${orderItems.quantity})`,
+            })
+            .from(orderItems)
+            .innerJoin(orders, eq(orderItems.orderId, orders.id))
+            .where(orderDateFilters(from, to))
+            .groupBy(orderItems.menuItemId, orderItems.menuItemName)
+            .orderBy(desc(sql`SUM(${orderItems.lineTotal})`)),
 
-        db
-          .select({
-            totalRevenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-            totalCOGS: sql<string>`COALESCE(SUM(${orderItems.itemCost} * ${orderItems.quantity}), 0)`,
-            orderCount: sql<number>`COUNT(DISTINCT ${orders.id})`,
-          })
-          .from(orders)
-          .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
-          .where(orderDateFilters(from, to)),
+          db
+            .select({
+              totalRevenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+              orderCount: sql<number>`COUNT(*)`,
+            })
+            .from(orders)
+            .where(orderDateFilters(from, to)),
 
-        db
-          .select({ total: sql<string>`COALESCE(SUM(${shopExpenses.amount}), 0)` })
-          .from(shopExpenses)
-          .where(expFilter),
-      ]);
+          db
+            .select({
+              totalCOGS: sql<string>`COALESCE(SUM(${orderItems.itemCost} * ${orderItems.quantity}), 0)`,
+            })
+            .from(orderItems)
+            .innerJoin(orders, eq(orderItems.orderId, orders.id))
+            .where(orderDateFilters(from, to)),
 
-      const totalRevenue = parseFloat(profitRows[0]?.totalRevenue ?? '0');
-      const totalCOGS = parseFloat(profitRows[0]?.totalCOGS ?? '0');
+          db
+            .select({ total: sql<string>`COALESCE(SUM(${shopExpenses.amount}), 0)` })
+            .from(shopExpenses)
+            .where(expFilter),
+
+          db
+            .select({
+              unpaidAmount: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+            })
+            .from(orders)
+            .where(unpaidOrderDateFilters(from, to)),
+        ]);
+
+      const totalRevenue = parseFloat(revenueRows[0]?.totalRevenue ?? '0');
+      const totalCOGS = parseFloat(cogsRows[0]?.totalCOGS ?? '0');
+      const orderCount = Number(revenueRows[0]?.orderCount ?? 0);
       const shopExpTotal = parseFloat(expenseRows[0]?.total ?? '0');
+      const unpaidTotal = parseFloat(unpaidRows[0]?.unpaidAmount ?? '0');
 
       const formattedAllItems = allItemRows.map((item) => {
         const sales = parseFloat(item.netSales || '0');
@@ -440,12 +515,13 @@ export const resolvers = {
           revenue: String(r.revenue || '0'),
         })),
         allItems: formattedAllItems,
-        orderCount: profitRows[0]?.orderCount ?? 0,
+        orderCount: orderCount,
         totalRevenue: totalRevenue.toFixed(2),
         totalCOGS: totalCOGS.toFixed(2),
         grossProfit: (totalRevenue - totalCOGS).toFixed(2),
         shopExpenses: shopExpTotal.toFixed(2),
         netProfit: (totalRevenue - totalCOGS - shopExpTotal).toFixed(2),
+        unpaidAmount: unpaidTotal.toFixed(2),
       };
     },
 
@@ -521,7 +597,10 @@ export const resolvers = {
       };
     },
 
-    analyticsExpensesBreakdown: async (_: unknown, { from, to }: { from?: string; to?: string }) => {
+    analyticsExpensesBreakdown: async (
+      _: unknown,
+      { from, to }: { from?: string; to?: string },
+    ) => {
       const expFilter = expenseDateFilters(from, to);
       const rows = await db
         .select({
@@ -557,10 +636,7 @@ export const resolvers = {
       _: unknown,
       { name, icon = '🧃', sortOrder = 0 }: { name: string; icon?: string; sortOrder?: number },
     ) => {
-      const [cat] = await db
-        .insert(categories)
-        .values({ name, icon, sortOrder })
-        .returning();
+      const [cat] = await db.insert(categories).values({ name, icon, sortOrder }).returning();
       return cat;
     },
 
@@ -614,7 +690,7 @@ export const resolvers = {
     },
 
     updateMenuItem: async (_: unknown, { id, input }: { id: string; input: any }) => {
-      const { isAvailable: _a, isDeleted: _d, ingredients, ...safe } = input;
+      const { isDeleted: _d, ingredients, ...safe } = input;
 
       if (Array.isArray(ingredients)) {
         const invIds = ingredients.map((ing: any) => ing.inventoryItemId).filter(Boolean);
@@ -682,10 +758,7 @@ export const resolvers = {
     deleteMenuItem: async (_: unknown, { id }: { id: string }) => {
       if (!IS_UUID.test(id)) return true;
       try {
-        await db
-          .update(menuItems)
-          .set({ isDeleted: true })
-          .where(eq(menuItems.id, id));
+        await db.update(menuItems).set({ isDeleted: true }).where(eq(menuItems.id, id));
         return true;
       } catch (err: any) {
         throw new Error(
@@ -720,9 +793,10 @@ export const resolvers = {
         const menuItemIds = [...new Set(validCartItems.map((ci: any) => ci.menuItemId))];
 
         const cashierId = await getOrCreateDefaultUser(reqCashierId);
-        const fetchedMenuItems = menuItemIds.length > 0
-          ? await db.select().from(menuItems).where(inArray(menuItems.id, menuItemIds))
-          : [];
+        const fetchedMenuItems =
+          menuItemIds.length > 0
+            ? await db.select().from(menuItems).where(inArray(menuItems.id, menuItemIds))
+            : [];
 
         const menuItemMap = new Map(fetchedMenuItems.map((m) => [m.id, m]));
 
@@ -830,7 +904,11 @@ export const resolvers = {
         updateData.paidAt = null;
       }
 
-      const [updated] = await db.update(orders).set(updateData).where(eq(orders.id, id)).returning();
+      const [updated] = await db
+        .update(orders)
+        .set(updateData)
+        .where(eq(orders.id, id))
+        .returning();
       const itemRows = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
 
       return {
@@ -950,7 +1028,10 @@ export const resolvers = {
 
       return {
         ...newPreOrder,
-        items: typeof newPreOrder.items === 'string' ? newPreOrder.items : JSON.stringify(newPreOrder.items),
+        items:
+          typeof newPreOrder.items === 'string'
+            ? newPreOrder.items
+            : JSON.stringify(newPreOrder.items),
       };
     },
 
