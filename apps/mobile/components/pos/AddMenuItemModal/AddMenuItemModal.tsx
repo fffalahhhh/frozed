@@ -11,9 +11,10 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@apollo/client';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../../lib/api';
+import { apolloClient } from '../../../lib/graphqlClient';
+import { CREATE_MENU_ITEM, GET_MENU, GET_INVENTORY_SIMPLE } from '../../../lib/queries';
 import { useToastStore } from '../../../store/toast';
 
 export interface AddMenuItemModalProps {
@@ -29,7 +30,6 @@ export function AddMenuItemModal({
   categories,
   onSuccess,
 }: AddMenuItemModalProps) {
-  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
@@ -37,12 +37,14 @@ export function AddMenuItemModal({
   const [ingredients, setIngredients] = useState<
     Array<{ inventoryItemId: string; quantity: string }>
   >([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Query inventory stock items
-  const { data: stockItems } = useQuery<any[]>({
-    queryKey: ['inventory-stock'],
-    queryFn: () => api.get('/inventory'),
+  const { data: stockData } = useQuery(GET_INVENTORY_SIMPLE, {
+    fetchPolicy: 'cache-and-network',
   });
+
+  const stockItems = stockData?.inventory || [];
 
   React.useEffect(() => {
     if (categories && categories.length > 0 && !selectedCategoryId) {
@@ -58,21 +60,17 @@ export function AddMenuItemModal({
       );
       return;
     }
-    setIngredients([...ingredients, { inventoryItemId: stockItems[0].id, quantity: '' }]);
+    setIngredients((prev) => [...prev, { inventoryItemId: stockItems[0].id, quantity: '1' }]);
   };
 
-  const updateIngredient = (
-    index: number,
-    field: 'inventoryItemId' | 'quantity',
-    value: string,
-  ) => {
-    const copy = [...ingredients];
-    copy[index][field] = value;
-    setIngredients(copy);
+  const updateIngredientRow = (index: number, field: 'inventoryItemId' | 'quantity', val: string) => {
+    setIngredients((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: val } : row)),
+    );
   };
 
-  const removeIngredient = (index: number) => {
-    setIngredients(ingredients.filter((_, i) => i !== index));
+  const removeIngredientRow = (index: number) => {
+    setIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
   const resetForm = () => {
@@ -100,33 +98,32 @@ export function AddMenuItemModal({
       .filter((ing) => ing.inventoryItemId && ing.quantity && !isNaN(Number(ing.quantity)))
       .map((ing) => ({
         inventoryItemId: ing.inventoryItemId,
-        quantity: Number(ing.quantity),
+        quantity: String(ing.quantity),
       }));
 
-    const itemName = name.trim();
-    const itemDesc = description.trim() || null;
-    const priceNum = Number(sellingPrice);
-    const catId = selectedCategoryId;
-
-    // 1. Zero-latency optimistic UI update in 0ms: dismiss modal and notify immediately
-    useToastStore.getState().showToast('Menu item created successfully!', 'success');
-    resetForm();
-    onSuccess();
-    onClose();
-
-    // 2. Silent background sync
     try {
-      await api.post('/menu/items', {
-        categoryId: catId,
-        name: itemName,
-        description: itemDesc,
-        sellingPrice: priceNum,
-        ingredients: formattedIngredients,
+      setIsSubmitting(true);
+      await apolloClient.mutate({
+        mutation: CREATE_MENU_ITEM,
+        variables: {
+          input: {
+            categoryId: selectedCategoryId,
+            name: name.trim(),
+            description: description.trim() || null,
+            sellingPrice: String(sellingPrice),
+            ingredients: formattedIngredients,
+          },
+        },
+        refetchQueries: [{ query: GET_MENU }],
       });
-      await queryClient.invalidateQueries({ queryKey: ['menu'] });
+      useToastStore.getState().showToast('Menu item created successfully!', 'success');
+      resetForm();
       onSuccess();
+      onClose();
     } catch (err: any) {
       useToastStore.getState().showToast(err.message || 'Failed to create menu item', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -243,7 +240,7 @@ export function AddMenuItemModal({
                 </Text>
               ) : (
                 ingredients.map((ing, idx) => {
-                  const selectedStock = stockItems?.find((s) => s.id === ing.inventoryItemId);
+                  const selectedStock = stockItems?.find((s: any) => s.id === ing.inventoryItemId);
                   return (
                     <View
                       key={idx}
@@ -253,7 +250,7 @@ export function AddMenuItemModal({
                         <Text className="text-text-primary font-sans-semibold text-xs">
                           Ingredient #{idx + 1}
                         </Text>
-                        <Pressable onPress={() => removeIngredient(idx)}>
+                        <Pressable onPress={() => removeIngredientRow(idx)}>
                           <Ionicons name="trash-outline" size={18} color="#EF4444" />
                         </Pressable>
                       </View>
@@ -267,10 +264,10 @@ export function AddMenuItemModal({
                         showsHorizontalScrollIndicator={false}
                         className="mb-2.5"
                       >
-                        {stockItems?.map((s) => (
+                        {stockItems?.map((s: any) => (
                           <Pressable
                             key={s.id}
-                            onPress={() => updateIngredient(idx, 'inventoryItemId', s.id)}
+                            onPress={() => updateIngredientRow(idx, 'inventoryItemId', s.id)}
                             className={`px-3 py-1.5 rounded-lg border mr-1.5 ${
                               ing.inventoryItemId === s.id
                                 ? 'bg-primary border-primary'
@@ -294,7 +291,7 @@ export function AddMenuItemModal({
                       </Text>
                       <TextInput
                         value={ing.quantity}
-                        onChangeText={(val) => updateIngredient(idx, 'quantity', val)}
+                        onChangeText={(val) => updateIngredientRow(idx, 'quantity', val)}
                         keyboardType="numeric"
                         placeholder={`e.g. 200 ${selectedStock?.unit || ''}`}
                         placeholderTextColor="#8A8A8A"
@@ -308,10 +305,16 @@ export function AddMenuItemModal({
 
             {/* Save Button */}
             <Pressable
+              disabled={isSubmitting}
               onPress={handleSaveMenuItem}
               className="bg-primary rounded-2xl py-3.5 items-center mb-6"
+              style={{ opacity: isSubmitting ? 0.7 : 1 }}
             >
-              <Text className="text-white font-sans-bold text-sm">Save Menu Item</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text className="text-white font-sans-bold text-sm">Save Menu Item</Text>
+              )}
             </Pressable>
           </ScrollView>
         </View>

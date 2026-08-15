@@ -9,21 +9,16 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@apollo/client';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../lib/api';
+import { apolloClient } from '../../lib/graphqlClient';
+import { GET_MENU, TOGGLE_MENU_ITEM, DELETE_MENU_ITEM } from '../../lib/queries';
 import type { MenuWithCategories, MenuItem } from '@frozen-shake/shared';
 import { useToastStore } from '../../store/toast';
 import { fmt } from '../../components/common/constants';
 import { AddMenuItemModal } from '../../components/menu/AddMenuItemModal';
 import { EditMenuItemModal } from '../../components/menu/EditMenuItemModal';
-import {
-  getLocalCategories,
-  getLocalMenuItems,
-  getLocalInventory,
-  saveMenuSnapshotToLocal,
-} from '../../lib/db';
 
 function MenuItemThumbnail({ item }: { item: MenuItem }) {
   const [imgErr, setImgErr] = useState(false);
@@ -50,7 +45,6 @@ function MenuItemThumbnail({ item }: { item: MenuItem }) {
 }
 
 export default function MenuManagementScreen() {
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('ALL');
   const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE' | 'UNAVAILABLE'>(
@@ -61,45 +55,14 @@ export default function MenuManagementScreen() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const {
-    data: menuData,
-    isLoading,
+    data: menuQueryResult,
+    loading: isLoading,
     refetch,
-  } = useQuery<MenuWithCategories[]>({
-    queryKey: ['menu'],
-    queryFn: async () => {
-      try {
-        const remote = await api.get<MenuWithCategories[]>('/menu');
-        if (Array.isArray(remote)) {
-          const cats = remote.map((r) => r.category);
-          const items = remote.flatMap((r) => r.items);
-          saveMenuSnapshotToLocal(cats, items);
-        }
-        return remote;
-      } catch (e) {
-        const cats = getLocalCategories();
-        const items = getLocalMenuItems();
-        return cats.map((c) => ({
-          category: c,
-          items: items.filter((i) => i.categoryId === c.id),
-          needsRestock: false,
-        }));
-      }
-    },
-    staleTime: 0,
+  } = useQuery(GET_MENU, {
+    fetchPolicy: 'cache-and-network',
   });
 
-  const { data: stockItems } = useQuery<any[]>({
-    queryKey: ['inventory-stock'],
-    queryFn: async () => {
-      try {
-        const remote = await api.get<any[]>('/inventory');
-        return remote;
-      } catch (e) {
-        return getLocalInventory();
-      }
-    },
-    staleTime: 1000 * 5,
-  });
+  const menuData: MenuWithCategories[] = menuQueryResult?.menu || [];
 
   useFocusEffect(
     useCallback(() => {
@@ -111,7 +74,7 @@ export default function MenuManagementScreen() {
     if (menuData && menuData.length > 0) {
       return menuData.map((m) => ({ id: m.category.id, name: m.category.name }));
     }
-    return getLocalCategories().map((c) => ({ id: c.id, name: c.name }));
+    return [];
   }, [menuData]);
 
   const allItemsWithCategory = React.useMemo(() => {
@@ -150,21 +113,11 @@ export default function MenuManagementScreen() {
   const executeToggleAvailability = async (item: MenuItem) => {
     try {
       const nextAvailable = !item.isAvailable;
-
-      // 1. Instant 0ms Optimistic UI Cache Mutation
-      queryClient.setQueryData<MenuWithCategories[]>(['menu'], (old) => {
-        if (!old) return [];
-        return old.map((section) => ({
-          ...section,
-          items: section.items.map((i) =>
-            i.id === item.id ? { ...i, isAvailable: nextAvailable } : i,
-          ),
-        }));
+      await apolloClient.mutate({
+        mutation: TOGGLE_MENU_ITEM,
+        variables: { id: item.id },
+        refetchQueries: [{ query: GET_MENU }],
       });
-
-      // 2. Server API Toggle
-      await api.patch(`/menu/items/${item.id}/toggle`, {});
-      await queryClient.invalidateQueries({ queryKey: ['menu'] });
 
       useToastStore
         .getState()
@@ -205,26 +158,21 @@ export default function MenuManagementScreen() {
         onPress: async () => {
           try {
             setDeletingId(item.id);
-            await api.delete(`/menu/items/${item.id}`);
-            await queryClient.invalidateQueries({ queryKey: ['menu'] });
+            await apolloClient.mutate({
+              mutation: DELETE_MENU_ITEM,
+              variables: { id: item.id },
+              refetchQueries: [{ query: GET_MENU }],
+            });
             refetch();
-            useToastStore.getState().showToast(`"${item.name}" has been deleted.`, 'success');
+            useToastStore.getState().showToast(`"${item.name}" deleted`, 'success');
           } catch (err: any) {
-            const warningMsg =
-              err?.message ||
-              'Cannot delete item because it is referenced in sales history or active orders.';
-            useToastStore.getState().showToast(warningMsg, 'error');
+            useToastStore.getState().showToast(err.message || 'Failed to delete item', 'error');
           } finally {
             setDeletingId(null);
           }
         },
       },
     ]);
-  };
-
-  const invalidateAndRefetch = () => {
-    queryClient.invalidateQueries({ queryKey: ['menu'] });
-    refetch();
   };
 
   return (
@@ -395,29 +343,7 @@ export default function MenuManagementScreen() {
         <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
           {filteredItems.length > 0 ? (
             filteredItems.map((item) => {
-              // Calculate Stock Availability status & Glass Portion count
-              let maxGlasses: number | null = null;
-              if (item.recipes && item.recipes.length > 0) {
-                let minPortions = Infinity;
-                for (const rec of item.recipes) {
-                  const matched = stockItems?.find(
-                    (s) => s.name.trim().toLowerCase() === rec.ingredientName.trim().toLowerCase(),
-                  );
-                  if (matched) {
-                    const reqQty = parseFloat(String(rec.quantity || '0'));
-                    const currentStock = parseFloat(String(matched.currentStock || '0'));
-                    if (reqQty > 0) {
-                      const portions = Math.floor(currentStock / reqQty);
-                      if (portions < minPortions) {
-                        minPortions = portions;
-                      }
-                    }
-                  }
-                }
-                if (minPortions !== Infinity) {
-                  maxGlasses = Math.max(0, minPortions);
-                }
-              }
+              const maxGlasses = item.maxAvailable ?? null;
 
               let stockStatus = {
                 label: maxGlasses !== null ? `In Stock (${maxGlasses})` : 'In Stock',
@@ -425,44 +351,12 @@ export default function MenuManagementScreen() {
                 text: 'text-emerald-700',
               };
 
-              if (!item.isAvailable) {
+              if (!item.isAvailable || maxGlasses === 0) {
                 stockStatus = {
                   label: 'Unavailable',
                   bg: 'bg-rose-50 border-rose-200',
                   text: 'text-rose-600',
                 };
-              } else if (item.recipes && item.recipes.length > 0) {
-                let hasOutOfStock = false;
-                let hasLowStock = false;
-
-                for (const rec of item.recipes) {
-                  const matched = stockItems?.find(
-                    (s) => s.name.trim().toLowerCase() === rec.ingredientName.trim().toLowerCase(),
-                  );
-                  if (matched) {
-                    const current = parseFloat(matched.currentStock || '0');
-                    const reorder = parseFloat(matched.reorderLevel || '0');
-                    if (current <= 0) {
-                      hasOutOfStock = true;
-                    } else if (current <= reorder) {
-                      hasLowStock = true;
-                    }
-                  }
-                }
-
-                if (hasOutOfStock || (maxGlasses !== null && maxGlasses === 0)) {
-                  stockStatus = {
-                    label: maxGlasses !== null ? `Out of Stock (0)` : 'Out of Stock',
-                    bg: 'bg-rose-50 border-rose-200',
-                    text: 'text-rose-600',
-                  };
-                } else if (hasLowStock) {
-                  stockStatus = {
-                    label: maxGlasses !== null ? `Low Stock (${maxGlasses})` : 'Low Stock',
-                    bg: 'bg-amber-50 border-amber-300',
-                    text: 'text-amber-800',
-                  };
-                }
               }
 
               return (
@@ -599,7 +493,7 @@ export default function MenuManagementScreen() {
         visible={addModalVisible}
         onClose={() => setAddModalVisible(false)}
         categories={categoriesList}
-        onSuccess={invalidateAndRefetch}
+        onSuccess={() => refetch()}
       />
 
       {/* Edit Modal */}
@@ -608,7 +502,7 @@ export default function MenuManagementScreen() {
         visible={!!editItem}
         onClose={() => setEditItem(null)}
         categories={categoriesList}
-        onSuccess={invalidateAndRefetch}
+        onSuccess={() => refetch()}
       />
     </View>
   );

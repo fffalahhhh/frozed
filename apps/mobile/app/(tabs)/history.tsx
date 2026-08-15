@@ -7,20 +7,18 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@apollo/client';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { apolloClient } from '../../lib/graphqlClient';
+import { GET_ORDERS, PAY_ORDER, UPDATE_ORDER_STATUS } from '../../lib/queries';
 import { fmt } from '../../components/common/constants';
 import { useToastStore } from '../../store/toast';
 import { OrderHistoryCard } from '../../components/history/OrderHistoryCard';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
 import { parseDbDate, getLocalDateStr } from '../../lib/dateUtils';
 
-import { getLocalOrders, updateLocalOrderStatus, enqueueOutboxMutation } from '../../lib/db';
-import { backgroundSync } from '../../lib/syncEngine';
-
 export default function HistoryScreen() {
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'cash' | 'upi' | 'credit'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'paid' | 'unpaid'>('ALL');
@@ -29,14 +27,14 @@ export default function HistoryScreen() {
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
 
   const {
-    data: ordersList,
-    isLoading,
+    data: ordersQueryResult,
+    loading: isLoading,
     refetch,
-  } = useQuery<any[]>({
-    queryKey: ['orders'],
-    queryFn: () => getLocalOrders(),
-    staleTime: 1000 * 10,
+  } = useQuery(GET_ORDERS, {
+    fetchPolicy: 'cache-and-network',
   });
+
+  const ordersList: any[] = ordersQueryResult?.orders || [];
 
   useFocusEffect(
     useCallback(() => {
@@ -57,31 +55,15 @@ export default function HistoryScreen() {
   const handleMarkAsPaid = async (orderId: string) => {
     try {
       const existingOrder = ordersList?.find((o) => o.id === orderId);
-      const existingPaymentMethod = existingOrder?.paymentMethod;
+      const existingPaymentMethod = existingOrder?.paymentMethod || 'cash';
 
-      // 1. Instant local SQLite update (preserves existing paymentMethod)
-      updateLocalOrderStatus(orderId, 'paid');
-
-      // 2. Enqueue background outbox mutation
-      enqueueOutboxMutation(`pay_${orderId}_${Date.now()}`, 'PAY_ORDER', {
-        orderId,
-        paymentMethod: existingPaymentMethod || 'cash',
-      });
-      backgroundSync.processQueueSequentially();
-
-      // 3. Instant 0ms Optimistic UI cache mutation in React Query (preserves paymentMethod)
-      queryClient.setQueryData<any[]>(['orders'], (oldOrders) => {
-        if (!oldOrders || !Array.isArray(oldOrders)) return getLocalOrders();
-        return oldOrders.map((o) =>
-          o.id === orderId
-            ? {
-                ...o,
-                status: 'paid',
-                paidAt: new Date().toISOString(),
-                paymentMethod: existingPaymentMethod || o.paymentMethod,
-              }
-            : o,
-        );
+      await apolloClient.mutate({
+        mutation: PAY_ORDER,
+        variables: {
+          id: orderId,
+          paymentMethod: existingPaymentMethod,
+        },
+        refetchQueries: [{ query: GET_ORDERS }],
       });
 
       useToastStore.getState().showToast('Order marked as Paid successfully!', 'success');
@@ -92,32 +74,19 @@ export default function HistoryScreen() {
 
   const handleRevertPayment = async (orderId: string) => {
     try {
-      // 1. Instant local SQLite update back to billed
-      updateLocalOrderStatus(orderId, 'billed');
-
-      // 2. Enqueue background outbox mutation
-      enqueueOutboxMutation(`unpay_${orderId}_${Date.now()}`, 'UNPAY_ORDER', {
-        orderId,
-      });
-      backgroundSync.processQueueSequentially();
-
-      // 3. Instant 0ms Optimistic UI cache mutation in React Query
-      queryClient.setQueryData<any[]>(['orders'], (oldOrders) => {
-        if (!oldOrders || !Array.isArray(oldOrders)) return getLocalOrders();
-        return oldOrders.map((o) =>
-          o.id === orderId
-            ? {
-                ...o,
-                status: 'billed',
-                paidAt: null,
-              }
-            : o,
-        );
+      await apolloClient.mutate({
+        mutation: UPDATE_ORDER_STATUS,
+        variables: {
+          id: orderId,
+          status: 'billed',
+          paidAt: null,
+        },
+        refetchQueries: [{ query: GET_ORDERS }],
       });
 
-      useToastStore.getState().showToast('Payment reverted back to Unpaid/Credit!', 'success');
+      useToastStore.getState().showToast('Order payment status reverted!', 'success');
     } catch (err: any) {
-      useToastStore.getState().showToast(err.message || 'Failed to revert payment', 'error');
+      useToastStore.getState().showToast(err.message || 'Failed to revert order payment', 'error');
     }
   };
 

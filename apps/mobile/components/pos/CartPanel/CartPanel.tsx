@@ -1,22 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, Animated } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { View, Text, ScrollView, TextInput, Pressable, Animated, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { MenuWithCategories, Order } from '@frozen-shake/shared';
-import { api } from '../../../lib/api';
+import { useQuery } from '@apollo/client';
+import { apolloClient } from '../../../lib/graphqlClient';
+import { CREATE_ORDER, CREATE_PRE_ORDER, GET_ORDERS, GET_MENU, GET_INVENTORY, GET_PRE_ORDERS } from '../../../lib/queries';
 import { useCartStore } from '../../../store/cart';
 import { useToastStore } from '../../../store/toast';
-import { getItemStockInfo, calculateMenuItemCost } from '../../../lib/stock';
 import { fmt } from '../../common/constants';
 import { CartItemRow } from '../CartItemRow';
-import {
-  saveLocalOrder,
-  enqueueOutboxMutation,
-  getLocalNextOrderNumber,
-  getLocalMenuItems,
-  getLocalInventory,
-} from '../../../lib/db';
-import { backgroundSync } from '../../../lib/syncEngine';
 
 export interface CartPanelProps {
   receiptNumber?: string;
@@ -66,7 +58,6 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
 }
 
 export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
-  const queryClient = useQueryClient();
   const {
     items,
     paymentMethod,
@@ -82,39 +73,32 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
   } = useCartStore();
 
   const [isSuccessOrder, setIsSuccessOrder] = useState(false);
+  const [isSavingPreOrder, setIsSavingPreOrder] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [showNamePopover, setShowNamePopover] = useState(false);
   const [showPhonePopover, setShowPhonePopover] = useState(false);
 
   // Query previous orders to extract past customer history & true next order number
-  const { data: previousOrders } = useQuery<any[]>({
-    queryKey: ['orders'],
-    queryFn: () => api.get('/orders'),
-    staleTime: 1000 * 60 * 2,
+  const { data: ordersQueryResult } = useQuery(GET_ORDERS, {
+    fetchPolicy: 'cache-and-network',
   });
+  const previousOrders = ordersQueryResult?.orders || [];
 
   // Calculate true next auto-incrementing order number from DB history
   const trueOrderNumber = useMemo(() => {
     if (!previousOrders || !Array.isArray(previousOrders) || previousOrders.length === 0) {
       return '1';
     }
-    const maxNum = Math.max(...previousOrders.map((o) => Number(o.orderNumber) || 0), 0);
+    const maxNum = Math.max(...previousOrders.map((o: any) => Number(o.orderNumber) || 0), 0);
     return String(maxNum + 1);
   }, [previousOrders]);
 
   const activeOrderNum = receiptNumber || trueOrderNumber;
 
-  // Query stock and menu items to calculate portion limits
-  const { data: stockItems } = useQuery<any[]>({
-    queryKey: ['inventory-stock'],
-    queryFn: () => api.get('/inventory'),
-    staleTime: 1000 * 10,
+  const { data: menuQueryResult } = useQuery(GET_MENU, {
+    fetchPolicy: 'cache-and-network',
   });
-
-  const { data: menuData } = useQuery<MenuWithCategories[]>({
-    queryKey: ['menu'],
-    queryFn: () => api.get('/menu'),
-    staleTime: 1000 * 60 * 5,
-  });
+  const menuData: MenuWithCategories[] = menuQueryResult?.menu || [];
 
   const allMenuItems = useMemo(() => {
     return menuData ? menuData.flatMap((s) => s.items) : [];
@@ -187,68 +171,51 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
     setShowPhonePopover(false);
   };
 
-  // Zero-Latency Instant Save as Pre-Order (0ms)
+  // Save as Pre-Order via GraphQL Mutation
   const handleSavePreOrder = async () => {
     if (items.length === 0) {
       useToastStore.getState().showToast('Cart is empty. Please add items first.', 'error');
       return;
     }
 
-    const tempId = `temp-${Date.now()}`;
-    const newPreOrder = {
-      id: tempId,
-      customerName: customerName.trim() || 'Walk-in Customer',
-      customerPhone: customerPhone.trim() || null,
-      paymentMethod,
-      subtotal: tot.toFixed(2),
-      totalAmount: tot.toFixed(2),
-      status: 'pending',
-      items: items.map((i) => ({
-        menuItemId: i.menuItemId,
-        menuItemName: i.menuItemName,
-        flavourId: i.flavourId,
-        flavourName: i.flavourName,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        lineTotal: (i.unitPrice * i.quantity).toFixed(2),
-        notes: i.notes,
-      })),
-      createdAt: new Date().toISOString(),
-    };
-
-    // 1. Instant 0ms cache mutation across app
-    queryClient.setQueryData<any[]>(['pre-orders'], (old) => [newPreOrder, ...(old || [])]);
-
-    useToastStore.getState().showToast('Saved as Pre-Order!', 'success');
-    clearCart();
-
-    // 2. Silent background sync & reconcile
     try {
-      const res = await api.post<any>('/pre-orders', {
-        customerName: newPreOrder.customerName,
-        customerPhone: newPreOrder.customerPhone,
-        paymentMethod: newPreOrder.paymentMethod,
-        subtotal: tot,
-        totalAmount: tot,
-        items: newPreOrder.items,
+      setIsSavingPreOrder(true);
+      await apolloClient.mutate({
+        mutation: CREATE_PRE_ORDER,
+        variables: {
+          input: {
+            customerName: customerName.trim() || 'Walk-in Customer',
+            customerPhone: customerPhone.trim() || null,
+            paymentMethod,
+            subtotal: tot,
+            totalAmount: tot,
+            items: JSON.stringify(
+              items.map((i) => ({
+                menuItemId: i.menuItemId,
+                menuItemName: i.menuItemName,
+                flavourId: i.flavourId,
+                flavourName: i.flavourName,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+                lineTotal: (i.unitPrice * i.quantity).toFixed(2),
+                notes: i.notes,
+              })),
+            ),
+          },
+        },
+        refetchQueries: [{ query: GET_PRE_ORDERS }],
       });
 
-      if (res && res.id) {
-        queryClient.setQueryData<any[]>(['pre-orders'], (old) =>
-          Array.isArray(old) ? old.map((item) => (item.id === tempId ? res : item)) : [res],
-        );
-      }
-      queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
+      useToastStore.getState().showToast('Saved as Pre-Order!', 'success');
+      clearCart();
     } catch (err: any) {
-      // Rollback on network failure
-      queryClient.setQueryData<any[]>(['pre-orders'], (old) =>
-        Array.isArray(old) ? old.filter((item) => item.id !== tempId) : [],
-      );
       useToastStore.getState().showToast(err.message || 'Failed to save pre-order', 'error');
+    } finally {
+      setIsSavingPreOrder(false);
     }
   };
 
-  // Local-First Instant Confirm Order Submission (0ms)
+  // Confirm Order Submission via GraphQL Mutation
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
       useToastStore
@@ -270,104 +237,49 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
       }
     }
 
-    // 1. Instant 0ms success animation
-    setIsSuccessOrder(true);
-
     const currentCartItems = [...items];
     const cName = customerName.trim();
     const cPhone = customerPhone.trim();
     const pMethod = paymentMethod;
-    const localId = `order_local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const nextOrderNum = getLocalNextOrderNumber();
 
-    const localMenuItems = getLocalMenuItems();
-    const localInventory = getLocalInventory();
-
-    const mappedOrderItems = currentCartItems.map((i, idx) => {
-      const mItem = localMenuItems.find((m) => m && m.id === i.menuItemId);
-      const computedUnitCost = calculateMenuItemCost(mItem, localInventory);
-      return {
-        id: `item_${localId}_${idx}`,
-        orderId: localId,
-        menuItemId: i.menuItemId,
-        menuItemName: i.menuItemName,
-        imageUrl: i.imageUrl,
-        flavourId: i.flavourId,
-        flavourName: i.flavourName,
-        quantity: i.quantity,
-        unitPrice: String(i.unitPrice),
-        itemCost: String(computedUnitCost),
-        lineTotal: String(i.unitPrice * i.quantity),
-        notes: i.notes,
-      };
-    });
-
-    const newOrderPayload: Order = {
-      id: localId,
-      orderNumber: String(nextOrderNum),
-      cashierId: '',
-      cashierName: 'Cashier',
-      tableRef: null,
-      orderType: 'dine_in',
-      customerName: cName || null,
-      customerPhone: cPhone || null,
-      status: pMethod === 'credit' ? 'billed' : 'paid',
-      paymentMethod: pMethod,
-      subtotal: String(tot),
-      discountAmount: String(discountAmount),
-      totalAmount: String(tot),
-      notes: null,
-      createdAt: new Date().toISOString(),
-      paidAt: pMethod === 'credit' ? null : new Date().toISOString(),
-      items: mappedOrderItems,
-    };
-
-    // 2. Write to local SQLite database instantly (0ms latency)
     try {
-      saveLocalOrder(newOrderPayload, 'pending');
-
-      enqueueOutboxMutation(localId, 'CREATE_ORDER', {
-        order: {
-          cashierId: '',
-          orderType: 'dine_in',
-          paymentMethod: pMethod,
-          customerName: cName || null,
-          customerPhone: cPhone || null,
-          subtotal: tot,
-          discountAmount,
-          totalAmount: tot,
-          notes: null,
-          status: pMethod === 'credit' ? 'billed' : 'paid',
-          createdAt: newOrderPayload.createdAt,
+      setIsSubmittingOrder(true);
+      await apolloClient.mutate({
+        mutation: CREATE_ORDER,
+        variables: {
+          input: {
+            customerName: cName || null,
+            customerPhone: cPhone || null,
+            paymentMethod: pMethod,
+            orderType: 'dine_in',
+            discountAmount,
+            notes: null,
+            items: currentCartItems.map((i) => ({
+              menuItemId: i.menuItemId,
+              menuItemName: i.menuItemName,
+              flavourId: i.flavourId,
+              flavourName: i.flavourName,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              notes: i.notes,
+            })),
+          },
         },
-        items: mappedOrderItems.map((i) => ({
-          menuItemId: i.menuItemId,
-          menuItemName: i.menuItemName,
-          flavourId: i.flavourId,
-          flavourName: i.flavourName,
-          quantity: i.quantity,
-          unitPrice: Number(i.unitPrice),
-          itemCost: Number(i.itemCost),
-          lineTotal: Number(i.lineTotal),
-          notes: i.notes,
-        })),
+        refetchQueries: [{ query: GET_ORDERS }, { query: GET_MENU }, { query: GET_INVENTORY }],
       });
 
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
-      queryClient.invalidateQueries({ queryKey: ['menu'] });
-
-      // Trigger background sequential sync quietly under the hood
-      backgroundSync.processQueueSequentially();
+      setIsSuccessOrder(true);
+      setTimeout(() => {
+        setIsSuccessOrder(false);
+        clearCart();
+        if (onClose) onClose();
+      }, 1800);
     } catch (err: any) {
-      console.error('[CART] Local DB order save failed:', err);
+      console.error('[CART] GraphQL order mutation failed:', err);
+      useToastStore.getState().showToast(err?.message || 'Order submission failed', 'error');
+    } finally {
+      setIsSubmittingOrder(false);
     }
-
-    setTimeout(() => {
-      setIsSuccessOrder(false);
-      clearCart();
-      if (onClose) onClose();
-    }, 1800);
   };
 
   return (
@@ -575,11 +487,8 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
             contentContainerStyle={{ paddingBottom: 8 }}
           >
             {items.map((item) => {
-              const targetMenu = allMenuItems.find((m) => m.id === item.menuItemId);
-              const stockInfo = targetMenu
-                ? getItemStockInfo(targetMenu, allMenuItems, stockItems || [], items)
-                : undefined;
-              const maxAvailable = stockInfo?.maxAvailable;
+              const targetMenu = allMenuItems.find((m: any) => m.id === item.menuItemId);
+              const maxAvailable = targetMenu?.maxAvailable ?? 999;
 
               return (
                 <CartItemRow
@@ -609,29 +518,42 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
           <Text className="text-[#0D4830] font-sans-bold text-xl">{fmt(tot)}</Text>
         </View>
 
-        {/* Save as Pre-Order Secondary Button (Zero-latency optimistic action) */}
+        {/* Save as Pre-Order Secondary Button */}
         <Pressable
-          disabled={items.length === 0 || isSuccessOrder}
+          disabled={items.length === 0 || isSuccessOrder || isSavingPreOrder || isSubmittingOrder}
           onPress={handleSavePreOrder}
           className="w-full py-2 mb-2 rounded-full border border-[#0D4830] bg-[#F4F1EA] items-center justify-center flex-row gap-1.5"
-          style={({ pressed }) => ({ opacity: pressed || items.length === 0 ? 0.6 : 1 })}
+          style={({ pressed }) => ({ opacity: pressed || items.length === 0 || isSavingPreOrder ? 0.6 : 1 })}
         >
-          <Ionicons name="time-outline" size={15} color="#0D4830" />
-          <Text className="text-[#0D4830] font-sans-bold text-xs">Save as Pre-Order</Text>
+          {isSavingPreOrder ? (
+            <ActivityIndicator size="small" color="#0D4830" />
+          ) : (
+            <Ionicons name="time-outline" size={15} color="#0D4830" />
+          )}
+          <Text className="text-[#0D4830] font-sans-bold text-xs">
+            {isSavingPreOrder ? 'Saving Pre-Order...' : 'Save as Pre-Order'}
+          </Text>
         </Pressable>
 
         {/* Place Order Button with Arrow Graphic & In-Button Checkmark */}
         <Pressable
-          disabled={items.length === 0 || isSuccessOrder}
+          disabled={items.length === 0 || isSuccessOrder || isSavingPreOrder || isSubmittingOrder}
           onPress={handlePlaceOrder}
           className={`rounded-full h-14 flex-row items-center justify-between px-2 bg-[#0D4830] shadow-md shadow-[#0D4830]/30 ${
-            items.length === 0 ? 'opacity-70 elevation-0' : 'elevation-4'
+            items.length === 0 || isSubmittingOrder ? 'opacity-70 elevation-0' : 'elevation-4'
           }`}
           style={({ pressed }) => ({
-            opacity: pressed ? 0.88 : 1,
+            opacity: pressed || isSubmittingOrder ? 0.88 : 1,
           })}
         >
-          {isSuccessOrder ? (
+          {isSubmittingOrder ? (
+            <View className="flex-row items-center w-full justify-center gap-2">
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text className="text-white font-sans-bold text-base text-center">
+                Processing Order...
+              </Text>
+            </View>
+          ) : isSuccessOrder ? (
             <Animated.View
               className="flex-row items-center w-full justify-center gap-2"
               style={{

@@ -1,21 +1,14 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@apollo/client';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../lib/api';
+import { GET_ANALYTICS, GET_ANALYTICS_SECURITY } from '../../lib/queries';
 import { fmt } from '../../components/common/constants';
 import { StatCard } from '../../components/analytics/StatCard';
 import { ProfitBreakdown } from '../../components/analytics/ProfitBreakdown';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
-import {
-  getLocalOrders,
-  getLocalMenuItems,
-  getLocalInventory,
-  getAnalyticsPasswordFromDb,
-} from '../../lib/db';
 import { getLocalDateStr, getUtcRangeForLocalDate } from '../../lib/dateUtils';
-import { calculateMenuItemCost } from '../../lib/stock';
 import { useToastStore } from '../../store/toast';
 
 type DateFilter = 'today' | 'yesterday' | 'this_week' | 'all' | 'custom';
@@ -52,12 +45,15 @@ function getDateRange(filter: DateFilter, customDate?: string) {
 }
 
 export default function AnalyticsScreen() {
-  const queryClient = useQueryClient();
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [enteredPassword, setEnteredPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
-  const targetPassword = useMemo(() => getAnalyticsPasswordFromDb(), []);
+
+  const { data: secData } = useQuery(GET_ANALYTICS_SECURITY, {
+    fetchPolicy: 'cache-and-network',
+  });
+  const targetPassword = secData?.analyticsSecurityPassword || 'Frozed2026';
 
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [selectedCustomDate, setSelectedCustomDate] = useState<string>('');
@@ -92,24 +88,20 @@ export default function AnalyticsScreen() {
     [dateRange.from, dateRange.to],
   );
 
-  // Server Analytics summary query (passing exact UTC range of the selected local dates)
-  const queryPath = `/analytics/summary${
-    utcRange.fromUtc || utcRange.toUtc
-      ? `?from=${encodeURIComponent(utcRange.fromUtc)}&to=${encodeURIComponent(utcRange.toUtc)}`
-      : ''
-  }`;
-
   const {
-    data: serverData,
-    isLoading,
-    isFetching,
+    data: analyticsResult,
+    loading: isLoading,
     refetch,
-  } = useQuery<any>({
-    queryKey: ['analytics-summary', dateFilter, utcRange.fromUtc, utcRange.toUtc],
-    queryFn: () => api.get(queryPath),
+  } = useQuery(GET_ANALYTICS, {
+    variables: {
+      from: utcRange.fromUtc || null,
+      to: utcRange.toUtc || null,
+    },
+    fetchPolicy: 'cache-and-network',
   });
 
-  const isSyncingActive = isManualSyncing || isFetching;
+  const summary = analyticsResult?.analyticsSummary || null;
+  const isSyncingActive = isManualSyncing || isLoading;
 
   const handleReload = useCallback(async () => {
     setIsManualSyncing(true);
@@ -128,193 +120,8 @@ export default function AnalyticsScreen() {
     }, [handleReload]),
   );
 
-  // Local SQLite offline fallback computation
-  const localAnalyticsData = useMemo(() => {
-    try {
-      const { from, to } = dateRange;
-      const rawOrders = getLocalOrders();
-      const rawMenuItems = getLocalMenuItems();
-      const rawInventory = getLocalInventory();
-
-      const orders = Array.isArray(rawOrders) ? rawOrders : [];
-      const menuItems = Array.isArray(rawMenuItems) ? rawMenuItems : [];
-      const inventory = Array.isArray(rawInventory) ? rawInventory : [];
-
-      const filteredOrders = orders.filter((o) => {
-        if (!o) return false;
-        if ((o.status || '').toLowerCase() !== 'paid') return false;
-        if (!from || !to) return true;
-        const dateStr = getLocalDateStr(o.createdAt);
-        if (!dateStr) return true;
-        return dateStr >= from && dateStr <= to;
-      });
-
-      let totalRevenue = 0;
-      let totalCOGS = 0;
-
-      const menuItemMap = new Map<
-        string,
-        {
-          id: string;
-          name: string;
-          quantitySold: number;
-          netSales: number;
-          expenses: number;
-          profit: number;
-          marginPercent: number;
-        }
-      >();
-
-      // Pre-populate menu items
-      for (const m of menuItems) {
-        if (!m || !m.id) continue;
-        menuItemMap.set(m.id, {
-          id: m.id,
-          name: m.name || 'Unnamed Item',
-          quantitySold: 0,
-          netSales: 0,
-          expenses: 0,
-          profit: 0,
-          marginPercent: 0,
-        });
-      }
-
-      for (const o of filteredOrders) {
-        totalRevenue += parseFloat(String(o.totalAmount || '0'));
-        const items = Array.isArray(o.items) ? o.items : [];
-        for (const item of items) {
-          if (!item) continue;
-          const id = item.menuItemId || item.menuItemName || 'unknown_item';
-          const name = item.menuItemName || 'Unnamed Item';
-          const qty = Number(item.quantity) || 1;
-          const uPrice = parseFloat(String(item.unitPrice || '0'));
-          const lTotal = item.lineTotal ? parseFloat(String(item.lineTotal)) : uPrice * qty;
-          let iCost = parseFloat(String(item.itemCost || '0'));
-          if (iCost <= 0) {
-            const mItem = menuItems.find(
-              (m) =>
-                m &&
-                (m.id === item.menuItemId ||
-                  (m.name && m.name.toLowerCase() === (item.menuItemName || '').toLowerCase())),
-            );
-            if (mItem) {
-              iCost = calculateMenuItemCost(mItem, inventory);
-            }
-          }
-          const exp = iCost * qty;
-          totalCOGS += exp;
-
-          const existing = menuItemMap.get(id) || {
-            id,
-            name,
-            quantitySold: 0,
-            netSales: 0,
-            expenses: 0,
-            profit: 0,
-            marginPercent: 0,
-          };
-
-          existing.quantitySold += qty;
-          existing.netSales += lTotal;
-          existing.expenses += exp;
-          existing.profit = existing.netSales - existing.expenses;
-          existing.marginPercent =
-            existing.netSales > 0 ? (existing.profit / existing.netSales) * 100 : 0;
-          menuItemMap.set(id, existing);
-        }
-      }
-
-      const allMenuItemsList = Array.from(menuItemMap.values()).sort(
-        (a, b) => (b.netSales || 0) - (a.netSales || 0),
-      );
-
-      // Group Inventory Expenses
-      const inventoryMap = new Map<
-        string,
-        {
-          id: string;
-          name: string;
-          unit: string;
-          currentStock: number;
-          costPerUnit: number;
-          quantityUsed: number;
-          totalExpenses: number;
-        }
-      >();
-
-      for (const inv of inventory) {
-        if (!inv || !inv.id) continue;
-        const cPerUnit = parseFloat(String(inv.costPerUnit || '0'));
-        inventoryMap.set(inv.id, {
-          id: inv.id,
-          name: inv.name || 'Unnamed Ingredient',
-          unit: inv.unit || 'units',
-          currentStock: parseFloat(String(inv.currentStock || '0')),
-          costPerUnit: cPerUnit,
-          quantityUsed: 0,
-          totalExpenses: 0,
-        });
-      }
-
-      for (const o of filteredOrders) {
-        const items = Array.isArray(o.items) ? o.items : [];
-        for (const item of items) {
-          if (!item) continue;
-          const itemMenuNameLower = (item.menuItemName || '').toLowerCase();
-          const mItem = menuItems.find(
-            (m) =>
-              m &&
-              (m.id === item.menuItemId || (m.name && m.name.toLowerCase() === itemMenuNameLower)),
-          );
-          if (mItem) {
-            let recipesArr: any[] = [];
-            if (Array.isArray(mItem.recipes)) {
-              recipesArr = mItem.recipes;
-            } else if (typeof mItem.recipes === 'string') {
-              try {
-                recipesArr = JSON.parse(mItem.recipes);
-              } catch {
-                recipesArr = [];
-              }
-            }
-
-            const itemQty = Number(item.quantity) || 1;
-            for (const rec of recipesArr) {
-              if (!rec) continue;
-              const reqQty = parseFloat(String(rec.quantity || '0'));
-              if (reqQty > 0 && rec.ingredientName) {
-                const ingNameLower = (rec.ingredientName || '').trim().toLowerCase();
-                for (const invData of inventoryMap.values()) {
-                  if ((invData.name || '').trim().toLowerCase() === ingNameLower) {
-                    const qtyUsed = reqQty * itemQty;
-                    invData.quantityUsed += qtyUsed;
-                    invData.totalExpenses = invData.quantityUsed * invData.costPerUnit;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      const allInventoryList = Array.from(inventoryMap.values()).sort(
-        (a, b) => (b.totalExpenses || 0) - (a.totalExpenses || 0),
-      );
-
-      const grossProfit = totalRevenue - totalCOGS;
-
-      return {
-        orderCount: filteredOrders.length,
-        totalRevenue,
-        totalCOGS,
-        grossProfit,
-        shopExpenses: 0,
-        netProfit: grossProfit,
-        allItems: allMenuItemsList,
-        allInventory: allInventoryList,
-      };
-    } catch (err) {
-      console.error('[Analytics] Local computation error:', err);
+  const analyticsData = useMemo(() => {
+    if (!summary) {
       return {
         orderCount: 0,
         totalRevenue: 0,
@@ -326,58 +133,18 @@ export default function AnalyticsScreen() {
         allInventory: [],
       };
     }
-  }, [dateRange]);
 
-  // Combine server & local fallback values
-  const analyticsData = useMemo(() => {
-    const base = localAnalyticsData || {
-      orderCount: 0,
-      totalRevenue: 0,
-      totalCOGS: 0,
-      grossProfit: 0,
-      shopExpenses: 0,
-      netProfit: 0,
-      allItems: [],
+    return {
+      orderCount: Number(summary.orderCount || 0),
+      totalRevenue: parseFloat(String(summary.totalRevenue || '0')),
+      totalCOGS: parseFloat(String(summary.totalCOGS || '0')),
+      grossProfit: parseFloat(String(summary.grossProfit || '0')),
+      shopExpenses: parseFloat(String(summary.shopExpenses || '0')),
+      netProfit: parseFloat(String(summary.netProfit || '0')),
+      allItems: Array.isArray(summary.allItems) ? summary.allItems : [],
       allInventory: [],
     };
-
-    if (serverData && typeof serverData === 'object' && serverData.totalRevenue !== undefined) {
-      const serverAllItems = Array.isArray(serverData.allItems) ? serverData.allItems : [];
-      const mergedMenuItemsMap = new Map<string, any>();
-      for (const localItem of base.allItems || []) {
-        if (localItem && localItem.id) {
-          mergedMenuItemsMap.set(localItem.id, localItem);
-        }
-      }
-      for (const sItem of serverAllItems) {
-        if (!sItem) continue;
-        const itemId = sItem.menuItemId || sItem.id || 'item_' + Math.random();
-        mergedMenuItemsMap.set(itemId, {
-          id: itemId,
-          name: sItem.name || 'Unnamed Item',
-          quantitySold: Number(sItem.quantitySold || 0),
-          netSales: parseFloat(String(sItem.netSales || sItem.revenue || '0')),
-          expenses: parseFloat(String(sItem.expenses || '0')),
-          profit: parseFloat(String(sItem.profit || '0')),
-          marginPercent: parseFloat(String(sItem.marginPercent || '0')),
-        });
-      }
-
-      return {
-        orderCount: Number(serverData.orderCount || base.orderCount || 0),
-        totalRevenue: parseFloat(String(serverData.totalRevenue || '0')),
-        totalCOGS: parseFloat(String(serverData.totalCOGS || '0')),
-        grossProfit: parseFloat(String(serverData.grossProfit || '0')),
-        shopExpenses: parseFloat(String(serverData.shopExpenses || '0')),
-        netProfit: parseFloat(String(serverData.netProfit || '0')),
-        allItems: Array.from(mergedMenuItemsMap.values()).sort(
-          (a, b) => (b?.netSales || 0) - (a?.netSales || 0),
-        ),
-        allInventory: base.allInventory || [],
-      };
-    }
-    return base;
-  }, [serverData, localAnalyticsData]);
+  }, [summary]);
 
   // Filtered menu items by search query
   const filteredMenuItems = useMemo(() => {

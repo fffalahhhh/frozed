@@ -10,9 +10,10 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@apollo/client';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../../lib/api';
+import { apolloClient } from '../../../lib/graphqlClient';
+import { CREATE_MENU_ITEM, GET_MENU, GET_INVENTORY_SIMPLE } from '../../../lib/queries';
 import { useToastStore } from '../../../store/toast';
 import { IngredientSection } from '../IngredientSection';
 
@@ -29,7 +30,6 @@ export function AddMenuItemModal({
   categories,
   onSuccess,
 }: AddMenuItemModalProps) {
-  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
@@ -39,11 +39,11 @@ export function AddMenuItemModal({
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: stockItems, refetch: refetchStock } = useQuery<any[]>({
-    queryKey: ['inventory-stock'],
-    queryFn: () => api.get('/inventory'),
-    staleTime: 0,
+  const { data: stockData, refetch: refetchStock } = useQuery(GET_INVENTORY_SIMPLE, {
+    fetchPolicy: 'cache-and-network',
   });
+
+  const stockItems = stockData?.inventory || [];
 
   useEffect(() => {
     if (visible) {
@@ -81,17 +81,22 @@ export function AddMenuItemModal({
       setIsSubmitting(true);
       const formatted = ingredients
         .filter((ing) => ing.inventoryItemId && ing.quantity && !isNaN(Number(ing.quantity)))
-        .map((ing) => ({ inventoryItemId: ing.inventoryItemId, quantity: Number(ing.quantity) }));
+        .map((ing) => ({ inventoryItemId: ing.inventoryItemId, quantity: String(ing.quantity) }));
 
-      await api.post('/menu/items', {
-        categoryId: selectedCategoryId,
-        name: name.trim(),
-        description: description.trim() || null,
-        sellingPrice: Number(sellingPrice),
-        ingredients: formatted,
+      await apolloClient.mutate({
+        mutation: CREATE_MENU_ITEM,
+        variables: {
+          input: {
+            categoryId: selectedCategoryId,
+            name: name.trim(),
+            description: description.trim() || null,
+            sellingPrice: String(sellingPrice),
+            ingredients: formatted,
+          },
+        },
+        refetchQueries: [{ query: GET_MENU }],
       });
 
-      await queryClient.invalidateQueries({ queryKey: ['menu'] });
       useToastStore.getState().showToast('Menu item created!', 'success');
       resetForm();
       onSuccess();

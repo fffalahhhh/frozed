@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { useQuery } from '@apollo/client';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../../lib/api';
+import { apolloClient } from '../../../lib/graphqlClient';
+import { GET_PRE_ORDERS, DELETE_PRE_ORDER } from '../../../lib/queries';
 import { fmt } from '../../common/constants';
 import { useToastStore } from '../../../store/toast';
 
@@ -15,40 +16,34 @@ export function PendingPreOrdersBar({
   onProcessPreOrder,
   visible = true,
 }: PendingPreOrdersBarProps) {
-  const queryClient = useQueryClient();
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  const { data: preOrdersList } = useQuery<any[]>({
-    queryKey: ['pre-orders'],
-    queryFn: () => api.get('/pre-orders'),
-    staleTime: 1000 * 5,
+  const { data: preOrdersQueryResult } = useQuery(GET_PRE_ORDERS, {
+    fetchPolicy: 'cache-and-network',
+    pollInterval: 5000,
   });
 
-  const activePreOrders = Array.isArray(preOrdersList) ? preOrdersList : [];
+  const activePreOrders = preOrdersQueryResult?.preOrders || [];
 
   if (!visible || activePreOrders.length === 0) {
     return null;
   }
 
   const handleCancelPreOrder = async (id: string) => {
-    // Optimistic mutation: remove immediately in 0ms
-    const previousPreOrders = queryClient.getQueryData<any[]>(['pre-orders']);
-    queryClient.setQueryData<any[]>(['pre-orders'], (old) =>
-      Array.isArray(old) ? old.filter((item) => item.id !== id) : [],
-    );
-
-    useToastStore.getState().showToast('Pre-order cancelled', 'info');
-
-    // Silent background sync
     try {
+      setCancellingId(id);
       if (id && !String(id).startsWith('temp-')) {
-        await api.delete(`/pre-orders/${id}`);
+        await apolloClient.mutate({
+          mutation: DELETE_PRE_ORDER,
+          variables: { id },
+          refetchQueries: [{ query: GET_PRE_ORDERS }],
+        });
       }
-      queryClient.invalidateQueries({ queryKey: ['pre-orders'] });
+      useToastStore.getState().showToast('Pre-order cancelled', 'info');
     } catch (err: any) {
-      if (previousPreOrders) {
-        queryClient.setQueryData(['pre-orders'], previousPreOrders);
-      }
       useToastStore.getState().showToast('Failed to cancel pre-order', 'error');
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -68,8 +63,18 @@ export function PendingPreOrdersBar({
       {/* Vertical Scroll List of Pre-Orders */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {activePreOrders.map((ord: any) => {
-          const itemsList = Array.isArray(ord.items) ? ord.items : [];
+          let itemsList: any[] = [];
+          if (Array.isArray(ord.items)) {
+            itemsList = ord.items;
+          } else if (typeof ord.items === 'string') {
+            try {
+              itemsList = JSON.parse(ord.items);
+            } catch {
+              itemsList = [];
+            }
+          }
           const totalQty = itemsList.reduce((s: number, i: any) => s + (i.quantity || 1), 0);
+          const isCancellingThis = cancellingId === ord.id;
 
           return (
             <View
@@ -91,11 +96,16 @@ export function PendingPreOrdersBar({
 
                 {/* Cancel Trash Icon Button */}
                 <Pressable
+                  disabled={isCancellingThis}
                   onPress={() => handleCancelPreOrder(ord.id)}
                   className="w-5 h-5 rounded-full bg-red-50 border border-red-200 items-center justify-center"
                   hitSlop={6}
                 >
-                  <Ionicons name="trash-outline" size={10} color="#EF4444" />
+                  {isCancellingThis ? (
+                    <ActivityIndicator size="small" color="#EF4444" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={10} color="#EF4444" />
+                  )}
                 </Pressable>
               </View>
 
@@ -118,24 +128,25 @@ export function PendingPreOrdersBar({
                 ))}
               </View>
 
-              {/* Order Total & Process Button */}
-              <View className="pt-1.5 border-t border-[#E5E0D8]/60 flex-row items-center justify-between">
-                <View>
-                  <Text className="text-gray-400 font-sans text-[8px]">Total ({totalQty})</Text>
-                  <Text className="text-[#0D4830] font-sans-bold text-[10.5px]">
-                    {fmt(parseFloat(ord.totalAmount || 0))}
-                  </Text>
-                </View>
-
-                {/* Process Order Action Button */}
-                <Pressable
-                  onPress={() => onProcessPreOrder(ord)}
-                  className="bg-[#0D4830] rounded-full py-0.5 px-2 flex-row items-center justify-center gap-1 shadow-sm active:bg-[#083020]"
-                >
-                  <Ionicons name="arrow-forward" size={9} color="#FFFFFF" />
-                  <Text className="text-white font-sans-bold text-[9.5px]">Process</Text>
-                </Pressable>
+              {/* Order Total Row */}
+              <View className="pt-2 border-t border-[#E5E0D8]/60 flex-row items-center justify-between mb-2">
+                <Text className="text-gray-500 font-sans text-xs">
+                  Total ({totalQty} item{totalQty !== 1 ? 's' : ''})
+                </Text>
+                <Text className="text-[#0D4830] font-sans-bold text-sm">
+                  {fmt(parseFloat(ord.totalAmount || 0))}
+                </Text>
               </View>
+
+              {/* Full Width Proceed Button */}
+              <Pressable
+                onPress={() => onProcessPreOrder({ ...ord, items: itemsList })}
+                className="w-full bg-[#0D4830] rounded-xl py-2.5 px-3 flex-row items-center justify-center gap-2 shadow-sm active:bg-[#083020]"
+                style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
+              >
+                <Text className="text-white font-sans-bold text-xs">Proceed to Order</Text>
+                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+              </Pressable>
             </View>
           );
         })}

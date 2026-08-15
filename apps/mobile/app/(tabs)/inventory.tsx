@@ -12,28 +12,26 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@apollo/client';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../lib/api';
+import { apolloClient } from '../../lib/graphqlClient';
+import { GET_INVENTORY, CREATE_INVENTORY_ITEM, DELETE_INVENTORY_ITEM } from '../../lib/queries';
 import { useToastStore } from '../../store/toast';
 import { fmt, UNITS } from '../../components/common/constants';
 import { EditInventoryModal } from '../../components/inventory/EditInventoryModal';
 
-import { getLocalInventory } from '../../lib/db';
-
 // ─── Main Inventory Screen ────────────────────────────────────────────────────
 export default function InventoryScreen() {
-  const queryClient = useQueryClient();
   const {
-    data: stockItems,
-    isLoading,
+    data: inventoryQueryResult,
+    loading: isLoading,
     refetch,
-  } = useQuery<any[]>({
-    queryKey: ['inventory-stock'],
-    queryFn: () => getLocalInventory(),
-    staleTime: 1000 * 10,
+  } = useQuery(GET_INVENTORY, {
+    fetchPolicy: 'cache-and-network',
   });
+
+  const stockItems = inventoryQueryResult?.inventory || [];
 
   // Automatically refetch inventory levels whenever the Inventory page is visited / focused
   useFocusEffect(
@@ -75,15 +73,20 @@ export default function InventoryScreen() {
 
     try {
       setIsSubmitting(true);
-      await api.post('/inventory', {
-        name: name.trim(),
-        unit: unit.trim(),
-        currentStock: Number(currentStock),
-        reorderLevel: reorderLevel ? Number(reorderLevel) : 0,
-        costPerUnit: costPerUnit ? Number(costPerUnit) : 0,
+      await apolloClient.mutate({
+        mutation: CREATE_INVENTORY_ITEM,
+        variables: {
+          input: {
+            name: name.trim(),
+            unit: unit.trim(),
+            currentStock: Number(currentStock),
+            reorderLevel: reorderLevel ? Number(reorderLevel) : 0,
+            costPerUnit: costPerUnit ? Number(costPerUnit) : 0,
+          },
+        },
+        refetchQueries: [{ query: GET_INVENTORY }],
       });
 
-      await queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
       refetch();
       resetForm();
       setAddModalVisible(false);
@@ -104,8 +107,11 @@ export default function InventoryScreen() {
         onPress: async () => {
           try {
             setDeletingId(item.id);
-            await api.delete(`/inventory/${item.id}`);
-            await queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
+            await apolloClient.mutate({
+              mutation: DELETE_INVENTORY_ITEM,
+              variables: { id: item.id },
+              refetchQueries: [{ query: GET_INVENTORY }],
+            });
             refetch();
             useToastStore.getState().showToast(`"${item.name}" deleted`, 'success');
           } catch (err: any) {
@@ -159,7 +165,7 @@ export default function InventoryScreen() {
       ) : (
         <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
           {stockItems && stockItems.length > 0 ? (
-            stockItems.map((item) => (
+            stockItems.map((item: any) => (
               <View
                 key={item.id}
                 className="bg-white rounded-2xl p-2.5 px-3 mb-2 border border-border/60 shadow-sm flex-row items-center justify-between"
@@ -392,7 +398,6 @@ export default function InventoryScreen() {
         visible={!!editItem}
         onClose={() => setEditItem(null)}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
           refetch();
         }}
       />

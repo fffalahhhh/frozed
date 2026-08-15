@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ApolloProvider } from '@apollo/client';
+import { apolloClient, initApolloCachePersistence } from '../lib/graphqlClient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -17,15 +18,6 @@ import '../global.css';
 
 ExpoSplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 1000 * 60 * 5,
-    },
-  },
-});
-
 export default function RootLayout() {
   const [showSplash, setShowSplash] = useState(true);
 
@@ -35,6 +27,10 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  useEffect(() => {
+    initApolloCachePersistence();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -47,11 +43,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
+        <ApolloProvider client={apolloClient}>
           <Stack screenOptions={{ headerShown: false }} />
           <ToastBanner />
           {showSplash && <AnimatedSplashScreen onDone={() => setShowSplash(false)} />}
-        </QueryClientProvider>
+        </ApolloProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

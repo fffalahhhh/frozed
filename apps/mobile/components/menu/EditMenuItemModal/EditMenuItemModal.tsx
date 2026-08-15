@@ -10,10 +10,11 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@apollo/client';
 import { Ionicons } from '@expo/vector-icons';
-import type { MenuItem, RecipeItem } from '@frozen-shake/shared';
-import { api } from '../../../lib/api';
+import type { MenuItem } from '@frozen-shake/shared';
+import { apolloClient } from '../../../lib/graphqlClient';
+import { UPDATE_MENU_ITEM, GET_MENU, GET_INVENTORY_SIMPLE } from '../../../lib/queries';
 import { useToastStore } from '../../../store/toast';
 import { IngredientSection } from '../IngredientSection';
 
@@ -32,7 +33,6 @@ export function EditMenuItemModal({
   categories,
   onSuccess,
 }: EditMenuItemModalProps) {
-  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
@@ -42,11 +42,11 @@ export function EditMenuItemModal({
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: stockItems, refetch: refetchStock } = useQuery<any[]>({
-    queryKey: ['inventory-stock'],
-    queryFn: () => api.get('/inventory'),
-    staleTime: 0,
+  const { data: stockData, refetch: refetchStock } = useQuery(GET_INVENTORY_SIMPLE, {
+    fetchPolicy: 'cache-and-network',
   });
+
+  const stockItems = stockData?.inventory || [];
 
   useEffect(() => {
     if (visible) {
@@ -58,25 +58,33 @@ export function EditMenuItemModal({
     if (!visible || !item || !stockItems) return;
     setName(item.name ?? '');
     setSelectedCategoryId(item.categoryId ?? '');
-    setSellingPrice(String(parseFloat(String(item.sellingPrice ?? '0'))));
+    setSellingPrice(item.sellingPrice ? String(item.sellingPrice) : '');
     setDescription(item.description ?? '');
 
-    const rows = (item.recipes ?? []).map((rec: RecipeItem) => {
-      const matched = stockItems.find(
-        (s) => s.name.trim().toLowerCase() === rec.ingredientName.trim().toLowerCase(),
-      );
-      return {
-        inventoryItemId: matched?.id ?? '',
-        quantity: String(parseFloat(rec.quantity as string)),
-      };
-    });
-    setIngredients(rows);
+    if (Array.isArray(item.recipes)) {
+      const recs = item.recipes.map((r: any) => {
+        const foundStock = stockItems.find(
+          (s: any) => s.name?.toLowerCase().trim() === r.ingredientName?.toLowerCase().trim(),
+        );
+        return {
+          inventoryItemId: foundStock?.id || '',
+          quantity: String(r.quantity ?? ''),
+        };
+      });
+      setIngredients(recs);
+    } else {
+      setIngredients([]);
+    }
   }, [visible, item, stockItems]);
 
   const handleSave = async () => {
-    if (!item) return;
+    if (!item?.id) return;
     if (!name.trim()) {
-      useToastStore.getState().showToast('Item name is required', 'error');
+      useToastStore.getState().showToast('Enter item name', 'error');
+      return;
+    }
+    if (!selectedCategoryId) {
+      useToastStore.getState().showToast('Select a category', 'error');
       return;
     }
     if (!sellingPrice.trim() || isNaN(Number(sellingPrice))) {
@@ -88,17 +96,23 @@ export function EditMenuItemModal({
 
       const formattedIngredients = ingredients
         .filter((ing) => ing.inventoryItemId && ing.quantity && !isNaN(Number(ing.quantity)))
-        .map((ing) => ({ inventoryItemId: ing.inventoryItemId, quantity: Number(ing.quantity) }));
+        .map((ing) => ({ inventoryItemId: ing.inventoryItemId, quantity: String(ing.quantity) }));
 
-      await api.patch(`/menu/items/${item.id}`, {
-        categoryId: selectedCategoryId,
-        name: name.trim(),
-        description: description.trim() || null,
-        sellingPrice: String(Number(sellingPrice)),
-        ingredients: formattedIngredients,
+      await apolloClient.mutate({
+        mutation: UPDATE_MENU_ITEM,
+        variables: {
+          id: item.id,
+          input: {
+            categoryId: selectedCategoryId,
+            name: name.trim(),
+            description: description.trim() || null,
+            sellingPrice: String(sellingPrice),
+            ingredients: formattedIngredients,
+          },
+        },
+        refetchQueries: [{ query: GET_MENU }],
       });
 
-      await queryClient.invalidateQueries({ queryKey: ['menu'] });
       useToastStore.getState().showToast(`"${name}" updated!`, 'success');
       onSuccess();
       onClose();
