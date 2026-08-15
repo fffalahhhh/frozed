@@ -33,17 +33,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           gap: '6px',
           padding: '6px 14px',
           borderRadius: '9999px',
-          background: '#0D4830',
+          background: '#4A2810',
           color: '#FFFFFF',
           border: 'none',
           fontSize: '13px',
           fontWeight: 700,
           cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(13, 72, 48, 0.25)',
+          boxShadow: '0 2px 8px rgba(74, 40, 16, 0.25)',
           transition: 'all 0.15s ease',
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = '#083020')}
-        onMouseLeave={(e) => (e.currentTarget.style.background = '#0D4830')}
+        onMouseEnter={(e) => (e.currentTarget.style.background = '#361908')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = '#4A2810')}
       >
         <span>⚡</span>
         <span>Open POS</span>

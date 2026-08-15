@@ -1,28 +1,28 @@
 /* ==========================================================================
    Frozed POS Web Admin - Design System & Ergonomic Styles
-   Theme: Warm Cream (#FAF8F5, #F4F1EA) & Forest Green (#0D4830)
+   Theme: Warm Cream (#FAF7F2, #F4EDE4) & Chocolate Brown (#4A2810)
    ========================================================================== */
 
 :root {
-  --pos-primary: #0d4830;
-  --pos-primary-hover: #083020;
-  --pos-primary-light: #166534;
-  --pos-primary-tint: rgba(13, 72, 48, 0.08);
-  --pos-primary-tint-hover: rgba(13, 72, 48, 0.14);
+  --pos-primary: #4a2810;
+  --pos-primary-hover: #361908;
+  --pos-primary-light: #5c3317;
+  --pos-primary-tint: rgba(74, 40, 16, 0.08);
+  --pos-primary-tint-hover: rgba(74, 40, 16, 0.15);
 
-  --pos-bg: #faf8f5;
+  --pos-bg: #faf7f2;
   --pos-surface: #ffffff;
-  --pos-surface-secondary: #f4f1ea;
-  --pos-surface-hover: #ece8de;
+  --pos-surface-secondary: #f4ede4;
+  --pos-surface-hover: #ebe2d5;
 
-  --pos-border: #e5e0d8;
-  --pos-border-subtle: rgba(229, 224, 216, 0.6);
-  --pos-border-focus: #0d4830;
+  --pos-border: #e5dcd0;
+  --pos-border-subtle: rgba(229, 220, 208, 0.6);
+  --pos-border-focus: #4a2810;
 
-  --pos-text-primary: #111827;
-  --pos-text-secondary: #4b5563;
-  --pos-text-muted: #6b7280;
-  --pos-text-light: #9ca3af;
+  --pos-text-primary: #1a120b;
+  --pos-text-secondary: #4a3e36;
+  --pos-text-muted: #73675f;
+  --pos-text-light: #9e938b;
 
   --pos-amber: #d97706;
   --pos-amber-bg: #fef3c7;
@@ -32,14 +32,14 @@
   --pos-red-bg: #fee2e2;
   --pos-red-border: #fecaca;
 
-  --pos-green: #0d4830;
-  --pos-green-bg: #e8f5ee;
+  --pos-green: #16a34a;
+  --pos-green-bg: #dcfce7;
 
   --pos-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --pos-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
   --pos-shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
   --pos-shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.12);
-  --pos-shadow-button: 0 4px 14px rgba(13, 72, 48, 0.28);
+  --pos-shadow-button: 0 4px 14px rgba(74, 40, 16, 0.28);
 }
 
 /* Base Fullscreen POS Root */
@@ -121,7 +121,7 @@
   background: var(--pos-primary-tint);
   padding: 2px 8px;
   border-radius: 9999px;
-  border: 1px solid rgba(13, 72, 48, 0.15);
+  border: 1px solid rgba(74, 40, 16, 0.15);
 }
 
 .pos-nav-btn {
@@ -190,7 +190,7 @@
   background: var(--pos-primary);
   color: #ffffff;
   border-color: var(--pos-primary);
-  box-shadow: 0 2px 8px rgba(13, 72, 48, 0.25);
+  box-shadow: 0 2px 8px rgba(74, 40, 16, 0.25);
 }
 .pos-category-pill .badge {
   font-size: 11px;
@@ -256,15 +256,12 @@
 }
 
 .pos-card-image-wrap {
-  position: relative;
   width: 100%;
   height: 240px;
-  background: #f8f6f1;
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  background: var(--pos-surface-secondary);
 }
 .pos-card-img {
   width: 100%;
@@ -273,7 +270,7 @@
   transition: transform 0.25s ease;
 }
 .pos-menu-card:hover .pos-card-img {
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
 .pos-card-badge {
@@ -296,7 +293,7 @@
   color: #ffffff;
 }
 .pos-card-badge.stock-left {
-  background: rgba(13, 72, 48, 0.88);
+  background: rgba(74, 40, 16, 0.88);
   color: #ffffff;
 }
 
@@ -438,7 +435,7 @@
 .pos-payment-pill.active {
   background: var(--pos-primary);
   color: #ffffff;
-  box-shadow: 0 2px 6px rgba(13, 72, 48, 0.2);
+  box-shadow: 0 2px 6px rgba(74, 40, 16, 0.2);
 }
 
 /* Customer Inputs with Autocomplete */
@@ -479,7 +476,7 @@
 }
 .pos-input-field:focus {
   border-color: var(--pos-primary);
-  box-shadow: 0 0 0 2px rgba(13, 72, 48, 0.1);
+  box-shadow: 0 0 0 2px rgba(74, 40, 16, 0.12);
 }
 .pos-input-field.error {
   border-color: var(--pos-red);
@@ -514,7 +511,7 @@
   background: var(--pos-surface-secondary);
 }
 .pos-autocomplete-match {
-  background: rgba(13, 72, 48, 0.15);
+  background: rgba(74, 40, 16, 0.15);
   color: var(--pos-primary);
   font-weight: 700;
   border-radius: 3px;
@@ -705,7 +702,7 @@
 .pos-confirm-order-btn:hover:not(:disabled) {
   background: var(--pos-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(13, 72, 48, 0.35);
+  box-shadow: 0 6px 18px rgba(74, 40, 16, 0.35);
 }
 .pos-confirm-order-btn:active:not(:disabled) {
   transform: translateY(0);
