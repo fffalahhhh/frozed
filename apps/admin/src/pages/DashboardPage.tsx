@@ -346,6 +346,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
         'No item details'
       );
 
+    const customerNameStr = order.customerName || 'Walk-in Customer';
+    const customerPhoneStr = order.customerPhone?.trim();
+
+    const customerCellMarkup = customerPhoneStr ? (
+      <Tooltip content={`Phone: ${customerPhoneStr}`} dismissOnMouseOut>
+        <Text as="span" variant="bodyMd">
+          {customerNameStr}
+        </Text>
+      </Tooltip>
+    ) : (
+      <Text as="span" variant="bodyMd">
+        {customerNameStr}
+      </Text>
+    );
+
     const isUnpaid = order.status !== 'paid' && order.status !== 'voided';
 
     return (
@@ -355,7 +370,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
             #{order.orderNumber || order.id.slice(-6)}
           </Text>
         </IndexTable.Cell>
-        <IndexTable.Cell>{order.customerName || 'Walk-in Customer'}</IndexTable.Cell>
+        <IndexTable.Cell>{customerCellMarkup}</IndexTable.Cell>
         <IndexTable.Cell>
           <Tooltip content={itemsTooltipContent} dismissOnMouseOut>
             <Badge tone="info">
