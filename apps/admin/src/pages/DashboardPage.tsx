@@ -16,10 +16,11 @@ import {
   Select,
   TextField,
   Button,
+  Modal,
 } from '@shopify/polaris';
-import { RefreshIcon } from '@shopify/polaris-icons';
-import { useQuery } from '@apollo/client';
-import { GET_ANALYTICS_SUMMARY, GET_RECENT_ORDERS } from '../graphql/queries';
+import { RefreshIcon, CheckIcon } from '@shopify/polaris-icons';
+import { useQuery, useMutation } from '@apollo/client';
+import { GET_ANALYTICS_SUMMARY, GET_RECENT_ORDERS, UPDATE_ORDER_STATUS } from '../graphql/queries';
 import { DateRangeSelector } from '../components/dashboard/DateRangeSelector';
 
 interface DashboardPageProps {
@@ -102,6 +103,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [selectedSortOption, setSelectedSortOption] = useState('time_desc');
 
+  // Mark as Paid Modal & Paying Order state
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [selectedOrderToPay, setSelectedOrderToPay] = useState<any>(null);
+  const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
+  const [updateOrderStatus, { loading: updateStatusLoading }] = useMutation(UPDATE_ORDER_STATUS);
+
+  const handleOpenPayModal = useCallback((order: any) => {
+    setSelectedOrderToPay(order);
+    setPayModalOpen(true);
+  }, []);
+
+  const handleClosePayModal = useCallback(() => {
+    setPayModalOpen(false);
+    setSelectedOrderToPay(null);
+  }, []);
+
   const handleDateChange = useCallback((from: string, to: string) => {
     setFromDate(from);
     setToDate(to);
@@ -131,9 +148,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     pollInterval: 10000,
   });
 
-  const handleRefresh = () => {
-    refetchAnalytics();
-    refetchOrders();
+  const handleConfirmPayOrder = useCallback(async () => {
+    if (!selectedOrderToPay) return;
+    try {
+      setPayingOrderId(selectedOrderToPay.id);
+      await updateOrderStatus({
+        variables: {
+          id: selectedOrderToPay.id,
+          status: 'paid',
+        },
+      });
+      await Promise.all([refetchOrders(), refetchAnalytics()]);
+    } finally {
+      setPayingOrderId(null);
+      handleClosePayModal();
+    }
+  }, [selectedOrderToPay, updateOrderStatus, refetchOrders, refetchAnalytics, handleClosePayModal]);
+
+  const handleRefresh = async () => {
+    await Promise.all([refetchAnalytics(), refetchOrders()]);
   };
 
   const summary = analyticsData?.analyticsSummary;
@@ -264,6 +297,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     return filteredAndSortedOrders.slice(start, start + ORDERS_PER_PAGE);
   }, [filteredAndSortedOrders, currentOrdersPage]);
 
+  const hasAnyUnpaidOrders = useMemo(() => {
+    return filteredAndSortedOrders.some(
+      (order: any) => order.status !== 'paid' && order.status !== 'voided',
+    );
+  }, [filteredAndSortedOrders]);
+
+  const ordersHeadings = useMemo(() => {
+    const base: Array<{ title: string; alignment?: 'start' | 'center' | 'end' }> = [
+      { title: 'Order #' },
+      { title: 'Customer' },
+      { title: 'Total Items' },
+      { title: 'Time' },
+      { title: 'Status' },
+      { title: 'Total Amount' },
+    ];
+    if (hasAnyUnpaidOrders) {
+      base.push({ title: 'Action', alignment: 'end' });
+    }
+    return base as [{ title: string }, ...{ title: string }[]];
+  }, [hasAnyUnpaidOrders]);
+
   const ordersRowMarkup = paginatedOrders.map((order: any, index: number) => {
     const total = parseFloat(order.totalAmount) || 0;
     const dateFormatted = safeGetTimeString(order.createdAt);
@@ -292,6 +346,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
         'No item details'
       );
 
+    const isUnpaid = order.status !== 'paid' && order.status !== 'voided';
+
     return (
       <IndexTable.Row id={order.id} key={order.id} position={index}>
         <IndexTable.Cell>
@@ -312,6 +368,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
           <Badge tone={statusTone}>{order.status ? order.status.toUpperCase() : 'PENDING'}</Badge>
         </IndexTable.Cell>
         <IndexTable.Cell>{formatCurrency(total)}</IndexTable.Cell>
+        {hasAnyUnpaidOrders && (
+          <IndexTable.Cell>
+            {isUnpaid ? (
+              <InlineStack align="end">
+                <Button
+                  size="micro"
+                  tone="success"
+                  icon={CheckIcon}
+                  loading={payingOrderId === order.id}
+                  onClick={() => handleOpenPayModal(order)}
+                >
+                  Mark as Paid
+                </Button>
+              </InlineStack>
+            ) : null}
+          </IndexTable.Cell>
+        )}
       </IndexTable.Row>
     );
   });
@@ -392,12 +465,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
           <IndexTable.Cell>
             <SkeletonDisplayText size="small" />
           </IndexTable.Cell>
+          {hasAnyUnpaidOrders && (
+            <IndexTable.Cell>
+              <SkeletonDisplayText size="small" />
+            </IndexTable.Cell>
+          )}
         </IndexTable.Row>
       )),
-    [],
+    [hasAnyUnpaidOrders],
   );
-
-  const isItemSummaryLoading = ordersLoading || analyticsLoading;
 
   const itemSalesSkeletonMarkup = useMemo(
     () =>
@@ -416,6 +492,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
       )),
     [],
   );
+
+  const isInitialAnalyticsLoading = analyticsLoading && !analyticsData;
+  const isInitialOrdersLoading = ordersLoading && !ordersData;
+
+  const isMetricsLoading = isInitialAnalyticsLoading || !summary;
+  const isOrdersTableLoading = isInitialOrdersLoading;
+  const isItemSummaryLoading = isInitialOrdersLoading || isInitialAnalyticsLoading;
 
   return (
     <Page
@@ -452,7 +535,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
               <Text as="h2" variant="headingSm" tone="subdued">
                 Total Revenue
               </Text>
-              {analyticsLoading || !summary ? (
+              {isMetricsLoading ? (
                 <Box width="110px">
                   <SkeletonDisplayText size="small" />
                 </Box>
@@ -469,13 +552,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
               <Text as="h2" variant="headingSm" tone="subdued">
                 Orders Count
               </Text>
-              {analyticsLoading || !summary ? (
+              {isMetricsLoading ? (
                 <Box width="90px">
                   <SkeletonDisplayText size="small" />
                 </Box>
               ) : (
                 <Text as="p" variant="headingLg">
-                  {formatCount(summary.orderCount)}
+                  {formatCount(summary.orderCount)} {summary.orderCount === 1 ? 'Order' : 'Orders'}
                 </Text>
               )}
             </BlockStack>
@@ -486,7 +569,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
               <Text as="h2" variant="headingSm" tone="subdued">
                 Net Profit
               </Text>
-              {analyticsLoading || !summary ? (
+              {isMetricsLoading ? (
                 <Box width="110px">
                   <SkeletonDisplayText size="small" />
                 </Box>
@@ -503,7 +586,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
               <Text as="h2" variant="headingSm" tone="subdued">
                 Unpaid Amount
               </Text>
-              {analyticsLoading || !summary ? (
+              {isMetricsLoading ? (
                 <Box width="110px">
                   <SkeletonDisplayText size="small" />
                 </Box>
@@ -602,19 +685,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
 
               <IndexTable
                 resourceName={{ singular: 'order', plural: 'orders' }}
-                itemCount={ordersLoading ? 5 : filteredAndSortedOrders.length}
+                itemCount={isOrdersTableLoading ? 5 : filteredAndSortedOrders.length}
                 selectable={false}
-                loading={ordersLoading}
-                headings={[
-                  { title: 'Order #' },
-                  { title: 'Customer' },
-                  { title: 'Total Items' },
-                  { title: 'Time' },
-                  { title: 'Status' },
-                  { title: 'Total Amount' },
-                ]}
+                loading={isOrdersTableLoading}
+                headings={ordersHeadings}
                 pagination={
-                  ordersLoading || totalOrderPages <= 1
+                  isOrdersTableLoading || totalOrderPages <= 1
                     ? undefined
                     : {
                         hasNext: currentOrdersPage < totalOrderPages,
@@ -625,7 +701,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
                       }
                 }
               >
-                {ordersLoading ? ordersSkeletonMarkup : ordersRowMarkup}
+                {isOrdersTableLoading ? ordersSkeletonMarkup : ordersRowMarkup}
               </IndexTable>
             </Card>
           </Layout.Section>
@@ -668,6 +744,42 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
           </Layout.Section>
         </Layout>
       </BlockStack>
+
+      {/* Mark as Paid Confirmation Modal */}
+      <Modal
+        open={payModalOpen}
+        onClose={handleClosePayModal}
+        title={`Mark Order #${selectedOrderToPay?.orderNumber || selectedOrderToPay?.id?.slice(-6) || ''} as Paid?`}
+        primaryAction={{
+          content: 'Mark as Paid',
+          onAction: handleConfirmPayOrder,
+          loading: updateStatusLoading || payingOrderId === selectedOrderToPay?.id,
+        }}
+        secondaryActions={[
+          {
+            content: 'Cancel',
+            onAction: handleClosePayModal,
+          },
+        ]}
+      >
+        <Modal.Section>
+          <BlockStack gap="200">
+            <Text as="p">
+              Are you sure you want to mark Order{' '}
+              <strong>
+                #{selectedOrderToPay?.orderNumber || selectedOrderToPay?.id?.slice(-6)}
+              </strong>{' '}
+              for customer <strong>{selectedOrderToPay?.customerName || 'Walk-in Customer'}</strong>{' '}
+              as paid?
+            </Text>
+            <Text as="p" tone="subdued">
+              Total Order Amount:{' '}
+              <strong>{formatCurrency(selectedOrderToPay?.totalAmount || 0)}</strong>. This will
+              move the unpaid balance to revenue and update net profit metrics.
+            </Text>
+          </BlockStack>
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 };

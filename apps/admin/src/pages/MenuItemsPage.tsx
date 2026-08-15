@@ -487,6 +487,8 @@ export const MenuItemsPage: React.FC = () => {
     [],
   );
 
+  const isMenuTableLoading = loading && !data;
+
   return (
     <Page
       title="Menu Items Management"
@@ -525,10 +527,10 @@ export const MenuItemsPage: React.FC = () => {
 
               <IndexTable
                 resourceName={{ singular: 'menu item', plural: 'menu items' }}
-                itemCount={loading ? 5 : filteredItems.length}
+                itemCount={isMenuTableLoading ? 5 : filteredItems.length}
                 selectedItemsCount={allResourcesSelected ? 'All' : selectedResources.length}
                 onSelectionChange={handleSelectionChange}
-                loading={loading}
+                loading={isMenuTableLoading}
                 headings={[
                   { title: 'Item Name' },
                   { title: 'Category' },
@@ -537,7 +539,7 @@ export const MenuItemsPage: React.FC = () => {
                   { title: 'Actions', alignment: 'end' },
                 ]}
               >
-                {loading ? menuSkeletonMarkup : rowMarkup}
+                {isMenuTableLoading ? menuSkeletonMarkup : rowMarkup}
               </IndexTable>
             </Card>
           </BlockStack>

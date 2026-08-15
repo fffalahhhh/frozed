@@ -233,3 +233,13 @@ export const ADJUST_INVENTORY_STOCK = gql`
     }
   }
 `;
+
+export const UPDATE_ORDER_STATUS = gql`
+  mutation UpdateOrderStatus($id: ID!, $status: String!, $paidAt: String) {
+    updateOrderStatus(id: $id, status: $status, paidAt: $paidAt) {
+      id
+      status
+      paidAt
+    }
+  }
+`;

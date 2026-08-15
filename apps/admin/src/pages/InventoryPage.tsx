@@ -342,6 +342,8 @@ export const InventoryPage: React.FC = () => {
     [],
   );
 
+  const isInventoryTableLoading = loading && !data;
+
   return (
     <Page
       title="Inventory Management"
@@ -380,10 +382,10 @@ export const InventoryPage: React.FC = () => {
 
               <IndexTable
                 resourceName={{ singular: 'inventory item', plural: 'inventory items' }}
-                itemCount={loading ? 5 : filteredInventory.length}
+                itemCount={isInventoryTableLoading ? 5 : filteredInventory.length}
                 selectedItemsCount={allResourcesSelected ? 'All' : selectedResources.length}
                 onSelectionChange={handleSelectionChange}
-                loading={loading}
+                loading={isInventoryTableLoading}
                 headings={[
                   { title: 'Item Name' },
                   { title: 'Current Stock' },
@@ -393,7 +395,7 @@ export const InventoryPage: React.FC = () => {
                   { title: 'Actions', alignment: 'end' },
                 ]}
               >
-                {loading ? inventorySkeletonMarkup : rowMarkup}
+                {isInventoryTableLoading ? inventorySkeletonMarkup : rowMarkup}
               </IndexTable>
             </Card>
           </BlockStack>
