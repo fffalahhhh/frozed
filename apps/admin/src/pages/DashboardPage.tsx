@@ -20,7 +20,12 @@ import {
 } from '@shopify/polaris';
 import { RefreshIcon, CheckIcon } from '@shopify/polaris-icons';
 import { useQuery, useMutation } from '@apollo/client';
-import { GET_ANALYTICS_SUMMARY, GET_RECENT_ORDERS, UPDATE_ORDER_STATUS } from '../graphql/queries';
+import {
+  GET_ANALYTICS_SUMMARY,
+  GET_RECENT_ORDERS,
+  GET_PERIOD_ORDERS,
+  UPDATE_ORDER_STATUS,
+} from '../graphql/queries';
 import { DateRangeSelector } from '../components/dashboard/DateRangeSelector';
 
 interface DashboardPageProps {
@@ -42,11 +47,6 @@ const formatLocalDateStr = (dateObj: Date): string => {
   const month = String(dateObj.getMonth() + 1).padStart(2, '0');
   const day = String(dateObj.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-const safeGetDateStr = (rawDate: any): string | null => {
-  const d = parseValidDate(rawDate);
-  return d ? formatLocalDateStr(d) : null;
 };
 
 const safeGetTimeString = (rawDate: any): string => {
@@ -140,11 +140,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
   });
 
   const {
+    data: periodOrdersData,
+    loading: periodOrdersLoading,
+    refetch: refetchPeriodOrders,
+  } = useQuery(GET_PERIOD_ORDERS, {
+    variables: { from: fromDate, to: toDate, limit: 500 },
+    pollInterval: 10000,
+  });
+
+  const {
     data: ordersData,
     loading: ordersLoading,
     refetch: refetchOrders,
   } = useQuery(GET_RECENT_ORDERS, {
-    variables: { limit: 250 },
+    variables: {
+      from: fromDate,
+      to: toDate,
+      search: searchOrderQuery.trim() || undefined,
+      customerName: selectedCustomerFilter !== 'all' ? selectedCustomerFilter : undefined,
+      status: selectedStatusFilter !== 'all' ? selectedStatusFilter : undefined,
+      sortBy: selectedSortOption,
+      page: ordersPage,
+      limit: ORDERS_PER_PAGE,
+    },
     pollInterval: 10000,
   });
 
@@ -158,30 +176,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
           status: 'paid',
         },
       });
-      await Promise.all([refetchOrders(), refetchAnalytics()]);
+      await Promise.all([refetchOrders(), refetchAnalytics(), refetchPeriodOrders()]);
     } finally {
       setPayingOrderId(null);
       handleClosePayModal();
     }
-  }, [selectedOrderToPay, updateOrderStatus, refetchOrders, refetchAnalytics, handleClosePayModal]);
+  }, [
+    selectedOrderToPay,
+    updateOrderStatus,
+    refetchOrders,
+    refetchAnalytics,
+    refetchPeriodOrders,
+    handleClosePayModal,
+  ]);
 
   const handleRefresh = async () => {
-    await Promise.all([refetchAnalytics(), refetchOrders()]);
+    await Promise.all([refetchAnalytics(), refetchOrders(), refetchPeriodOrders()]);
   };
 
   const summary = analyticsData?.analyticsSummary;
-  const allOrders = ordersData?.orders || [];
+  const paginatedOrdersResult = ordersData?.orders;
+  const paginatedOrders = paginatedOrdersResult?.orders || [];
+  const totalOrdersCount = paginatedOrdersResult?.totalCount || 0;
+  const totalOrderPages = paginatedOrdersResult?.totalPages || 1;
+  const currentOrdersPage = paginatedOrdersResult?.page || 1;
 
-  // Filter orders list strictly based on active date range selection in local timezone
-  const selectedRangeOrders = useMemo(() => {
-    if (!allOrders.length) return [];
-    return allOrders.filter((order: any) => {
-      const orderDateStr = safeGetDateStr(order.createdAt);
-      if (!orderDateStr) return false;
-      return orderDateStr >= fromDate && orderDateStr <= toDate;
-    });
-  }, [allOrders, fromDate, toDate]);
-
+  const selectedRangeOrders = periodOrdersData?.orders?.orders || [];
   const activePeriodLabel = getFormattedDateLabel(fromDate, toDate);
 
   // Dynamic Options for Customer Filter
@@ -218,67 +238,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     [],
   );
 
-  // Filter & Sort Orders
-  const filteredAndSortedOrders = useMemo(() => {
-    let list = [...selectedRangeOrders];
-
-    if (searchOrderQuery.trim()) {
-      const q = searchOrderQuery.toLowerCase();
-      list = list.filter((order: any) => {
-        const orderNum = (order.orderNumber || order.id || '').toLowerCase();
-        const customer = (order.customerName || 'walk-in customer').toLowerCase();
-        const itemMatch =
-          Array.isArray(order.items) &&
-          order.items.some((i: any) => (i.menuItemName || '').toLowerCase().includes(q));
-        return orderNum.includes(q) || customer.includes(q) || itemMatch;
-      });
-    }
-
-    if (selectedCustomerFilter !== 'all') {
-      list = list.filter((order: any) => {
-        const name = order.customerName || 'Walk-in Customer';
-        return name === selectedCustomerFilter;
-      });
-    }
-
-    if (selectedStatusFilter !== 'all') {
-      list = list.filter((order: any) => {
-        const st = (order.status || 'open').toLowerCase();
-        return st === selectedStatusFilter.toLowerCase();
-      });
-    }
-
-    list.sort((a: any, b: any) => {
-      const amountA = parseFloat(a.totalAmount) || 0;
-      const amountB = parseFloat(b.totalAmount) || 0;
-      const timeA = parseValidDate(a.createdAt)?.getTime() || 0;
-      const timeB = parseValidDate(b.createdAt)?.getTime() || 0;
-      const nameA = (a.customerName || 'Walk-in Customer').toLowerCase();
-      const nameB = (b.customerName || 'Walk-in Customer').toLowerCase();
-
-      if (selectedSortOption === 'time_asc') return timeA - timeB;
-      if (selectedSortOption === 'amount_desc') return amountB - amountA;
-      if (selectedSortOption === 'amount_asc') return amountA - amountB;
-      if (selectedSortOption === 'customer_asc') return nameA.localeCompare(nameB);
-      return timeB - timeA;
-    });
-
-    return list;
-  }, [
-    selectedRangeOrders,
-    searchOrderQuery,
-    selectedCustomerFilter,
-    selectedStatusFilter,
-    selectedSortOption,
-  ]);
-
   const hasActiveOrderFilters =
     searchOrderQuery.trim() !== '' ||
     selectedCustomerFilter !== 'all' ||
     selectedStatusFilter !== 'all' ||
     selectedSortOption !== 'time_desc';
 
-  const showOrderFiltersBar = selectedRangeOrders.length > ORDERS_PER_PAGE || hasActiveOrderFilters;
+  const showOrderFiltersBar = totalOrdersCount > ORDERS_PER_PAGE || hasActiveOrderFilters;
 
   const handleClearOrderFilters = useCallback(() => {
     setSearchOrderQuery('');
@@ -288,20 +254,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     setOrdersPage(1);
   }, []);
 
-  // Paginated Orders Calculation
-  const totalOrderPages = Math.ceil(filteredAndSortedOrders.length / ORDERS_PER_PAGE) || 1;
-  const currentOrdersPage = Math.min(ordersPage, totalOrderPages);
-
-  const paginatedOrders = useMemo(() => {
-    const start = (currentOrdersPage - 1) * ORDERS_PER_PAGE;
-    return filteredAndSortedOrders.slice(start, start + ORDERS_PER_PAGE);
-  }, [filteredAndSortedOrders, currentOrdersPage]);
-
   const hasAnyUnpaidOrders = useMemo(() => {
-    return filteredAndSortedOrders.some(
+    return paginatedOrders.some(
       (order: any) => order.status !== 'paid' && order.status !== 'voided',
     );
-  }, [filteredAndSortedOrders]);
+  }, [paginatedOrders]);
 
   const ordersHeadings = useMemo(() => {
     const base: Array<{ title: string; alignment?: 'start' | 'center' | 'end' }> = [
@@ -463,26 +420,73 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
       Array.from({ length: 5 }).map((_, index) => (
         <IndexTable.Row id={`skel-order-${index}`} key={`skel-order-${index}`} position={index}>
           <IndexTable.Cell>
-            <SkeletonDisplayText size="small" />
+            <Box paddingBlock={'100'}>
+              <Box
+                minHeight="17px"
+                width="100px"
+                background="bg-surface-brand"
+                borderRadius="100"
+              />
+            </Box>
           </IndexTable.Cell>
           <IndexTable.Cell>
-            <SkeletonDisplayText size="small" />
+            <Box paddingBlock={'100'}>
+              <Box
+                minHeight="17px"
+                width="100px"
+                background="bg-surface-brand"
+                borderRadius="100"
+              />
+            </Box>
           </IndexTable.Cell>
           <IndexTable.Cell>
-            <SkeletonDisplayText size="small" />
+            <Box paddingBlock={'100'}>
+              <Box
+                minHeight="17px"
+                width="100px"
+                background="bg-surface-brand"
+                borderRadius="100"
+              />
+            </Box>
           </IndexTable.Cell>
           <IndexTable.Cell>
-            <SkeletonDisplayText size="small" />
+            <Box paddingBlock={'100'}>
+              <Box
+                minHeight="17px"
+                width="100px"
+                background="bg-surface-brand"
+                borderRadius="100"
+              />
+            </Box>
           </IndexTable.Cell>
           <IndexTable.Cell>
-            <SkeletonDisplayText size="small" />
+            <Box paddingBlock={'100'}>
+              <Box
+                minHeight="17px"
+                width="100px"
+                background="bg-surface-brand"
+                borderRadius="100"
+              />
+            </Box>
           </IndexTable.Cell>
           <IndexTable.Cell>
-            <SkeletonDisplayText size="small" />
+            <Box paddingBlock={'100'}>
+              <Box
+                minHeight="17px"
+                width="100px"
+                background="bg-surface-brand"
+                borderRadius="100"
+              />
+            </Box>
           </IndexTable.Cell>
           {hasAnyUnpaidOrders && (
             <IndexTable.Cell>
-              <SkeletonDisplayText size="small" />
+              <Box
+                minHeight="17px"
+                width="100px"
+                background="bg-surface-brand"
+                borderRadius="100"
+              />
             </IndexTable.Cell>
           )}
         </IndexTable.Row>
@@ -510,10 +514,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
 
   const isInitialAnalyticsLoading = analyticsLoading && !analyticsData;
   const isInitialOrdersLoading = ordersLoading && !ordersData;
+  const isInitialPeriodOrdersLoading = periodOrdersLoading && !periodOrdersData;
 
   const isMetricsLoading = isInitialAnalyticsLoading || !summary;
   const isOrdersTableLoading = isInitialOrdersLoading;
-  const isItemSummaryLoading = isInitialOrdersLoading || isInitialAnalyticsLoading;
+  const isItemSummaryLoading = isInitialPeriodOrdersLoading;
 
   return (
     <Page
@@ -627,19 +632,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
                       </Text>
                       <Text as="p" variant="bodySm" tone="subdued">
                         Showing{' '}
-                        {filteredAndSortedOrders.length === 0
+                        {totalOrdersCount === 0
                           ? 0
                           : formatCount((currentOrdersPage - 1) * ORDERS_PER_PAGE + 1)}
                         –
                         {formatCount(
-                          Math.min(
-                            currentOrdersPage * ORDERS_PER_PAGE,
-                            filteredAndSortedOrders.length,
-                          ),
+                          Math.min(currentOrdersPage * ORDERS_PER_PAGE, totalOrdersCount),
                         )}{' '}
-                        of {formatCount(filteredAndSortedOrders.length)}{' '}
-                        {filteredAndSortedOrders.length === 1 ? 'order' : 'orders'} for{' '}
-                        {activePeriodLabel}. Hover over total items badge to view item breakdown.
+                        of {formatCount(totalOrdersCount)}{' '}
+                        {totalOrdersCount === 1 ? 'order' : 'orders'} for {activePeriodLabel}. Hover
+                        over total items badge to view item breakdown.
                       </Text>
                     </BlockStack>
                     {hasActiveOrderFilters && (
@@ -700,7 +702,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
 
               <IndexTable
                 resourceName={{ singular: 'order', plural: 'orders' }}
-                itemCount={isOrdersTableLoading ? 5 : filteredAndSortedOrders.length}
+                itemCount={isOrdersTableLoading ? 5 : totalOrdersCount}
                 selectable={false}
                 loading={isOrdersTableLoading}
                 headings={ordersHeadings}

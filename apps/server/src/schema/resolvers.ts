@@ -344,9 +344,92 @@ export const resolvers = {
       }));
     },
 
-    orders: async (_: unknown, { limit = 100 }: { limit?: number }) => {
-      const maxLimit = Math.min(limit, 500);
-      const list = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(maxLimit);
+    orders: async (
+      _: unknown,
+      {
+        from,
+        to,
+        search,
+        customerName,
+        status,
+        sortBy,
+        page = 1,
+        limit = 10,
+      }: {
+        from?: string;
+        to?: string;
+        search?: string;
+        customerName?: string;
+        status?: string;
+        sortBy?: string;
+        page?: number;
+        limit?: number;
+      },
+    ) => {
+      const pageNum = Math.max(1, page);
+      const limitNum = Math.min(Math.max(1, limit), 100);
+      const offset = (pageNum - 1) * limitNum;
+
+      const conditions: ReturnType<typeof gte>[] = [];
+
+      if (from) {
+        const fromDate = parseDateParam(from, false);
+        if (fromDate) conditions.push(gte(orders.createdAt, fromDate));
+      }
+      if (to) {
+        const toDate = parseDateParam(to, true);
+        if (toDate) conditions.push(lte(orders.createdAt, toDate));
+      }
+      if (status && status !== 'all') {
+        conditions.push(eq(orders.status, status as any));
+      }
+      if (customerName && customerName !== 'all') {
+        conditions.push(eq(orders.customerName, customerName));
+      }
+      if (search && search.trim()) {
+        const term = `%${search.trim().toLowerCase()}%`;
+        conditions.push(
+          or(
+            ilike(orders.orderNumber, term),
+            ilike(orders.customerName, term),
+            sql`EXISTS (
+              SELECT 1 FROM ${orderItems}
+              WHERE ${orderItems.orderId} = ${orders.id}
+                AND LOWER(${orderItems.menuItemName}) LIKE ${term}
+            )`,
+          ) as any,
+        );
+      }
+
+      const whereClause = conditions.length ? and(...conditions) : undefined;
+
+      // Order Clause
+      let orderClause = desc(orders.createdAt);
+      if (sortBy === 'time_asc') {
+        orderClause = asc(orders.createdAt);
+      } else if (sortBy === 'amount_desc') {
+        orderClause = desc(orders.totalAmount);
+      } else if (sortBy === 'amount_asc') {
+        orderClause = asc(orders.totalAmount);
+      } else if (sortBy === 'customer_asc') {
+        orderClause = asc(orders.customerName);
+      }
+
+      const [countResult, list] = await Promise.all([
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(orders)
+          .where(whereClause),
+        db
+          .select()
+          .from(orders)
+          .where(whereClause)
+          .orderBy(orderClause)
+          .limit(limitNum)
+          .offset(offset),
+      ]);
+
+      const totalCount = countResult[0]?.count ?? 0;
       const orderIds = list.map((o) => o.id);
       const userIds = [...new Set(list.map((o) => o.cashierId).filter(Boolean))];
 
@@ -365,11 +448,21 @@ export const resolvers = {
 
       const userMap = new Map(userRows.map((u) => [u.id, u]));
 
-      return list.map((o) => ({
+      const ordersWithItems = list.map((o) => ({
         ...o,
         items: itemsByOrderId.get(o.id) || [],
         cashierName: userMap.get(o.cashierId)?.name ?? 'Cashier',
       }));
+
+      const totalPages = Math.ceil(totalCount / limitNum) || 1;
+
+      return {
+        orders: ordersWithItems,
+        totalCount,
+        page: pageNum,
+        totalPages,
+        hasMore: pageNum < totalPages,
+      };
     },
 
     order: async (_: unknown, { id }: { id: string }) => {

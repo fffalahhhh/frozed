@@ -263,12 +263,29 @@ export const typeDefs = /* GraphQL */ `
     totalAmount: Float
   }
 
+  type PaginatedOrders {
+    orders: [Order!]!
+    totalCount: Int!
+    page: Int!
+    totalPages: Int!
+    hasMore: Boolean!
+  }
+
   type Query {
     menu: [MenuCategoryGroup!]!
     menuItem(id: ID!): MenuItem
     inventory: [InventoryItem!]!
     inventoryAdjustments: [InventoryAdjustment!]!
-    orders(limit: Int): [Order!]!
+    orders(
+      from: String
+      to: String
+      search: String
+      customerName: String
+      status: String
+      sortBy: String
+      page: Int
+      limit: Int
+    ): PaginatedOrders!
     order(id: ID!): Order
     preOrders: [PreOrder!]!
     expenses(from: String, to: String): [Expense!]!

@@ -145,24 +145,65 @@ export const GET_ANALYTICS_SUMMARY = gql`
 `;
 
 export const GET_RECENT_ORDERS = gql`
-  query GetRecentOrders($limit: Int) {
-    orders(limit: $limit) {
-      id
-      orderNumber
-      customerName
-      customerPhone
-      status
-      paymentMethod
-      subtotal
-      totalAmount
-      createdAt
-      items {
+  query GetRecentOrders(
+    $from: String
+    $to: String
+    $search: String
+    $customerName: String
+    $status: String
+    $sortBy: String
+    $page: Int
+    $limit: Int
+  ) {
+    orders(
+      from: $from
+      to: $to
+      search: $search
+      customerName: $customerName
+      status: $status
+      sortBy: $sortBy
+      page: $page
+      limit: $limit
+    ) {
+      totalCount
+      page
+      totalPages
+      hasMore
+      orders {
         id
-        menuItemName
-        flavourName
-        quantity
-        unitPrice
-        lineTotal
+        orderNumber
+        customerName
+        customerPhone
+        status
+        paymentMethod
+        subtotal
+        totalAmount
+        createdAt
+        items {
+          id
+          menuItemName
+          flavourName
+          quantity
+          unitPrice
+          lineTotal
+        }
+      }
+    }
+  }
+`;
+
+export const GET_PERIOD_ORDERS = gql`
+  query GetPeriodOrders($from: String, $to: String, $limit: Int) {
+    orders(from: $from, to: $to, limit: $limit) {
+      orders {
+        id
+        customerName
+        items {
+          menuItemName
+          quantity
+          unitPrice
+          lineTotal
+        }
       }
     }
   }
