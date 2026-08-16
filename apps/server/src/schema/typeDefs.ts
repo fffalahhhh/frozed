@@ -271,6 +271,26 @@ export const typeDefs = /* GraphQL */ `
     hasMore: Boolean!
   }
 
+  type DatabaseStats {
+    ordersCount: Int!
+    orderItemsCount: Int!
+    billsCount: Int!
+    expensesCount: Int!
+    preOrdersCount: Int!
+    inventoryAdjustmentsCount: Int!
+    inventoryItemsCount: Int!
+    menuItemsCount: Int!
+    categoriesCount: Int!
+    recipesCount: Int!
+  }
+
+  type ResetResult {
+    success: Boolean!
+    entity: String!
+    message: String!
+    deletedCount: Int
+  }
+
   type Query {
     menu: [MenuCategoryGroup!]!
     menuItem(id: ID!): MenuItem
@@ -295,6 +315,7 @@ export const typeDefs = /* GraphQL */ `
     analyticsProfit(from: String, to: String): ProfitSummary!
     analyticsExpensesBreakdown(from: String, to: String): [ExpenseBreakdownRow!]!
     analyticsSecurityPassword: String!
+    databaseStats: DatabaseStats!
   }
 
   type Mutation {
@@ -316,5 +337,14 @@ export const typeDefs = /* GraphQL */ `
     createPreOrder(input: CreatePreOrderInput!): PreOrder!
     deletePreOrder(id: ID!): Boolean!
     updateAnalyticsPassword(password: String!): String!
+
+    # Database Reset & Management Operations
+    resetOrders: ResetResult!
+    resetExpenses: ResetResult!
+    resetPreOrders: ResetResult!
+    resetInventoryAdjustments: ResetResult!
+    resetInventoryStockToDefault: ResetResult!
+    resyncDatabaseFromRemote: ResetResult!
+    wipeAllTransactionalData: ResetResult!
   }
 `;

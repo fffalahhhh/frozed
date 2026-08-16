@@ -388,3 +388,103 @@ export const DELETE_PRE_ORDER = gql`
     deletePreOrder(id: $id)
   }
 `;
+
+export const GET_DATABASE_STATS = gql`
+  query GetDatabaseStats {
+    databaseStats {
+      ordersCount
+      orderItemsCount
+      billsCount
+      expensesCount
+      preOrdersCount
+      inventoryAdjustmentsCount
+      inventoryItemsCount
+      menuItemsCount
+      categoriesCount
+      recipesCount
+    }
+  }
+`;
+
+export const RESET_ORDERS = gql`
+  mutation ResetOrders {
+    resetOrders {
+      success
+      entity
+      message
+      deletedCount
+    }
+  }
+`;
+
+export const RESET_EXPENSES = gql`
+  mutation ResetExpenses {
+    resetExpenses {
+      success
+      entity
+      message
+      deletedCount
+    }
+  }
+`;
+
+export const RESET_PRE_ORDERS = gql`
+  mutation ResetPreOrders {
+    resetPreOrders {
+      success
+      entity
+      message
+      deletedCount
+    }
+  }
+`;
+
+export const RESET_INVENTORY_ADJUSTMENTS = gql`
+  mutation ResetInventoryAdjustments {
+    resetInventoryAdjustments {
+      success
+      entity
+      message
+      deletedCount
+    }
+  }
+`;
+
+export const RESET_INVENTORY_STOCK_TO_DEFAULT = gql`
+  mutation ResetInventoryStockToDefault {
+    resetInventoryStockToDefault {
+      success
+      entity
+      message
+    }
+  }
+`;
+
+export const RESYNC_DATABASE_FROM_REMOTE = gql`
+  mutation ResyncDatabaseFromRemote {
+    resyncDatabaseFromRemote {
+      success
+      entity
+      message
+    }
+  }
+`;
+
+export const WIPE_ALL_TRANSACTIONAL_DATA = gql`
+  mutation WipeAllTransactionalData {
+    wipeAllTransactionalData {
+      success
+      entity
+      message
+      deletedCount
+    }
+  }
+`;
+
+export const GET_ANALYTICS_SECURITY = gql`
+  query GetAnalyticsSecurity {
+    analyticsSecurityPassword
+  }
+`;
+
+

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Frame, TopBar, Navigation, Box } from '@shopify/polaris';
-import { HomeIcon, ProductIcon, InventoryIcon, CashDollarIcon } from '@shopify/polaris-icons';
+import { HomeIcon, ProductIcon, InventoryIcon, CashDollarIcon, DatabaseIcon } from '@shopify/polaris-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logoImage from '@/assets/logo.png';
 
@@ -55,36 +55,50 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     <TopBar showNavigationToggle userMenu={userMenuMarkup} secondaryMenu={secondaryMenuMarkup} />
   );
 
+  const searchParams = new URLSearchParams(location.search);
+  const passParam = searchParams.get('pass');
+  const hasResetAccess = passParam === 'Frozed2026';
+
+  const navItems = [
+    {
+      label: 'Dashboard',
+      icon: HomeIcon,
+      selected: location.pathname === '/' || location.pathname === '/dashboard',
+      onClick: () => navigate(hasResetAccess ? `/?pass=${passParam}` : '/'),
+    },
+    {
+      label: 'Menu Items',
+      icon: ProductIcon,
+      selected: location.pathname.startsWith('/menu-items'),
+      onClick: () => navigate(hasResetAccess ? `/menu-items?pass=${passParam}` : '/menu-items'),
+    },
+    {
+      label: 'Inventory',
+      icon: InventoryIcon,
+      selected: location.pathname.startsWith('/inventory'),
+      onClick: () => navigate(hasResetAccess ? `/inventory?pass=${passParam}` : '/inventory'),
+    },
+    ...(hasResetAccess
+      ? [
+          {
+            label: 'Database Reset',
+            icon: DatabaseIcon,
+            selected: location.pathname === '/database-reset',
+            onClick: () => navigate(`/database-reset?pass=${passParam}`),
+          },
+        ]
+      : []),
+    {
+      label: 'POS Terminal',
+      icon: CashDollarIcon,
+      selected: location.pathname === '/pos',
+      onClick: () => navigate('/pos'),
+    },
+  ];
+
   const navigationMarkup = (
     <Navigation location={location.pathname}>
-      <Navigation.Section
-        items={[
-          {
-            label: 'Dashboard',
-            icon: HomeIcon,
-            selected: location.pathname === '/' || location.pathname === '/dashboard',
-            onClick: () => navigate('/'),
-          },
-          {
-            label: 'Menu Items',
-            icon: ProductIcon,
-            selected: location.pathname.startsWith('/menu-items'),
-            onClick: () => navigate('/menu-items'),
-          },
-          {
-            label: 'Inventory',
-            icon: InventoryIcon,
-            selected: location.pathname.startsWith('/inventory'),
-            onClick: () => navigate('/inventory'),
-          },
-          {
-            label: 'POS Terminal',
-            icon: CashDollarIcon,
-            selected: location.pathname === '/pos',
-            onClick: () => navigate('/pos'),
-          },
-        ]}
-      />
+      <Navigation.Section items={navItems} />
     </Navigation>
   );
 

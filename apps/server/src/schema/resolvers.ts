@@ -1,3 +1,4 @@
+import { Pool } from 'pg';
 import { db } from '../db/index.js';
 import {
   categories,
@@ -6,6 +7,7 @@ import {
   recipes,
   orders,
   orderItems,
+  bills,
   inventoryAdjustments,
   shopExpenses,
   preOrders,
@@ -729,6 +731,45 @@ export const resolvers = {
       });
       return 'Frozed2026';
     },
+
+    databaseStats: async () => {
+      const [
+        [ordersRes],
+        [orderItemsRes],
+        [billsRes],
+        [expensesRes],
+        [preOrdersRes],
+        [adjustmentsRes],
+        [inventoryRes],
+        [menuItemsRes],
+        [categoriesRes],
+        [recipesRes],
+      ] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(orders),
+        db.select({ count: sql<number>`count(*)::int` }).from(orderItems),
+        db.select({ count: sql<number>`count(*)::int` }).from(bills),
+        db.select({ count: sql<number>`count(*)::int` }).from(shopExpenses),
+        db.select({ count: sql<number>`count(*)::int` }).from(preOrders),
+        db.select({ count: sql<number>`count(*)::int` }).from(inventoryAdjustments),
+        db.select({ count: sql<number>`count(*)::int` }).from(inventoryItems),
+        db.select({ count: sql<number>`count(*)::int` }).from(menuItems),
+        db.select({ count: sql<number>`count(*)::int` }).from(categories),
+        db.select({ count: sql<number>`count(*)::int` }).from(recipes),
+      ]);
+
+      return {
+        ordersCount: ordersRes?.count ?? 0,
+        orderItemsCount: orderItemsRes?.count ?? 0,
+        billsCount: billsRes?.count ?? 0,
+        expensesCount: expensesRes?.count ?? 0,
+        preOrdersCount: preOrdersRes?.count ?? 0,
+        inventoryAdjustmentsCount: adjustmentsRes?.count ?? 0,
+        inventoryItemsCount: inventoryRes?.count ?? 0,
+        menuItemsCount: menuItemsRes?.count ?? 0,
+        categoriesCount: categoriesRes?.count ?? 0,
+        recipesCount: recipesRes?.count ?? 0,
+      };
+    },
   },
 
   Mutation: {
@@ -1153,6 +1194,188 @@ export const resolvers = {
         });
 
       return password;
+    },
+
+    // ─── Database Reset Operations ──────────────────────────────────────────────
+    resetOrders: async () => {
+      const [countRes] = await db.select({ count: sql<number>`count(*)::int` }).from(orders);
+      await db.execute(sql`
+        TRUNCATE TABLE "order_items", "bills", "orders" RESTART IDENTITY CASCADE;
+      `);
+      return {
+        success: true,
+        entity: 'Orders & Bills',
+        message: 'All customer orders, order items, and printed bills have been reset. Order numbering reset to #1.',
+        deletedCount: countRes?.count ?? 0,
+      };
+    },
+
+    resetExpenses: async () => {
+      const [countRes] = await db.select({ count: sql<number>`count(*)::int` }).from(shopExpenses);
+      await db.execute(sql`
+        TRUNCATE TABLE "shop_expenses" RESTART IDENTITY CASCADE;
+      `);
+      return {
+        success: true,
+        entity: 'Shop Expenses',
+        message: 'All recorded shop expenses have been cleared.',
+        deletedCount: countRes?.count ?? 0,
+      };
+    },
+
+    resetPreOrders: async () => {
+      const [countRes] = await db.select({ count: sql<number>`count(*)::int` }).from(preOrders);
+      await db.execute(sql`
+        TRUNCATE TABLE "pre_orders" RESTART IDENTITY CASCADE;
+      `);
+      return {
+        success: true,
+        entity: 'Pre-Orders',
+        message: 'All customer pre-orders and online cart drafts have been cleared.',
+        deletedCount: countRes?.count ?? 0,
+      };
+    },
+
+    resetInventoryAdjustments: async () => {
+      const [countRes] = await db.select({ count: sql<number>`count(*)::int` }).from(inventoryAdjustments);
+      await db.execute(sql`
+        TRUNCATE TABLE "inventory_adjustments" RESTART IDENTITY CASCADE;
+      `);
+      return {
+        success: true,
+        entity: 'Inventory Adjustments',
+        message: 'All inventory adjustment audit history logs have been cleared.',
+        deletedCount: countRes?.count ?? 0,
+      };
+    },
+
+    resetInventoryStockToDefault: async () => {
+      const remoteUrl =
+        process.env.REMOTE_DATABASE_URL ||
+        'postgresql://neondb_owner:npg_0nhR1rdVYcPG@ep-patient-truth-aym02fst-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require';
+      const remotePool = new Pool({
+        connectionString: remoteUrl,
+        ssl: { rejectUnauthorized: false },
+      });
+
+      try {
+        const res = await remotePool.query('SELECT name, current_stock FROM inventory_items');
+        for (const row of res.rows) {
+          await db
+            .update(inventoryItems)
+            .set({ currentStock: row.current_stock, updatedAt: new Date() })
+            .where(eq(inventoryItems.name, row.name));
+        }
+        return {
+          success: true,
+          entity: 'Inventory Stock Levels',
+          message: 'All 24 ingredient stock quantities have been reset to baseline defaults.',
+        };
+      } catch (err: any) {
+        throw new Error(`Inventory stock reset failed: ${err.message}`);
+      } finally {
+        await remotePool.end();
+      }
+    },
+
+    resyncDatabaseFromRemote: async () => {
+      const remoteUrl =
+        process.env.REMOTE_DATABASE_URL ||
+        'postgresql://neondb_owner:npg_0nhR1rdVYcPG@ep-patient-truth-aym02fst-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require';
+      const localUrl =
+        process.env.DATABASE_URL || 'postgresql://postgres@localhost:5433/frozed_local';
+
+      const isRemoteLocal =
+        remoteUrl.includes('localhost') || remoteUrl.includes('127.0.0.1');
+      const isTargetLocal =
+        localUrl.includes('localhost') || localUrl.includes('127.0.0.1');
+
+      const remotePool = new Pool({
+        connectionString: remoteUrl,
+        ssl: isRemoteLocal ? false : { rejectUnauthorized: false },
+      });
+      const localPool = new Pool({
+        connectionString: localUrl,
+        ssl: isTargetLocal ? false : { rejectUnauthorized: false },
+      });
+
+      try {
+        await localPool.query(`
+          TRUNCATE TABLE 
+            order_items, orders, bills, shop_expenses, 
+            inventory_adjustments, pre_orders, recipes, 
+            making_costs, menu_item_flavours, menu_items, 
+            flavours, categories, inventory_items, users, analytics_security
+          RESTART IDENTITY CASCADE;
+        `);
+
+        const copyTable = async (tableName: string, conflictConstraint?: string) => {
+          const res = await remotePool.query(`SELECT * FROM ${tableName}`);
+          const rows = res.rows;
+          if (rows.length === 0) return 0;
+          const columns = Object.keys(rows[0]);
+          const colNames = columns.map((c) => `"${c}"`).join(', ');
+
+          for (const row of rows) {
+            const values = columns.map((c) => row[c]);
+            const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+            const query = `
+              INSERT INTO "${tableName}" (${colNames}) 
+              VALUES (${placeholders})
+              ${conflictConstraint ? `ON CONFLICT ${conflictConstraint} DO NOTHING` : ''}
+            `;
+            await localPool.query(query, values);
+          }
+          return rows.length;
+        };
+
+        await copyTable('users', '("email")');
+        await copyTable('categories', '("id")');
+        await copyTable('flavours', '("id")');
+        await copyTable('inventory_items', '("name")');
+        await copyTable('menu_items', '("id")');
+        await copyTable('menu_item_flavours');
+        await copyTable('recipes', '("id")');
+        await copyTable('making_costs', '("id")');
+        await copyTable('analytics_security', '("key")');
+        await copyTable('inventory_adjustments', '("id")');
+
+        return {
+          success: true,
+          entity: 'Full Database Catalog & Inventory',
+          message:
+            'Successfully re-synced all categories, menu items, recipes, inventory items, and settings from remote. Test orders wiped.',
+        };
+      } catch (err: any) {
+        throw new Error(`Re-sync failed: ${err.message}`);
+      } finally {
+        await remotePool.end();
+        await localPool.end();
+      }
+    },
+
+    wipeAllTransactionalData: async () => {
+      const [ordersCount] = await db.select({ count: sql<number>`count(*)::int` }).from(orders);
+      const [expensesCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(shopExpenses);
+      const [preOrdersCount] = await db.select({ count: sql<number>`count(*)::int` }).from(preOrders);
+
+      await db.execute(sql`
+        TRUNCATE TABLE 
+          "order_items", "bills", "orders", 
+          "shop_expenses", "pre_orders", "inventory_adjustments" 
+        RESTART IDENTITY CASCADE;
+      `);
+
+      return {
+        success: true,
+        entity: 'All Transactional Data',
+        message:
+          'All orders, bills, customer pre-orders, shop expenses, and inventory adjustment history have been wiped clean. Order numbers reset to #1.',
+        deletedCount:
+          (ordersCount?.count ?? 0) + (expensesCount?.count ?? 0) + (preOrdersCount?.count ?? 0),
+      };
     },
   },
 };

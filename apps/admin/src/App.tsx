@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { MenuItemsPage } from './pages/MenuItemsPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { POSPage } from './pages/POSPage';
+import { DatabaseResetPage } from './pages/DatabaseResetPage';
 
 const DashboardWrapper: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export const App: React.FC = () => {
                   <Route path="/dashboard" element={<DashboardWrapper />} />
                   <Route path="/menu-items" element={<MenuItemsPage />} />
                   <Route path="/inventory" element={<InventoryPage />} />
+                  <Route path="/database-reset" element={<DatabaseResetPage />} />
                   <Route path="*" element={<DashboardWrapper />} />
                 </Routes>
               </AdminLayout>
