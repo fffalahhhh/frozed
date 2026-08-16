@@ -48,9 +48,9 @@ export function CartItemRow({
   };
 
   return (
-    <View className="flex-row items-center gap-2.5 py-2 border-b border-[#E5E0D8]/60">
+    <View className="flex-row items-center gap-2.5 py-2 border-b border-[#E5DCD0]/60">
       {/* Product Thumbnail (Compact 44x44) */}
-      <View className="w-11 h-11 rounded-xl bg-[#F7F6F0] items-center justify-center border border-[#E5E0D8] overflow-hidden">
+      <View className="w-11 h-11 rounded-xl bg-[#F4EDE4] items-center justify-center border border-[#E5DCD0] overflow-hidden">
         <Image
           source={{ uri: imgSrc }}
           className="w-11 h-11"
@@ -65,11 +65,11 @@ export function CartItemRow({
           {item.menuItemName}
         </Text>
         <View className="flex-row items-center gap-1.5 mt-0.5">
-          <Text className="text-[#0D4830] font-sans-bold text-xs">
+          <Text className="text-[#4A2810] font-sans-bold text-xs">
             {fmt(item.unitPrice * item.quantity)}
           </Text>
           {item.flavourName ? (
-            <View className="bg-[#F4F1EA] px-1.5 py-0.2 rounded">
+            <View className="bg-[#F4EDE4] px-1.5 py-0.2 rounded">
               <Text className="text-gray-600 font-sans-medium text-[9px]" numberOfLines={1}>
                 {item.flavourName}
               </Text>
@@ -79,13 +79,13 @@ export function CartItemRow({
       </View>
 
       {/* Right Side: Quantity Stepper Selector */}
-      <View className="flex-row items-center bg-[#F4F1EA] border border-[#E5E0D8] rounded-full px-2 py-0.5 gap-1">
+      <View className="flex-row items-center bg-[#F4EDE4] border border-[#E5DCD0] rounded-full px-2 py-0.5 gap-1">
         <Pressable
           onPress={onDecrease}
           hitSlop={6}
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
-          <Ionicons name="remove" size={13} color="#111827" />
+          <Ionicons name="remove" size={13} color="#1A120B" />
         </Pressable>
 
         {/* Editable Manual Quantity Input */}
@@ -104,7 +104,7 @@ export function CartItemRow({
           hitSlop={6}
           style={({ pressed }) => ({ opacity: isMaxReached ? 0.3 : pressed ? 0.6 : 1 })}
         >
-          <Ionicons name="add" size={13} color={isMaxReached ? '#9CA3AF' : '#111827'} />
+          <Ionicons name="add" size={13} color={isMaxReached ? '#9E938B' : '#1A120B'} />
         </Pressable>
       </View>
     </View>

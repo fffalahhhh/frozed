@@ -99,11 +99,11 @@ export function DatePickerModal({
           {/* Modal Header */}
           <View className="flex-row items-center justify-between pb-3 border-b border-border/40 mb-4">
             <View className="flex-row items-center gap-2">
-              <Ionicons name="calendar" size={20} color="#1B4332" />
+              <Ionicons name="calendar" size={20} color="#4A2810" />
               <Text className="text-text-primary font-sans-bold text-lg">{title}</Text>
             </View>
             <TouchableOpacity onPress={onClose} className="p-1">
-              <Ionicons name="close" size={22} color="#1A1A1A" />
+              <Ionicons name="close" size={22} color="#1A120B" />
             </TouchableOpacity>
           </View>
 
@@ -111,9 +111,9 @@ export function DatePickerModal({
           <View className="flex-row items-center gap-2 mb-4">
             <TouchableOpacity
               onPress={handlePickToday}
-              className="flex-1 py-2.5 px-3 rounded-xl border border-primary/30 bg-primary/10 items-center"
+              className="flex-1 py-2.5 px-3 rounded-xl border border-[#4A2810]/30 bg-[#4A2810]/10 items-center"
             >
-              <Text className="font-sans-semibold text-xs text-[#1B4332]">Today</Text>
+              <Text className="font-sans-semibold text-xs text-[#4A2810]">Today</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -146,7 +146,7 @@ export function DatePickerModal({
               }}
               className="p-1.5 rounded-lg bg-white border border-border/60"
             >
-              <Ionicons name="chevron-back" size={16} color="#1B4332" />
+              <Ionicons name="chevron-back" size={16} color="#4A2810" />
             </TouchableOpacity>
 
             <Text className="text-text-primary font-sans-bold text-sm">
@@ -161,7 +161,7 @@ export function DatePickerModal({
               }}
               className="p-1.5 rounded-lg bg-white border border-border/60"
             >
-              <Ionicons name="chevron-forward" size={16} color="#1B4332" />
+              <Ionicons name="chevron-forward" size={16} color="#4A2810" />
             </TouchableOpacity>
           </View>
 
@@ -195,9 +195,9 @@ export function DatePickerModal({
                     }}
                     className={`w-9 h-9 rounded-full items-center justify-center ${
                       isSelected
-                        ? 'bg-[#1B4332]'
+                        ? 'bg-[#4A2810]'
                         : isToday
-                          ? 'bg-emerald-100 border border-emerald-400'
+                          ? 'bg-[#FAF7F2] border border-[#4A2810]/40'
                           : 'bg-transparent'
                     }`}
                   >
@@ -206,7 +206,7 @@ export function DatePickerModal({
                         isSelected
                           ? 'text-white'
                           : isToday
-                            ? 'text-emerald-900'
+                            ? 'text-[#4A2810] font-sans-bold'
                             : 'text-text-primary'
                       }`}
                     >
@@ -222,12 +222,12 @@ export function DatePickerModal({
           {selectedDate ? (
             <View className="bg-primary/10 border border-primary/20 rounded-2xl p-3 flex-row items-center justify-between">
               <View className="flex-row items-center gap-1.5">
-                <Ionicons name="checkmark-circle" size={18} color="#1B4332" />
-                <Text className="text-primary font-sans-bold text-xs" style={{ color: '#1B4332' }}>
+                <Ionicons name="checkmark-circle" size={18} color="#4A2810" />
+                <Text className="text-primary font-sans-bold text-xs" style={{ color: '#4A2810' }}>
                   Selected: {formattedSelectedDateLabel || selectedDate}
                 </Text>
               </View>
-              <TouchableOpacity onPress={onClose} className="px-3 py-1.5 bg-[#1B4332] rounded-xl">
+              <TouchableOpacity onPress={onClose} className="px-3 py-1.5 bg-[#4A2810] rounded-xl">
                 <Text className="text-white font-sans-bold text-xs">Done</Text>
               </TouchableOpacity>
             </View>

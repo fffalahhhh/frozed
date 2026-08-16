@@ -22,7 +22,7 @@ export function ProfitBreakdown({
     <View className="bg-white rounded-2xl p-3 border border-border/60 shadow-sm gap-2">
       <View className="flex-row justify-between items-center pb-1.5 border-b border-border/30">
         <View className="flex-row items-center gap-1.5">
-          <Ionicons name="wallet-outline" size={15} color="#1B4332" />
+          <Ionicons name="wallet-outline" size={15} color="#4A2810" />
           <Text className="text-text-primary font-sans-medium text-xs">Gross Sales</Text>
         </View>
         <Text className="text-text-primary font-sans-bold text-xs">{fmt(totalRevenue)}</Text>
@@ -38,7 +38,7 @@ export function ProfitBreakdown({
 
       <View className="flex-row justify-between items-center pb-1.5 border-b border-border/30">
         <View className="flex-row items-center gap-1.5">
-          <Ionicons name="pie-chart-outline" size={15} color="#1B4332" />
+          <Ionicons name="pie-chart-outline" size={15} color="#4A2810" />
           <Text className="text-text-primary font-sans-medium text-xs">Gross Profit</Text>
         </View>
         <Text className="text-primary font-sans-bold text-xs">{fmt(grossProfit)}</Text>

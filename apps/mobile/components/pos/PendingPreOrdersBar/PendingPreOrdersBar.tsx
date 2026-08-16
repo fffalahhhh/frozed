@@ -48,16 +48,16 @@ export function PendingPreOrdersBar({
   };
 
   return (
-    <View className="bg-white rounded-[28px] border border-[#E5E0D8] p-5 shadow-sm elevation-2 h-full min-h-[600px] w-60 justify-between z-30 mb-2">
+    <View className="bg-white rounded-[28px] border border-[#E5DCD0] p-5 shadow-sm elevation-2 h-full min-h-[600px] w-60 justify-between z-30 mb-2">
       {/* Header Bar */}
-      <View className="flex-row items-center justify-between pb-2.5 border-b border-[#E5E0D8]/60 mb-2">
+      <View className="flex-row items-center justify-between pb-2.5 border-b border-[#E5DCD0]/60 mb-2">
         <View className="flex-row items-center gap-1.5">
           <View className="w-2 h-2 rounded-full bg-amber-500" />
           <Text className="text-gray-900 font-sans-bold text-xs">
             Pre-Orders ({activePreOrders.length})
           </Text>
         </View>
-        <Ionicons name="time-outline" size={14} color="#0D4830" />
+        <Ionicons name="time-outline" size={14} color="#4A2810" />
       </View>
 
       {/* Vertical Scroll List of Pre-Orders */}
@@ -79,10 +79,10 @@ export function PendingPreOrdersBar({
           return (
             <View
               key={ord.id}
-              className="bg-[#FAF8F5] border border-[#E5E0D8] rounded-[16px] p-2.5 mb-2 shadow-sm"
+              className="bg-[#F4EDE4] border border-[#E5DCD0] rounded-[16px] p-2.5 mb-2 shadow-sm"
             >
               {/* Customer Header & Cancel Action */}
-              <View className="flex-row items-start justify-between pb-1.5 border-b border-[#E5E0D8]/60 mb-1.5">
+              <View className="flex-row items-start justify-between pb-1.5 border-b border-[#E5DCD0]/60 mb-1.5">
                 <View className="flex-1 pr-1">
                   <Text className="text-gray-900 font-sans-bold text-[10px]" numberOfLines={1}>
                     {ord.customerName || 'Walk-in Pre-Order'}
@@ -129,11 +129,11 @@ export function PendingPreOrdersBar({
               </View>
 
               {/* Order Total Row */}
-              <View className="pt-2 border-t border-[#E5E0D8]/60 flex-row items-center justify-between mb-2">
+              <View className="pt-2 border-t border-[#E5DCD0]/60 flex-row items-center justify-between mb-2">
                 <Text className="text-gray-500 font-sans text-xs">
                   Total ({totalQty} item{totalQty !== 1 ? 's' : ''})
                 </Text>
-                <Text className="text-[#0D4830] font-sans-bold text-sm">
+                <Text className="text-[#4A2810] font-sans-bold text-sm">
                   {fmt(parseFloat(ord.totalAmount || 0))}
                 </Text>
               </View>
@@ -141,7 +141,7 @@ export function PendingPreOrdersBar({
               {/* Full Width Proceed Button */}
               <Pressable
                 onPress={() => onProcessPreOrder({ ...ord, items: itemsList })}
-                className="w-full bg-[#0D4830] rounded-xl py-2.5 px-3 flex-row items-center justify-center gap-2 shadow-sm active:bg-[#083020]"
+                className="w-full bg-[#4A2810] rounded-xl py-2.5 px-3 flex-row items-center justify-center gap-2 shadow-sm active:bg-[#361908]"
                 style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
               >
                 <Text className="text-white font-sans-bold text-xs">Proceed to Order</Text>

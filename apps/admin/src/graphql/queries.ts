@@ -293,6 +293,10 @@ export const GET_ORDERS = gql`
       orders {
         id
         orderNumber
+        cashierId
+        cashierName
+        tableRef
+        orderType
         customerName
         customerPhone
         status
@@ -305,15 +309,22 @@ export const GET_ORDERS = gql`
         paidAt
         items {
           id
+          orderId
           menuItemId
           menuItemName
           flavourId
           flavourName
           quantity
           unitPrice
+          itemCost
           lineTotal
+          notes
         }
       }
+      totalCount
+      page
+      totalPages
+      hasMore
     }
   }
 `;
@@ -486,5 +497,3 @@ export const GET_ANALYTICS_SECURITY = gql`
     analyticsSecurityPassword
   }
 `;
-
-

@@ -61,7 +61,7 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
     <Text className="text-gray-900 font-sans-medium text-xs">
       {parts.map((part, i) =>
         part.isMatch ? (
-          <Text key={i} className="font-sans-bold text-[#0D4830] bg-[#0D4830]/15 rounded px-0.5">
+          <Text key={i} className="font-sans-bold text-[#4A2810] bg-[#4A2810]/15 rounded px-0.5">
             {part.text}
           </Text>
         ) : (
@@ -97,7 +97,7 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
   const { data: ordersQueryResult } = useQuery(GET_ORDERS, {
     fetchPolicy: 'cache-and-network',
   });
-  const previousOrders = ordersQueryResult?.orders || [];
+  const previousOrders = ordersQueryResult?.orders?.orders || ordersQueryResult?.orders || [];
 
   // Calculate true next auto-incrementing order number from DB history
   const trueOrderNumber = useMemo(() => {
@@ -298,12 +298,12 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
   };
 
   return (
-    <View className="bg-white rounded-[32px] flex-1 border border-[#E5E0D8] p-5 shadow-sm elevation-2 h-full min-h-[450px] justify-between z-40 mb-2">
+    <View className="bg-white rounded-[32px] flex-1 border border-[#E5DCD0] p-5 shadow-sm elevation-2 h-full min-h-[450px] justify-between z-40 mb-2">
       {/* Header Bar */}
-      <View className="flex-row items-center justify-between pb-3 border-b border-[#E5E0D8]/60">
+      <View className="flex-row items-center justify-between pb-3 border-b border-[#E5DCD0]/60">
         <Pressable
           onPress={onClose}
-          className="w-10 h-10 rounded-full bg-[#0D4830] items-center justify-center"
+          className="w-10 h-10 rounded-full bg-[#4A2810] items-center justify-center"
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
           <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
@@ -325,7 +325,7 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
       </View>
 
       {/* Payment Type Selector Pills (Cash / Online / Credit) */}
-      <View className="flex-row bg-[#F4F1EA] rounded-full p-1 mt-3 border border-[#E5E0D8]">
+      <View className="flex-row bg-[#F4EDE4] rounded-full p-1 mt-3 border border-[#E5DCD0]">
         {[
           { key: 'cash', label: 'Cash' },
           { key: 'upi', label: 'Online' },
@@ -337,7 +337,7 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
               key={mode.key}
               onPress={() => setPaymentMethod(mode.key as any)}
               className={`flex-1 py-2 rounded-full items-center justify-center ${
-                isSelected ? 'bg-[#0D4830]' : 'bg-transparent'
+                isSelected ? 'bg-[#4A2810]' : 'bg-transparent'
               }`}
             >
               <Text
@@ -384,7 +384,7 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
 
           {/* Left-Positioned Popover Dropdown for Customer Name */}
           {showNamePopover && filteredByName.length > 0 && (
-            <View className="absolute top-0 right-full mr-2.5 z-50 w-56 bg-white border border-[#E5E0D8] rounded-2xl shadow-2xl elevation-10 p-1.5 max-h-52">
+            <View className="absolute top-0 right-full mr-2.5 z-50 w-56 bg-white border border-[#E5DCD0] rounded-2xl shadow-2xl elevation-10 p-1.5 max-h-52">
               <View className="flex-row items-center justify-between px-2 py-1 border-b border-gray-100 mb-1">
                 <Text className="text-gray-400 font-sans-bold text-[10px] uppercase">
                   Previous Customers
@@ -406,7 +406,7 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
                         <Text className="text-gray-400 font-sans text-[10px]">{c.phone}</Text>
                       ) : null}
                     </View>
-                    <Ionicons name="chevron-forward" size={12} color="#0D4830" />
+                    <Ionicons name="chevron-forward" size={12} color="#4A2810" />
                   </Pressable>
                 ))}
               </ScrollView>
@@ -447,7 +447,7 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
 
           {/* Left-Positioned Popover Dropdown for Phone Field */}
           {showPhonePopover && filteredByPhone.length > 0 && (
-            <View className="absolute top-0 right-full mr-2.5 z-50 w-56 bg-white border border-[#E5E0D8] rounded-2xl shadow-2xl elevation-10 p-1.5 max-h-52">
+            <View className="absolute top-0 right-full mr-2.5 z-50 w-56 bg-white border border-[#E5DCD0] rounded-2xl shadow-2xl elevation-10 p-1.5 max-h-52">
               <View className="flex-row items-center justify-between px-2 py-1 border-b border-gray-100 mb-1">
                 <Text className="text-gray-400 font-sans-bold text-[10px] uppercase">
                   Previous Phones
@@ -469,7 +469,7 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
                         <Text className="text-gray-400 font-sans text-[10px]">{c.name}</Text>
                       ) : null}
                     </View>
-                    <Ionicons name="chevron-forward" size={12} color="#0D4830" />
+                    <Ionicons name="chevron-forward" size={12} color="#4A2810" />
                   </Pressable>
                 ))}
               </ScrollView>
@@ -482,11 +482,11 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
       <Text className="text-gray-700 font-sans-medium text-xs mt-3 mb-1.5">Order list</Text>
 
       {/* Stable Height Order List Container */}
-      <View className="flex-1 border border-[#E5E0D8] rounded-[24px] px-3.5 py-2 bg-white overflow-hidden my-1 min-h-[180px]">
+      <View className="flex-1 border border-[#E5DCD0] rounded-[24px] px-3.5 py-2 bg-white overflow-hidden my-1 min-h-[180px]">
         {items.length === 0 ? (
           <View className="flex-1 items-center justify-center py-6">
-            <View className="w-14 h-14 rounded-full bg-[#F4F1EA] items-center justify-center mb-2">
-              <Ionicons name="cart-outline" size={28} color="#0D4830" />
+            <View className="w-14 h-14 rounded-full bg-[#F4EDE4] items-center justify-center mb-2">
+              <Ionicons name="cart-outline" size={28} color="#4A2810" />
             </View>
             <Text className="text-gray-900 font-sans-bold text-sm">Your order list is empty</Text>
             <Text className="text-gray-500 font-sans text-xs mt-0.5 text-center">
@@ -530,24 +530,24 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
       <View>
         <View className="flex-row justify-between items-center py-1 mb-1.5">
           <Text className="text-gray-900 font-sans-bold text-base">Total</Text>
-          <Text className="text-[#0D4830] font-sans-bold text-xl">{fmt(tot)}</Text>
+          <Text className="text-[#4A2810] font-sans-bold text-xl">{fmt(tot)}</Text>
         </View>
 
         {/* Save as Pre-Order Secondary Button */}
         <Pressable
           disabled={items.length === 0 || isSuccessOrder || isSavingPreOrder || isSubmittingOrder}
           onPress={handleSavePreOrder}
-          className="w-full py-2 mb-2 rounded-full border border-[#0D4830] bg-[#F4F1EA] items-center justify-center flex-row gap-1.5"
+          className="w-full py-2 mb-2 rounded-full border border-[#4A2810] bg-[#F4EDE4] items-center justify-center flex-row gap-1.5"
           style={({ pressed }) => ({
             opacity: pressed || items.length === 0 || isSavingPreOrder ? 0.6 : 1,
           })}
         >
           {isSavingPreOrder ? (
-            <ActivityIndicator size="small" color="#0D4830" />
+            <ActivityIndicator size="small" color="#4A2810" />
           ) : (
-            <Ionicons name="time-outline" size={15} color="#0D4830" />
+            <Ionicons name="time-outline" size={15} color="#4A2810" />
           )}
-          <Text className="text-[#0D4830] font-sans-bold text-xs">
+          <Text className="text-[#4A2810] font-sans-bold text-xs">
             {isSavingPreOrder ? 'Saving Pre-Order...' : 'Save as Pre-Order'}
           </Text>
         </Pressable>
@@ -556,7 +556,7 @@ export function CartPanel({ receiptNumber, onClose }: CartPanelProps) {
         <Pressable
           disabled={items.length === 0 || isSuccessOrder || isSavingPreOrder || isSubmittingOrder}
           onPress={handlePlaceOrder}
-          className={`rounded-full h-14 flex-row items-center justify-between px-2 bg-[#0D4830] shadow-md shadow-[#0D4830]/30 ${
+          className={`rounded-full h-14 flex-row items-center justify-between px-2 bg-[#4A2810] shadow-md shadow-[#4A2810]/30 ${
             items.length === 0 || isSubmittingOrder ? 'opacity-70 elevation-0' : 'elevation-4'
           }`}
           style={({ pressed }) => ({

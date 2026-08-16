@@ -1,6 +1,5 @@
 import React, { Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { captureFrontendException } from '../../lib/posthog';
 
 interface Props {
   children: ReactNode;
@@ -11,7 +10,7 @@ interface State {
   error: Error | null;
 }
 
-export class PostHogErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -22,12 +21,7 @@ export class PostHogErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    captureFrontendException(error, {
-      component: 'PostHogErrorBoundary',
-      extra: {
-        componentStack: errorInfo.componentStack,
-      },
-    });
+    console.error('[ErrorBoundary caught error]:', error, errorInfo);
   }
 
   handleReset = () => {
@@ -41,7 +35,7 @@ export class PostHogErrorBoundary extends Component<Props, State> {
           <Text style={styles.icon}>⚠️</Text>
           <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.subtitle}>
-            An unexpected application error occurred. The details have been reported automatically.
+            An unexpected error occurred in the application.
           </Text>
           <TouchableOpacity style={styles.button} onPress={this.handleReset} activeOpacity={0.8}>
             <Text style={styles.buttonText}>Try Again</Text>
@@ -57,7 +51,7 @@ export class PostHogErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FAF7F2',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -69,22 +63,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#1A120B',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: '#73675F',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
   },
   button: {
-    backgroundColor: '#0284C7',
+    backgroundColor: '#4A2810',
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   buttonText: {
     color: '#FFFFFF',

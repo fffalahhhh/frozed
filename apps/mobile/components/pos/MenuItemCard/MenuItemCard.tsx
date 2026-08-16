@@ -43,14 +43,14 @@ export function MenuItemCard({ item, stockInfo, cartQuantity = 0, onAdd }: MenuI
     <Pressable
       onPress={handlePress}
       className={`bg-white rounded-[24px] p-3.5 m-1.5 flex-1 min-w-[140px] max-w-[210px] border justify-between shadow-sm elevation-1 ${
-        isOutOfStock ? 'border-red-200 bg-gray-50' : 'border-[#E5E0D8]'
+        isOutOfStock ? 'border-red-200 bg-gray-50' : 'border-[#E5DCD0]'
       }`}
       style={({ pressed }) => ({
         opacity: isOutOfStock ? 0.6 : pressed ? 0.88 : 1,
       })}
     >
       {/* Product Image & Stock Badge Overlay */}
-      <View className="relative items-center justify-center h-28 my-1 bg-[#F9F8F5] rounded-2xl p-2 overflow-hidden">
+      <View className="relative items-center justify-center h-28 my-1 bg-[#F4EDE4] rounded-2xl p-2 overflow-hidden">
         <Image
           source={{ uri: getItemImageUrl(item) || imgSrc }}
           className={`w-24 h-24 rounded-xl ${isOutOfStock ? 'opacity-40' : ''}`}
@@ -76,7 +76,7 @@ export function MenuItemCard({ item, stockInfo, cartQuantity = 0, onAdd }: MenuI
             </Text>
           </View>
         ) : maxAvail <= 20 ? (
-          <View className="absolute top-1.5 right-1.5 bg-[#0D4830] px-1.5 py-0.5 rounded-md">
+          <View className="absolute top-1.5 right-1.5 bg-[#4A2810] px-1.5 py-0.5 rounded-md">
             <Text className="text-white text-[9px] font-sans-medium">{remAvail} left</Text>
           </View>
         ) : null}
@@ -106,7 +106,7 @@ export function MenuItemCard({ item, stockInfo, cartQuantity = 0, onAdd }: MenuI
               ? 'border-gray-300 bg-gray-100'
               : isLimitReached
                 ? 'border-amber-400 bg-amber-50'
-                : 'border-[#0D4830] bg-white'
+                : 'border-[#4A2810] bg-white'
           }`}
           style={({ pressed }) => ({
             backgroundColor: isOutOfStock
@@ -114,7 +114,7 @@ export function MenuItemCard({ item, stockInfo, cartQuantity = 0, onAdd }: MenuI
               : isLimitReached
                 ? '#FEF3C7'
                 : pressed
-                  ? '#0D4830'
+                  ? '#4A2810'
                   : '#FFFFFF',
           })}
         >
@@ -124,7 +124,7 @@ export function MenuItemCard({ item, stockInfo, cartQuantity = 0, onAdd }: MenuI
             ) : isLimitReached ? (
               <Ionicons name="lock-closed-outline" size={16} color="#D97706" />
             ) : (
-              <Ionicons name="add" size={20} color={pressed ? '#FFFFFF' : '#0D4830'} />
+              <Ionicons name="add" size={20} color={pressed ? '#FFFFFF' : '#4A2810'} />
             )
           }
         </Pressable>

@@ -231,7 +231,7 @@ export function AddMenuItemModal({
                   onPress={addIngredientRow}
                   className="flex-row items-center bg-primary/10 px-2.5 py-1.5 rounded-lg gap-1"
                 >
-                  <Ionicons name="add" size={16} color="#1B4332" />
+                  <Ionicons name="add" size={16} color="#4A2810" />
                   <Text className="text-primary font-sans-semibold text-xs">Add Ingredient</Text>
                 </Pressable>
               </View>

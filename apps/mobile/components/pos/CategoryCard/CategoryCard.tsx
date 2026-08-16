@@ -18,8 +18,8 @@ export function CategoryCard({ name, isActive, onPress }: CategoryCardProps) {
       onPress={onPress}
       className={`rounded-[18px] px-3.5 py-3 mr-2  justify-between border ${
         isActive
-          ? 'bg-[#0D4830] border-[#0D4830] shadow-md shadow-[#0D4830]/25 elevation-3'
-          : 'bg-white border-[#E5E0D8] shadow-sm elevation-1'
+          ? 'bg-[#4A2810] border-[#4A2810] shadow-md shadow-[#4A2810]/25 elevation-3'
+          : 'bg-white border-[#E5DCD0] shadow-sm elevation-1'
       }`}
       style={({ pressed }) => ({
         opacity: pressed ? 0.88 : 1,

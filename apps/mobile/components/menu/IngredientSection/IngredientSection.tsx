@@ -73,8 +73,8 @@ export function IngredientSection({
           onPress={addRow}
           className="flex-row items-center bg-primary/10 px-2.5 py-1.5 rounded-lg gap-1"
         >
-          <Ionicons name="add" size={16} color="#1B4332" />
-          <Text className="text-primary font-sans-semibold text-xs" style={{ color: '#1B4332' }}>
+          <Ionicons name="add" size={16} color="#4A2810" />
+          <Text className="text-primary font-sans-semibold text-xs" style={{ color: '#4A2810' }}>
             Add
           </Text>
         </TouchableOpacity>
@@ -114,7 +114,7 @@ export function IngredientSection({
                   <View className="flex-row items-center gap-1.5 flex-wrap flex-1 pr-1">
                     <View
                       className="px-3 py-1.5 rounded-xl flex-row items-center gap-1"
-                      style={{ backgroundColor: selectedIsOutOfStock ? '#D97706' : '#1B4332' }}
+                      style={{ backgroundColor: selectedIsOutOfStock ? '#D97706' : '#4A2810' }}
                     >
                       <Ionicons
                         name={selectedIsOutOfStock ? 'warning' : 'checkmark-circle'}
@@ -149,8 +149,8 @@ export function IngredientSection({
                     }}
                     className="flex-row items-center px-2.5 py-1 rounded-lg bg-surface border border-border/60 gap-1"
                   >
-                    <Ionicons name="pencil" size={12} color="#1B4332" />
-                    <Text className="text-[10px] font-sans-medium" style={{ color: '#1B4332' }}>
+                    <Ionicons name="pencil" size={12} color="#4A2810" />
+                    <Text className="text-[10px] font-sans-medium" style={{ color: '#4A2810' }}>
                       Change
                     </Text>
                   </TouchableOpacity>
@@ -183,7 +183,7 @@ export function IngredientSection({
                             }}
                             className={`px-3 py-1.5 rounded-xl border flex-row items-center gap-1 ${
                               isThisSelected
-                                ? 'bg-[#1B4332] border-[#1B4332]'
+                                ? 'bg-[#4A2810] border-[#4A2810]'
                                 : isOutOfStock
                                   ? 'bg-amber-50 border-amber-300'
                                   : isLowStock

@@ -39,7 +39,7 @@ function CustomTabBarButton(props: BottomTabBarButtonProps) {
       accessibilityLabel={accessibilityLabel}
       testID={testID}
       android_ripple={{
-        color: 'rgba(27, 67, 50, 0.15)',
+        color: 'rgba(74, 40, 16, 0.12)',
         borderless: false,
       }}
       style={({ pressed }) => [style, styles.tabButton, pressed && styles.tabButtonPressed]}
@@ -86,7 +86,7 @@ export default function TabLayout() {
           tabBarButton: (props) => <CustomTabBarButton {...props} />,
           tabBarStyle: {
             backgroundColor: '#FFFFFF',
-            borderTopColor: '#E8E2D9',
+            borderTopColor: '#E5DCD0',
             height: Platform.OS === 'ios' ? 84 : 74,
             paddingBottom: Platform.OS === 'ios' ? 18 : 10,
             paddingTop: 4,
@@ -104,8 +104,8 @@ export default function TabLayout() {
             padding: 0,
             margin: 0,
           },
-          tabBarActiveTintColor: '#1B4332',
-          tabBarInactiveTintColor: '#9ca3af',
+          tabBarActiveTintColor: '#4A2810',
+          tabBarInactiveTintColor: '#9E938B',
           tabBarLabelStyle: {
             fontFamily: 'Inter_600SemiBold',
             fontSize: 11,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabButtonPressed: {
-    backgroundColor: 'rgba(27, 67, 50, 0.10)',
+    backgroundColor: 'rgba(74, 40, 16, 0.08)',
   },
   tabContainer: {
     width: '100%',
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 60,
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
-    shadowColor: '#1B4332',
+    shadowColor: '#4A2810',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     left: '20%',
     right: '20%',
     height: 3,
-    backgroundColor: '#1B4332',
+    backgroundColor: '#4A2810',
     borderBottomLeftRadius: 3,
     borderBottomRightRadius: 3,
   },
@@ -234,6 +234,6 @@ const styles = StyleSheet.create({
     top: '22%',
     bottom: '22%',
     width: 1,
-    backgroundColor: '#E5E0D8',
+    backgroundColor: '#E5DCD0',
   },
 });

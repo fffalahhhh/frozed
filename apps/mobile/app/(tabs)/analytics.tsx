@@ -164,10 +164,10 @@ export default function AnalyticsScreen() {
 
   if (!isUnlocked) {
     return (
-      <View className="flex-1 bg-[#F9F8F6] pt-12 px-5 items-center justify-center">
+      <View className="flex-1 bg-[#FAF7F2] pt-12 px-5 items-center justify-center">
         <View className="w-full max-w-sm bg-white rounded-3xl p-6 border border-border/80 shadow-md items-center">
-          <View className="w-16 h-16 rounded-2xl bg-[#1B4332]/10 items-center justify-center mb-4 border border-[#1B4332]/20">
-            <Ionicons name="lock-closed" size={30} color="#1B4332" />
+          <View className="w-16 h-16 rounded-2xl bg-[#4A2810]/10 items-center justify-center mb-4 border border-[#4A2810]/20">
+            <Ionicons name="lock-closed" size={30} color="#4A2810" />
           </View>
 
           <Text className="text-text-primary font-sans-bold text-xl text-center">
@@ -216,7 +216,7 @@ export default function AnalyticsScreen() {
 
           <Pressable
             onPress={handleUnlock}
-            className="w-full py-3.5 bg-[#1B4332] rounded-2xl items-center justify-center shadow-sm"
+            className="w-full py-3.5 bg-[#4A2810] rounded-2xl items-center justify-center shadow-sm"
             style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           >
             <View className="flex-row items-center gap-2">
@@ -230,7 +230,7 @@ export default function AnalyticsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white pt-10 px-4">
+    <View className="flex-1 bg-[#FAF7F2] pt-10 px-4">
       {/* Header */}
       <View className="flex-row items-center justify-between pb-2 border-b border-border/40 mb-2.5">
         <View>
@@ -249,7 +249,7 @@ export default function AnalyticsScreen() {
             className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border/40"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <Ionicons name="lock-closed-outline" size={15} color="#1B4332" />
+            <Ionicons name="lock-closed-outline" size={15} color="#4A2810" />
           </Pressable>
 
           <Pressable
@@ -259,16 +259,16 @@ export default function AnalyticsScreen() {
             style={({ pressed }) => ({ opacity: pressed || isSyncingActive ? 0.7 : 1 })}
           >
             {isSyncingActive ? (
-              <ActivityIndicator size="small" color="#1B4332" />
+              <ActivityIndicator size="small" color="#4A2810" />
             ) : (
-              <Ionicons name="refresh" size={16} color="#1B4332" />
+              <Ionicons name="refresh" size={16} color="#4A2810" />
             )}
           </Pressable>
         </View>
       </View>
 
       {/* Date Selector Pills */}
-      <View className="flex-row items-center bg-[#F4F1EA] p-1 rounded-2xl mb-3 border border-border/40">
+      <View className="flex-row items-center bg-[#F4EDE4] p-1 rounded-2xl mb-3 border border-border/40">
         {DATE_OPTIONS.map((opt) => {
           const isActive = dateFilter === opt.key;
           return (
@@ -276,7 +276,7 @@ export default function AnalyticsScreen() {
               key={opt.key}
               onPress={() => setDateFilter(opt.key)}
               className={`flex-1 py-2 rounded-full items-center justify-center ${
-                isActive ? 'bg-[#0D4830]' : 'bg-transparent'
+                isActive ? 'bg-[#4A2810]' : 'bg-transparent'
               }`}
             >
               <Text
@@ -292,7 +292,7 @@ export default function AnalyticsScreen() {
         <Pressable
           onPress={() => setIsDatePickerVisible(true)}
           className={`flex-1 py-2 px-1 rounded-full items-center justify-center flex-row gap-1 ${
-            dateFilter === 'custom' ? 'bg-[#0D4830]' : 'bg-transparent'
+            dateFilter === 'custom' ? 'bg-[#4A2810]' : 'bg-transparent'
           }`}
         >
           <Ionicons
@@ -313,7 +313,7 @@ export default function AnalyticsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#1B4332" />
+          <ActivityIndicator size="large" color="#4A2810" />
           <Text className="text-text-muted font-sans text-xs mt-2">Loading analytics...</Text>
         </View>
       ) : (
@@ -364,11 +364,11 @@ export default function AnalyticsScreen() {
             </Text>
 
             {/* View Switcher: Menu Items vs Inventory Expenses */}
-            <View className="flex-row bg-[#F4F1EA] p-0.5 rounded-xl border border-border/40">
+            <View className="flex-row bg-[#F4EDE4] p-0.5 rounded-xl border border-border/40">
               <Pressable
                 onPress={() => setActiveTab('menu_items')}
                 className={`px-3 py-1 rounded-lg flex-row items-center gap-1 ${
-                  activeTab === 'menu_items' ? 'bg-[#1B4332]' : ''
+                  activeTab === 'menu_items' ? 'bg-[#4A2810]' : ''
                 }`}
                 style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
               >
@@ -389,7 +389,7 @@ export default function AnalyticsScreen() {
               <Pressable
                 onPress={() => setActiveTab('inventory_expenses')}
                 className={`px-3 py-1 rounded-lg flex-row items-center gap-1 ${
-                  activeTab === 'inventory_expenses' ? 'bg-[#1B4332]' : ''
+                  activeTab === 'inventory_expenses' ? 'bg-[#4A2810]' : ''
                 }`}
                 style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
               >
@@ -410,7 +410,7 @@ export default function AnalyticsScreen() {
           </View>
 
           {/* Search Box */}
-          <View className="flex-row items-center bg-[#F9F8F5] border border-border/60 rounded-xl px-3 py-2 mb-3">
+          <View className="flex-row items-center bg-[#F4EDE4] border border-border/60 rounded-xl px-3 py-2 mb-3">
             <Ionicons name="search-outline" size={15} color="#6B7280" className="mr-2" />
             <TextInput
               value={searchQuery}
@@ -448,7 +448,7 @@ export default function AnalyticsScreen() {
                         <View className="flex-row items-center gap-2 flex-1 pr-2">
                           <View
                             className="w-5 h-5 rounded-full items-center justify-center"
-                            style={{ backgroundColor: idx === 0 ? '#1B4332' : '#F3F4F6' }}
+                            style={{ backgroundColor: idx === 0 ? '#4A2810' : '#F3F4F6' }}
                           >
                             <Text
                               className="font-sans-bold text-[9px]"
@@ -467,14 +467,14 @@ export default function AnalyticsScreen() {
 
                         {/* Sold Count Badge */}
                         <View className="bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
-                          <Text className="text-[#1B4332] font-sans-bold text-[10px]">
+                          <Text className="text-[#4A2810] font-sans-bold text-[10px]">
                             {item?.quantitySold || 0} sold
                           </Text>
                         </View>
                       </View>
 
                       {/* Financial Metrics Grid: Net Sales | Expenses | Profit | Margin */}
-                      <View className="flex-row items-center justify-between bg-[#F9F8F5] p-2.5 rounded-xl">
+                      <View className="flex-row items-center justify-between bg-[#F4EDE4] p-2.5 rounded-xl">
                         <View className="items-start flex-1">
                           <Text className="text-text-muted font-sans text-[9.5px]">Net Sales</Text>
                           <Text className="text-text-primary font-sans-bold text-xs">
@@ -493,7 +493,7 @@ export default function AnalyticsScreen() {
                           <Text className="text-text-muted font-sans text-[9.5px]">Profit</Text>
                           <Text
                             className={`font-sans-bold text-xs ${
-                              isProfitPositive ? 'text-[#1B4332]' : 'text-rose-600'
+                              isProfitPositive ? 'text-[#4A2810]' : 'text-rose-600'
                             }`}
                           >
                             {fmt(item?.profit)}
@@ -555,7 +555,7 @@ export default function AnalyticsScreen() {
                       {/* Top Row: Ingredient Name + Unit Price */}
                       <View className="flex-row items-center justify-between pb-2 border-b border-border/20 mb-2">
                         <View className="flex-row items-center gap-2 flex-1 pr-2">
-                          <Ionicons name="cube-outline" size={14} color="#1B4332" />
+                          <Ionicons name="cube-outline" size={14} color="#4A2810" />
                           <Text
                             className="text-text-primary font-sans-bold text-xs flex-1"
                             numberOfLines={1}
@@ -570,7 +570,7 @@ export default function AnalyticsScreen() {
                       </View>
 
                       {/* Financial Metrics Grid: Current Stock | Qty Used | Total Expense */}
-                      <View className="flex-row items-center justify-between bg-[#F9F8F5] p-2.5 rounded-xl">
+                      <View className="flex-row items-center justify-between bg-[#F4EDE4] p-2.5 rounded-xl">
                         <View className="items-start flex-1">
                           <Text className="text-text-muted font-sans text-[9.5px]">In Stock</Text>
                           <Text className="text-text-primary font-sans-bold text-xs">
@@ -580,7 +580,7 @@ export default function AnalyticsScreen() {
 
                         <View className="items-center flex-1 border-x border-border/40 px-1">
                           <Text className="text-text-muted font-sans text-[9.5px]">Qty Used</Text>
-                          <Text className="text-[#1B4332] font-sans-bold text-xs">
+                          <Text className="text-[#4A2810] font-sans-bold text-xs">
                             {qtyUsed.toFixed(1)} {item?.unit || ''}
                           </Text>
                         </View>

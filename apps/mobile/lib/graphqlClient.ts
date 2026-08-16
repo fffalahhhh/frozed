@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { persistCache, AsyncStorageWrapper } from 'apollo3-cache-persist';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { captureFrontendException } from './posthog';
 
 function getGraphQLUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) {
@@ -38,22 +37,14 @@ const httpLink = createHttpLink({
 const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path }) => {
-      captureFrontendException(new Error(`[GraphQL Error]: ${message}`), {
-        component: 'ApolloClient',
-        action: operation.operationName,
-        extra: { locations, path },
-      });
+      console.error(
+        `[GraphQL error]: Operation: ${operation.operationName}, Message: ${message}, Path: ${path}`,
+        locations,
+      );
     });
   }
   if (networkError) {
-    captureFrontendException(
-      new Error(`[Network Error]: ${networkError.message || 'Network request failed'}`),
-      {
-        component: 'ApolloClient',
-        action: operation.operationName,
-        extra: { type: 'NetworkError', targetUrl: GRAPHQL_URL },
-      },
-    );
+    console.error(`[Network error]: Operation: ${operation.operationName}, Error:`, networkError);
   }
 });
 

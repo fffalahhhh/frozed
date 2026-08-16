@@ -54,7 +54,7 @@ export function ToastBanner() {
         ? 'bg-amber-800 border-amber-600'
         : renderedType === 'info'
           ? 'bg-slate-800 border-slate-700'
-          : 'bg-[#0D4830] border-[#0D4830]';
+          : 'bg-[#4A2810] border-[#4A2810]';
 
   const iconName =
     renderedType === 'error'

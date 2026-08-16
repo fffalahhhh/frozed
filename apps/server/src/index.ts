@@ -6,7 +6,6 @@ import 'dotenv/config';
 
 import { auth } from './auth/index.js';
 import { yoga } from './graphql.js';
-import { captureBackendException, shutdownPostHog } from './utils/posthog.js';
 
 const app = new Hono();
 
@@ -53,25 +52,9 @@ app.post('/api/upload', async (c) => {
   }
 });
 
-// ─── Test Error Tracking Route ────────────────────────────────────────────────
-app.get('/api/test/error', (c) => {
-  const testError = new Error('Test backend exception for PostHog telemetry verification');
-  captureBackendException(testError, {
-    path: c.req.path,
-    method: c.req.method,
-    statusCode: 500,
-    extra: { testTriggered: true, timestamp: new Date().toISOString() },
-  });
-  throw testError;
-});
-
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 app.onError((err, c) => {
-  captureBackendException(err, {
-    path: c.req.path,
-    method: c.req.method,
-    statusCode: 500,
-  });
+  console.error(`[Server Error] ${c.req.method} ${c.req.path}:`, err);
 
   return c.json(
     {
@@ -84,25 +67,11 @@ app.onError((err, c) => {
 
 // ─── Process Level Uncaught Error Handlers ────────────────────────────────────
 process.on('uncaughtException', (err) => {
-  captureBackendException(err, {
-    extra: { type: 'uncaughtException' },
-  });
+  console.error('[Uncaught Exception]:', err);
 });
 
 process.on('unhandledRejection', (reason) => {
-  captureBackendException(reason, {
-    extra: { type: 'unhandledRejection' },
-  });
-});
-
-// ─── Shutdown Signals ─────────────────────────────────────────────────────────
-process.on('SIGINT', async () => {
-  await shutdownPostHog();
-  process.exit(0);
-});
-process.on('SIGTERM', async () => {
-  await shutdownPostHog();
-  process.exit(0);
+  console.error('[Unhandled Rejection]:', reason);
 });
 
 // ─── Better-Auth handler ──────────────────────────────────────────────────────

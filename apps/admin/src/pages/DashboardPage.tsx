@@ -49,33 +49,67 @@ const formatLocalDateStr = (dateObj: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-const safeGetTimeString = (rawDate: any): string => {
-  const d = parseValidDate(rawDate);
-  return d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now';
+const getUtcRangeForLocalDate = (fromDateStr?: string, toDateStr?: string) => {
+  if (!fromDateStr || !toDateStr || !fromDateStr.trim() || !toDateStr.trim()) {
+    return { fromUtc: undefined, toUtc: undefined };
+  }
+  const [fromY, fromM, fromD] = fromDateStr.split('-').map(Number);
+  const [toY, toM, toD] = toDateStr.split('-').map(Number);
+  if (!fromY || !fromM || !fromD || !toY || !toM || !toD) {
+    return { fromUtc: fromDateStr, toUtc: toDateStr };
+  }
+  // Local start of fromDate (00:00:00.000)
+  const startDate = new Date(fromY, fromM - 1, fromD, 0, 0, 0, 0);
+  // Local end of toDate (23:59:59.999)
+  const endDate = new Date(toY, toM - 1, toD, 23, 59, 59, 999);
+  return {
+    fromUtc: startDate.toISOString(),
+    toUtc: endDate.toISOString(),
+  };
 };
 
-const getFormattedDateLabel = (from: string, to: string): string => {
+const formatOrderDateTime = (rawDate: any): string => {
+  const d = parseValidDate(rawDate);
+  if (!d) return 'Just now';
+  const todayStr = formatLocalDateStr(new Date());
+  const orderDateStr = formatLocalDateStr(d);
+  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (orderDateStr === todayStr) {
+    return timeStr;
+  }
+  const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return `${dateStr}, ${timeStr}`;
+};
+
+const getFormattedDateLabel = (from?: string, to?: string): string => {
+  if (!from && !to) {
+    return 'All Time';
+  }
   const todayStr = formatLocalDateStr(new Date());
   if (from === todayStr && to === todayStr) {
     return 'Today';
   }
-  if (from === to) {
+  if (from === to && from) {
     return new Date(from).toLocaleDateString([], {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
   }
-  const formattedFrom = new Date(from).toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-  });
-  const formattedTo = new Date(to).toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  return `${formattedFrom} – ${formattedTo}`;
+  const formattedFrom = from
+    ? new Date(from).toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+      })
+    : '';
+  const formattedTo = to
+    ? new Date(to).toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '';
+  return formattedFrom && formattedTo ? `${formattedFrom} – ${formattedTo}` : 'Selected Period';
 };
 const formatCurrency = (val: number | string): string => {
   const num = typeof val === 'number' ? val : parseFloat(String(val || '0'));
@@ -129,13 +163,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     setSelectedSortOption('time_desc');
   }, []);
 
+  const utcRange = useMemo(
+    () => getUtcRangeForLocalDate(fromDate, toDate),
+    [fromDate, toDate],
+  );
+
   const {
     data: analyticsData,
     loading: analyticsLoading,
     error: analyticsError,
     refetch: refetchAnalytics,
   } = useQuery(GET_ANALYTICS_SUMMARY, {
-    variables: { from: fromDate, to: toDate },
+    variables: { from: utcRange.fromUtc, to: utcRange.toUtc },
     pollInterval: 10000,
   });
 
@@ -144,7 +183,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     loading: periodOrdersLoading,
     refetch: refetchPeriodOrders,
   } = useQuery(GET_PERIOD_ORDERS, {
-    variables: { from: fromDate, to: toDate, limit: 500 },
+    variables: { from: utcRange.fromUtc, to: utcRange.toUtc, limit: 500 },
     pollInterval: 10000,
   });
 
@@ -154,8 +193,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
     refetch: refetchOrders,
   } = useQuery(GET_RECENT_ORDERS, {
     variables: {
-      from: fromDate,
-      to: toDate,
+      from: utcRange.fromUtc,
+      to: utcRange.toUtc,
       search: searchOrderQuery.trim() || undefined,
       customerName: selectedCustomerFilter !== 'all' ? selectedCustomerFilter : undefined,
       status: selectedStatusFilter !== 'all' ? selectedStatusFilter : undefined,
@@ -277,7 +316,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
 
   const ordersRowMarkup = paginatedOrders.map((order: any, index: number) => {
     const total = parseFloat(order.totalAmount) || 0;
-    const dateFormatted = safeGetTimeString(order.createdAt);
+    const dateFormatted = formatOrderDateTime(order.createdAt);
 
     let statusTone: 'success' | 'warning' | 'info' | 'critical' = 'info';
     if (order.status === 'paid') statusTone = 'success';

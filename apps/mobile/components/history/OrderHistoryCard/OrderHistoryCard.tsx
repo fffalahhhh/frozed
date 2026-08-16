@@ -200,7 +200,7 @@ export function OrderHistoryCard({ order, onMarkAsPaid, onRevertPayment }: Order
             <TouchableOpacity
               onPress={handleMarkPaid}
               disabled={isUpdating}
-              className="px-2 py-0.5 rounded-lg bg-[#1B4332] active:opacity-80 flex-row items-center gap-1"
+              className="px-2 py-0.5 rounded-lg bg-[#4A2810] active:opacity-80 flex-row items-center gap-1"
             >
               {isUpdating ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
@@ -229,7 +229,7 @@ export function OrderHistoryCard({ order, onMarkAsPaid, onRevertPayment }: Order
           ) : null}
 
           {/* Total Amount in same line */}
-          <Text className="text-primary font-sans-bold text-sm ml-1" style={{ color: '#1B4332' }}>
+          <Text className="text-primary font-sans-bold text-sm ml-1" style={{ color: '#4A2810' }}>
             {fmt(order.totalAmount)}
           </Text>
         </View>
@@ -268,7 +268,7 @@ export function OrderHistoryCard({ order, onMarkAsPaid, onRevertPayment }: Order
                   {i.flavourName ? (
                     <Text
                       className="text-primary text-[10px] font-sans-semibold"
-                      style={{ color: '#1B4332' }}
+                      style={{ color: '#4A2810' }}
                     >
                       ✨ {i.flavourName}
                     </Text>

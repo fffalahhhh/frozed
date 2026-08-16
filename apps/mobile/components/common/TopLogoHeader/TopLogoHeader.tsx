@@ -49,7 +49,7 @@ export function TopLogoHeader({
   const isSelected = showPreOrders && pendingCount > 0;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="bg-[#F4F1EA] px-6 pt-3 pb-2">
+    <SafeAreaView edges={['top', 'left', 'right']} className="bg-[#F4EDE4] px-6 pt-3 pb-2">
       <View className="flex-row items-center justify-between">
         {/* Left side: Logo & Live Running Date/Time */}
         <View className="flex-row items-center gap-3">
@@ -64,10 +64,10 @@ export function TopLogoHeader({
           {/* Vertical Separator and Live Date/Time (Only shown on tablet devices) */}
           {isTablet && (
             <>
-              <View className="w-[1px] h-6 bg-[#0D4830]/20 mx-1" />
+              <View className="w-[1px] h-6 bg-[#4A2810]/20 mx-1" />
 
-              <Text className="text-[#0D4830] font-sans-semibold text-xs tracking-tight">
-                {dateString} <Text className="text-[#0D4830]/60">•</Text>{' '}
+              <Text className="text-[#4A2810] font-sans-semibold text-xs tracking-tight">
+                {dateString} <Text className="text-[#4A2810]/60">•</Text>{' '}
                 <Text className="font-sans-bold">{timeString}</Text>
               </Text>
             </>
@@ -84,8 +84,8 @@ export function TopLogoHeader({
                 isDisabled
                   ? 'bg-gray-100/70 border-gray-200 opacity-60'
                   : isSelected
-                    ? 'bg-[#0D4830] border-[#0D4830]'
-                    : 'bg-white border-[#E5E0D8]'
+                    ? 'bg-[#4A2810] border-[#4A2810]'
+                    : 'bg-white border-[#E5DCD0]'
               }`}
               style={({ pressed }) => ({
                 opacity: isDisabled ? 0.5 : pressed ? 0.7 : 1,
@@ -94,11 +94,11 @@ export function TopLogoHeader({
               <Ionicons
                 name="time-outline"
                 size={15}
-                color={isDisabled ? '#9CA3AF' : isSelected ? '#FFFFFF' : '#0D4830'}
+                color={isDisabled ? '#9E938B' : isSelected ? '#FFFFFF' : '#4A2810'}
               />
               <Text
                 className={`font-sans-semibold text-xs ${
-                  isDisabled ? 'text-gray-400' : isSelected ? 'text-white' : 'text-[#0D4830]'
+                  isDisabled ? 'text-gray-400' : isSelected ? 'text-white' : 'text-[#4A2810]'
                 }`}
               >
                 Pre-Orders
@@ -115,15 +115,15 @@ export function TopLogoHeader({
             <Pressable
               onPress={onRefresh}
               disabled={isRefreshing}
-              className="flex-row items-center gap-1.5 bg-white border border-[#E5E0D8] rounded-full px-3.5 py-1.5 shadow-sm elevation-1"
+              className="flex-row items-center gap-1.5 bg-white border border-[#E5DCD0] rounded-full px-3.5 py-1.5 shadow-sm elevation-1"
               style={({ pressed }) => ({ opacity: pressed || isRefreshing ? 0.7 : 1 })}
             >
               {isRefreshing ? (
-                <ActivityIndicator size="small" color="#0D4830" />
+                <ActivityIndicator size="small" color="#4A2810" />
               ) : (
-                <Ionicons name="refresh-outline" size={15} color="#0D4830" />
+                <Ionicons name="refresh-outline" size={15} color="#4A2810" />
               )}
-              <Text className="text-[#0D4830] font-sans-semibold text-xs">
+              <Text className="text-[#4A2810] font-sans-semibold text-xs">
                 {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </Text>
             </Pressable>

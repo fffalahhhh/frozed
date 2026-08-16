@@ -123,7 +123,7 @@ export function AddMenuItemModal({
                 resetForm();
               }}
             >
-              <Ionicons name="close" size={24} color="#1A1A1A" />
+              <Ionicons name="close" size={24} color="#1A120B" />
             </TouchableOpacity>
           </View>
 
@@ -149,13 +149,13 @@ export function AddMenuItemModal({
                     className="px-4 py-2.5 rounded-xl border mr-2"
                     style={
                       selectedCategoryId === cat.id
-                        ? { backgroundColor: '#1B4332', borderColor: '#1B4332' }
+                        ? { backgroundColor: '#4A2810', borderColor: '#4A2810' }
                         : { borderColor: '#E5E7EB' }
                     }
                   >
                     <Text
                       className="font-sans-medium text-xs"
-                      style={{ color: selectedCategoryId === cat.id ? '#fff' : '#1A1A1A' }}
+                      style={{ color: selectedCategoryId === cat.id ? '#fff' : '#1A120B' }}
                     >
                       {cat.name}
                     </Text>
@@ -202,7 +202,7 @@ export function AddMenuItemModal({
               onPress={handleSave}
               disabled={isSubmitting}
               className="py-3.5 rounded-2xl items-center mb-6"
-              style={{ backgroundColor: '#1B4332' }}
+              style={{ backgroundColor: '#4A2810' }}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#FFFFFF" />

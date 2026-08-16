@@ -34,7 +34,7 @@ export default function HistoryScreen() {
     fetchPolicy: 'cache-and-network',
   });
 
-  const ordersList: any[] = ordersQueryResult?.orders || [];
+  const ordersList: any[] = ordersQueryResult?.orders?.orders || ordersQueryResult?.orders || [];
 
   useFocusEffect(
     useCallback(() => {
@@ -188,7 +188,7 @@ export default function HistoryScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white pt-12 px-5">
+    <View className="flex-1 bg-[#FAF7F2] pt-12 px-5">
       {/* Header */}
       <View className="flex-row items-center justify-between pb-3 border-b border-border/40 mb-3">
         <View className="flex-1 pr-2">
@@ -211,7 +211,7 @@ export default function HistoryScreen() {
             onPress={() => refetch()}
             className="w-10 h-10 rounded-full bg-surface items-center justify-center border border-border/40"
           >
-            <Ionicons name="refresh" size={20} color="#1B4332" />
+            <Ionicons name="refresh" size={20} color="#4A2810" />
           </TouchableOpacity>
         </View>
       </View>
@@ -248,7 +248,7 @@ export default function HistoryScreen() {
             onPress={() => setPaymentFilter('ALL')}
             className={`px-4 py-2.5 rounded-2xl border mr-2.5 ${
               paymentFilter === 'ALL'
-                ? 'bg-[#1B4332] border-[#1B4332]'
+                ? 'bg-[#4A2810] border-[#4A2810]'
                 : 'bg-white border-border/80'
             }`}
           >
@@ -380,7 +380,7 @@ export default function HistoryScreen() {
             }}
             className={`px-4 py-2.5 rounded-2xl border flex-row items-center gap-1.5 mr-2.5 ${
               dateFilter === 'TODAY'
-                ? 'bg-[#1B4332] border-[#1B4332]'
+                ? 'bg-[#4A2810] border-[#4A2810]'
                 : 'bg-surface border-border/80'
             }`}
           >
@@ -404,7 +404,7 @@ export default function HistoryScreen() {
             }}
             className={`px-4 py-2.5 rounded-2xl border flex-row items-center gap-1.5 mr-2.5 ${
               dateFilter === 'WEEK'
-                ? 'bg-[#1B4332] border-[#1B4332]'
+                ? 'bg-[#4A2810] border-[#4A2810]'
                 : 'bg-surface border-border/80'
             }`}
           >
@@ -425,18 +425,18 @@ export default function HistoryScreen() {
             onPress={() => setIsDatePickerVisible(true)}
             className={`px-4 py-2.5 rounded-2xl border flex-row items-center gap-1.5 mr-2.5 ${
               dateFilter === 'CUSTOM'
-                ? 'bg-[#1B4332] border-[#1B4332]'
+                ? 'bg-[#4A2810] border-[#4A2810]'
                 : 'bg-surface border-border/80'
             }`}
           >
             <Ionicons
               name="calendar"
               size={14}
-              color={dateFilter === 'CUSTOM' ? '#FFF' : '#1B4332'}
+              color={dateFilter === 'CUSTOM' ? '#FFF' : '#4A2810'}
             />
             <Text
               className="font-sans-semibold text-xs"
-              style={{ color: dateFilter === 'CUSTOM' ? '#FFFFFF' : '#1B4332' }}
+              style={{ color: dateFilter === 'CUSTOM' ? '#FFFFFF' : '#4A2810' }}
             >
               {dateFilter === 'CUSTOM' && selectedCustomDate ? selectedCustomDate : 'Select Date'}
             </Text>
@@ -466,7 +466,7 @@ export default function HistoryScreen() {
 
         <View className="flex-row items-center gap-1">
           <Text className="text-text-muted font-sans text-xs">Total Revenue:</Text>
-          <Text className="text-primary font-sans-bold text-base" style={{ color: '#1B4332' }}>
+          <Text className="text-primary font-sans-bold text-base" style={{ color: '#4A2810' }}>
             {fmt(totalFilteredRevenue)}
           </Text>
         </View>
@@ -475,7 +475,7 @@ export default function HistoryScreen() {
       {/* Main Order History List */}
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#1B4332" />
+          <ActivityIndicator size="large" color="#4A2810" />
           <Text className="text-text-muted font-sans text-xs mt-2">Loading orders...</Text>
         </View>
       ) : (
@@ -506,7 +506,7 @@ export default function HistoryScreen() {
               >
                 <Text
                   className="text-primary font-sans-semibold text-xs"
-                  style={{ color: '#1B4332' }}
+                  style={{ color: '#4A2810' }}
                 >
                   Clear All Filters & Search
                 </Text>

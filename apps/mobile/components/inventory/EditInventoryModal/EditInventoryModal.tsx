@@ -120,13 +120,13 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
             style={{
               padding: 16,
               borderBottomWidth: 1,
-              borderBottomColor: '#E8E2D9',
+              borderBottomColor: '#E5DCD0',
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
             }}
           >
-            <Text style={{ fontSize: 18, fontFamily: 'Inter_700Bold', color: '#1B4332' }}>
+            <Text style={{ fontSize: 18, fontFamily: 'Inter_700Bold', color: '#4A2810' }}>
               Edit Inventory Item
             </Text>
             <TouchableOpacity onPress={onClose}>
@@ -181,7 +181,7 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 6,
-                    backgroundColor: unit === u ? '#1B4332' : '#F3F4F6',
+                    backgroundColor: unit === u ? '#4A2810' : '#F3F4F6',
                     marginRight: 6,
                   }}
                 >
@@ -279,7 +279,7 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
             style={{
               padding: 16,
               borderTopWidth: 1,
-              borderTopColor: '#E8E2D9',
+              borderTopColor: '#E5DCD0',
               flexDirection: 'row',
               justifyContent: 'flex-end',
               gap: 8,
@@ -305,7 +305,7 @@ export function EditInventoryModal({ item, visible, onClose, onSuccess }: EditIn
                 paddingHorizontal: 20,
                 paddingVertical: 10,
                 borderRadius: 8,
-                backgroundColor: '#1B4332',
+                backgroundColor: '#4A2810',
                 opacity: isSubmitting ? 0.7 : 1,
                 flexDirection: 'row',
                 alignItems: 'center',

@@ -16,10 +16,10 @@ export function StatCard({ title, value, subtitle, iconName, variant = 'primary'
   const isWarning = variant === 'warning';
   const isDanger = variant === 'danger';
 
-  let containerClass = 'bg-emerald-900/5 border-emerald-900/15';
+  let containerClass = 'bg-[#4A2810]/5 border-[#4A2810]/15';
   let titleClass = 'text-text-muted';
-  let iconColor = '#1B4332';
-  let valueClass = 'text-[#1B4332]';
+  let iconColor = '#4A2810';
+  let valueClass = 'text-[#4A2810]';
   let subtitleClass = 'text-text-muted';
 
   if (isSuccess) {

@@ -140,7 +140,7 @@ async function patchItemCostsAsync(
 }
 
 function parseDateParam(dateStr?: string, isEnd = false): Date | null {
-  if (!dateStr) return null;
+  if (!dateStr || !dateStr.trim() || dateStr === 'null' || dateStr === 'undefined') return null;
   if (dateStr.includes('T')) {
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? null : d;
@@ -152,13 +152,13 @@ function parseDateParam(dateStr?: string, isEnd = false): Date | null {
 
 function orderDateFilters(from?: string, to?: string) {
   const filters = [eq(orders.status, 'paid')];
-  if (from) {
+  if (from && from.trim() && from !== 'null') {
     const fromDate = parseDateParam(from, false);
     if (fromDate) {
       filters.push(gte(orders.createdAt, fromDate));
     }
   }
-  if (to) {
+  if (to && to.trim() && to !== 'null') {
     const toDate = parseDateParam(to, true);
     if (toDate) {
       filters.push(lte(orders.createdAt, toDate));
@@ -169,13 +169,13 @@ function orderDateFilters(from?: string, to?: string) {
 
 function unpaidOrderDateFilters(from?: string, to?: string) {
   const filters = [ne(orders.status, 'paid'), ne(orders.status, 'voided')];
-  if (from) {
+  if (from && from.trim() && from !== 'null') {
     const fromDate = parseDateParam(from, false);
     if (fromDate) {
       filters.push(gte(orders.createdAt, fromDate));
     }
   }
-  if (to) {
+  if (to && to.trim() && to !== 'null') {
     const toDate = parseDateParam(to, true);
     if (toDate) {
       filters.push(lte(orders.createdAt, toDate));
@@ -186,8 +186,14 @@ function unpaidOrderDateFilters(from?: string, to?: string) {
 
 function expenseDateFilters(from?: string, to?: string) {
   const filters: ReturnType<typeof gte>[] = [];
-  if (from) filters.push(gte(shopExpenses.expenseDate, from));
-  if (to) filters.push(lte(shopExpenses.expenseDate, to));
+  if (from && from.trim() && from !== 'null') {
+    const fromDateStr = from.includes('T') ? from.split('T')[0] : from;
+    filters.push(gte(shopExpenses.expenseDate, fromDateStr));
+  }
+  if (to && to.trim() && to !== 'null') {
+    const toDateStr = to.includes('T') ? to.split('T')[0] : to;
+    filters.push(lte(shopExpenses.expenseDate, toDateStr));
+  }
   return filters.length ? and(...filters) : undefined;
 }
 
@@ -381,11 +387,11 @@ export const resolvers = {
 
       const conditions: ReturnType<typeof gte>[] = [];
 
-      if (from) {
+      if (from && from.trim() && from !== 'null') {
         const fromDate = parseDateParam(from, false);
         if (fromDate) conditions.push(gte(orders.createdAt, fromDate));
       }
-      if (to) {
+      if (to && to.trim() && to !== 'null') {
         const toDate = parseDateParam(to, true);
         if (toDate) conditions.push(lte(orders.createdAt, toDate));
       }
@@ -1205,7 +1211,8 @@ export const resolvers = {
       return {
         success: true,
         entity: 'Orders & Bills',
-        message: 'All customer orders, order items, and printed bills have been reset. Order numbering reset to #1.',
+        message:
+          'All customer orders, order items, and printed bills have been reset. Order numbering reset to #1.',
         deletedCount: countRes?.count ?? 0,
       };
     },
@@ -1237,7 +1244,9 @@ export const resolvers = {
     },
 
     resetInventoryAdjustments: async () => {
-      const [countRes] = await db.select({ count: sql<number>`count(*)::int` }).from(inventoryAdjustments);
+      const [countRes] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(inventoryAdjustments);
       await db.execute(sql`
         TRUNCATE TABLE "inventory_adjustments" RESTART IDENTITY CASCADE;
       `);
@@ -1250,9 +1259,7 @@ export const resolvers = {
     },
 
     resetInventoryStockToDefault: async () => {
-      const remoteUrl =
-        process.env.REMOTE_DATABASE_URL ||
-        'postgresql://neondb_owner:npg_0nhR1rdVYcPG@ep-patient-truth-aym02fst-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require';
+      const remoteUrl = process.env.REMOTE_DATABASE_URL || '';
       const remotePool = new Pool({
         connectionString: remoteUrl,
         ssl: { rejectUnauthorized: false },
@@ -1279,16 +1286,12 @@ export const resolvers = {
     },
 
     resyncDatabaseFromRemote: async () => {
-      const remoteUrl =
-        process.env.REMOTE_DATABASE_URL ||
-        'postgresql://neondb_owner:npg_0nhR1rdVYcPG@ep-patient-truth-aym02fst-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require';
+      const remoteUrl = process.env.REMOTE_DATABASE_URL || '';
       const localUrl =
         process.env.DATABASE_URL || 'postgresql://postgres@localhost:5433/frozed_local';
 
-      const isRemoteLocal =
-        remoteUrl.includes('localhost') || remoteUrl.includes('127.0.0.1');
-      const isTargetLocal =
-        localUrl.includes('localhost') || localUrl.includes('127.0.0.1');
+      const isRemoteLocal = remoteUrl.includes('localhost') || remoteUrl.includes('127.0.0.1');
+      const isTargetLocal = localUrl.includes('localhost') || localUrl.includes('127.0.0.1');
 
       const remotePool = new Pool({
         connectionString: remoteUrl,
@@ -1359,7 +1362,9 @@ export const resolvers = {
       const [expensesCount] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(shopExpenses);
-      const [preOrdersCount] = await db.select({ count: sql<number>`count(*)::int` }).from(preOrders);
+      const [preOrdersCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(preOrders);
 
       await db.execute(sql`
         TRUNCATE TABLE 

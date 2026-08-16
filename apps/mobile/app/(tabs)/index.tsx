@@ -216,7 +216,7 @@ export default function FOHScreen() {
   const MenuPanel = (
     <View className="flex-1 overflow-hidden">
       {/* Category Cards Horizontal Scroll Section */}
-      <View className="mb-2 border-b border-[#E5E0D8] pb-3 pt-1">
+      <View className="mb-2 border-b border-[#E5DCD0] pb-3 pt-1">
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -274,8 +274,8 @@ export default function FOHScreen() {
           }}
           ListEmptyComponent={
             <View className="items-center justify-center py-20 w-full">
-              <View className="w-20 h-20 rounded-full bg-white items-center justify-center mb-3 shadow-sm border border-[#E5E0D8]">
-                <Ionicons name="ice-cream-outline" size={40} color="#0D4830" />
+              <View className="w-20 h-20 rounded-full bg-white items-center justify-center mb-3 shadow-sm border border-[#E5DCD0]">
+                <Ionicons name="ice-cream-outline" size={40} color="#4A2810" />
               </View>
               <Text className="text-gray-900 font-sans-bold text-base">
                 {isLoading ? 'Loading Menu...' : 'No Items Found'}
@@ -290,7 +290,7 @@ export default function FOHScreen() {
   if (!isNavReady) return null;
 
   return (
-    <View className="flex-1 bg-[#FAF8F5]">
+    <View className="flex-1 bg-[#FAF7F2]">
       <StatusBar barStyle="dark-content" />
 
       {/* Top Header */}
@@ -330,7 +330,7 @@ export default function FOHScreen() {
         <View className="absolute bottom-5 left-4 right-4 z-40">
           <Pressable
             onPress={() => setIsCartOpen(true)}
-            className="bg-[#0D4830] rounded-2xl p-4 flex-row items-center justify-between shadow-xl active:bg-[#083020]"
+            className="bg-[#4A2810] rounded-2xl p-4 flex-row items-center justify-between shadow-xl active:bg-[#361908]"
           >
             <View className="flex-row items-center gap-3">
               <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
@@ -361,7 +361,7 @@ export default function FOHScreen() {
 
             <Animated.View
               style={{ transform: [{ translateX: slideAnim }] }}
-              className="h-full bg-[#F4F1EA] shadow-2xl z-50 p-2"
+              className="h-full bg-[#F4EDE4] shadow-2xl z-50 p-2"
             >
               <SafeAreaView className="flex-1" edges={['top', 'bottom', 'right']}>
                 <CartPanel onClose={handleCloseCart} />

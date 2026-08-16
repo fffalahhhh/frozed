@@ -21,22 +21,30 @@ export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
   onDateChange,
 }) => {
   const [popoverActive, setPopoverActive] = useState(false);
-  const [activePreset, setActivePreset] = useState<'today' | 'week' | 'month' | 'custom'>('today');
-  const [tempFrom, setTempFrom] = useState(fromDate);
-  const [tempTo, setTempTo] = useState(toDate);
+  const [activePreset, setActivePreset] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>(() => {
+    if (!fromDate && !toDate) return 'all';
+    const todayStr = formatLocalDateStr(new Date());
+    if (fromDate === todayStr && toDate === todayStr) return 'today';
+    return 'custom';
+  });
+  const [tempFrom, setTempFrom] = useState(fromDate || formatLocalDateStr(new Date()));
+  const [tempTo, setTempTo] = useState(toDate || formatLocalDateStr(new Date()));
 
   const togglePopoverActive = useCallback(() => setPopoverActive((active) => !active), []);
 
   const handleSelectPreset = useCallback(
-    (preset: 'today' | 'week' | 'month') => {
+    (preset: 'all' | 'today' | 'week' | 'month') => {
       setActivePreset(preset);
       const now = new Date();
       const todayStr = formatLocalDateStr(now);
 
-      let newFrom = todayStr;
-      let newTo = todayStr;
+      let newFrom = '';
+      let newTo = '';
 
-      if (preset === 'today') {
+      if (preset === 'all') {
+        newFrom = '';
+        newTo = '';
+      } else if (preset === 'today') {
         newFrom = todayStr;
         newTo = todayStr;
       } else if (preset === 'week') {
@@ -54,8 +62,8 @@ export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
         newTo = todayStr;
       }
 
-      setTempFrom(newFrom);
-      setTempTo(newTo);
+      setTempFrom(newFrom || todayStr);
+      setTempTo(newTo || todayStr);
       onDateChange(newFrom, newTo);
       setPopoverActive(false);
     },
@@ -63,11 +71,15 @@ export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
   );
 
   const handleApplyCustom = useCallback(() => {
-    const todayStr = formatLocalDateStr(new Date());
-    if (tempFrom === todayStr && tempTo === todayStr) {
-      setActivePreset('today');
+    if (!tempFrom && !tempTo) {
+      setActivePreset('all');
     } else {
-      setActivePreset('custom');
+      const todayStr = formatLocalDateStr(new Date());
+      if (tempFrom === todayStr && tempTo === todayStr) {
+        setActivePreset('today');
+      } else {
+        setActivePreset('custom');
+      }
     }
     onDateChange(tempFrom, tempTo);
     setPopoverActive(false);
@@ -75,7 +87,9 @@ export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
 
   // Determine button label text based on active state and selected date range
   let buttonLabel = 'Select Date';
-  if (activePreset === 'today') {
+  if (activePreset === 'all' || (!fromDate && !toDate)) {
+    buttonLabel = 'All Time';
+  } else if (activePreset === 'today') {
     buttonLabel = 'Today';
   } else if (activePreset === 'week') {
     buttonLabel = 'This Week';
@@ -118,13 +132,13 @@ export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
       onClose={togglePopoverActive}
       ariaHaspopup={false}
     >
-      <Box padding="400" minWidth="320px">
+      <Box padding="400" minWidth="340px">
         <BlockStack gap="300">
           <Text as="h3" variant="headingSm">
             Select Date Range
           </Text>
 
-          <InlineStack gap="200">
+          <InlineStack gap="200" wrap>
             <Button
               size="micro"
               variant={activePreset === 'today' ? 'primary' : 'secondary'}
@@ -145,6 +159,13 @@ export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
               onClick={() => handleSelectPreset('month')}
             >
               This Month
+            </Button>
+            <Button
+              size="micro"
+              variant={activePreset === 'all' ? 'primary' : 'secondary'}
+              onClick={() => handleSelectPreset('all')}
+            >
+              All Time
             </Button>
           </InlineStack>
 

@@ -127,7 +127,7 @@ export default function InventoryScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white pt-12 px-5">
+    <View className="flex-1 bg-[#FAF7F2] pt-12 px-5">
       {/* Header */}
       <View className="flex-row items-center justify-between pb-4 border-b border-border/40 mb-3">
         <View>
@@ -140,8 +140,8 @@ export default function InventoryScreen() {
         <View className="flex-row items-center gap-2">
           <TouchableOpacity
             onPress={() => setAddModalVisible(true)}
-            className="flex-row items-center bg-primary px-3 py-2 rounded-xl gap-1"
-            style={{ backgroundColor: '#1B4332' }}
+            className="flex-row items-center px-3 py-2 rounded-xl gap-1"
+            style={{ backgroundColor: '#4A2810' }}
           >
             <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
             <Text className="text-white font-sans-semibold text-xs">Add Item</Text>
@@ -151,14 +151,14 @@ export default function InventoryScreen() {
             onPress={() => refetch()}
             className="w-9 h-9 rounded-full bg-surface items-center justify-center border border-border/40"
           >
-            <Ionicons name="refresh" size={18} color="#1B4332" />
+            <Ionicons name="refresh" size={18} color="#4A2810" />
           </TouchableOpacity>
         </View>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#1B4332" />
+          <ActivityIndicator size="large" color="#4A2810" />
           <Text className="text-text-muted font-sans text-xs mt-2">Loading inventory...</Text>
         </View>
       ) : (
@@ -232,7 +232,7 @@ export default function InventoryScreen() {
                   {/* Edit Action Button */}
                   <TouchableOpacity
                     onPress={() => setEditItem(item)}
-                    className="px-2 py-0.5 rounded-lg bg-[#1B4332] active:opacity-80 flex-row items-center gap-1"
+                    className="px-2 py-0.5 rounded-lg bg-[#4A2810] active:opacity-80 flex-row items-center gap-1"
                   >
                     <Ionicons name="pencil" size={16} color="#FFFFFF" />
                     <Text className="text-white font-sans-bold text-[10px]">Edit</Text>
@@ -281,7 +281,7 @@ export default function InventoryScreen() {
                   resetForm();
                 }}
               >
-                <Ionicons name="close" size={24} color="#1A1A1A" />
+                <Ionicons name="close" size={24} color="#1A120B" />
               </TouchableOpacity>
             </View>
 
@@ -313,13 +313,13 @@ export default function InventoryScreen() {
                       className="px-4 py-2 rounded-xl border mr-2"
                       style={
                         unit === u
-                          ? { backgroundColor: '#1B4332', borderColor: '#1B4332' }
+                          ? { backgroundColor: '#4A2810', borderColor: '#4A2810' }
                           : { borderColor: '#E5E7EB' }
                       }
                     >
                       <Text
                         className="font-sans-medium text-xs"
-                        style={{ color: unit === u ? '#fff' : '#1A1A1A' }}
+                        style={{ color: unit === u ? '#fff' : '#1A120B' }}
                       >
                         {u}
                       </Text>
@@ -378,7 +378,7 @@ export default function InventoryScreen() {
                 onPress={handleCreateInventoryItem}
                 disabled={isSubmitting}
                 className="bg-primary py-3.5 rounded-2xl items-center mb-6"
-                style={{ backgroundColor: '#1B4332' }}
+                style={{ backgroundColor: '#4A2810' }}
               >
                 {isSubmitting ? (
                   <ActivityIndicator color="#FFFFFF" />

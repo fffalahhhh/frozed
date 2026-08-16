@@ -176,7 +176,7 @@ export default function MenuManagementScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white pt-12 px-5">
+    <View className="flex-1 bg-[#FAF7F2] pt-12 px-5">
       {/* Header */}
       <View className="flex-row items-center justify-between pb-4 border-b border-border/40 mb-3">
         <View>
@@ -190,7 +190,7 @@ export default function MenuManagementScreen() {
           <TouchableOpacity
             onPress={() => setAddModalVisible(true)}
             className="flex-row items-center px-3.5 py-2 rounded-xl gap-1"
-            style={{ backgroundColor: '#1B4332' }}
+            style={{ backgroundColor: '#4A2810' }}
           >
             <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
             <Text className="text-white font-sans-semibold text-xs">Add Item</Text>
@@ -200,7 +200,7 @@ export default function MenuManagementScreen() {
             onPress={() => refetch()}
             className="w-9 h-9 rounded-full bg-surface items-center justify-center border border-border/40"
           >
-            <Ionicons name="refresh" size={18} color="#1B4332" />
+            <Ionicons name="refresh" size={18} color="#4A2810" />
           </TouchableOpacity>
         </View>
       </View>
@@ -233,7 +233,7 @@ export default function MenuManagementScreen() {
           onPress={() => setAvailabilityFilter('ALL')}
           className={`px-3 py-1.5 rounded-xl border mr-1.5 flex-row items-center gap-1 ${
             availabilityFilter === 'ALL'
-              ? 'bg-[#1B4332] border-[#1B4332]'
+              ? 'bg-[#4A2810] border-[#4A2810]'
               : 'bg-surface border-border/60'
           }`}
         >
@@ -298,7 +298,7 @@ export default function MenuManagementScreen() {
           onPress={() => setActiveCategoryFilter('ALL')}
           className={`px-3 py-1.5 rounded-xl border mr-1.5 ml-1 flex-row items-center gap-1 ${
             activeCategoryFilter === 'ALL'
-              ? 'bg-[#1B4332] border-[#1B4332]'
+              ? 'bg-[#4A2810] border-[#4A2810]'
               : 'bg-surface border-border/60'
           }`}
         >
@@ -318,7 +318,7 @@ export default function MenuManagementScreen() {
               key={cat.id}
               onPress={() => setActiveCategoryFilter(cat.id)}
               className={`px-3 py-1.5 rounded-xl border mr-1.5 flex-row items-center gap-1 ${
-                isActive ? 'bg-[#1B4332] border-[#1B4332]' : 'bg-surface border-border/60'
+                isActive ? 'bg-[#4A2810] border-[#4A2810]' : 'bg-surface border-border/60'
               }`}
             >
               <Text
@@ -336,7 +336,7 @@ export default function MenuManagementScreen() {
       {/* Content List */}
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#1B4332" />
+          <ActivityIndicator size="large" color="#4A2810" />
           <Text className="text-text-muted font-sans text-xs mt-2">Loading menu items...</Text>
         </View>
       ) : (
@@ -393,7 +393,7 @@ export default function MenuManagementScreen() {
                     </View>
 
                     <View className="flex-row items-center flex-wrap mt-0.5">
-                      <Text className="text-[#1B4332] font-sans-bold text-[11px]">
+                      <Text className="text-[#4A2810] font-sans-bold text-[11px]">
                         {fmt(item.sellingPrice)}
                       </Text>
                       {maxGlasses !== null ? (
@@ -452,7 +452,7 @@ export default function MenuManagementScreen() {
                     {/* Edit */}
                     <TouchableOpacity
                       onPress={() => setEditItem(item)}
-                      className="px-2 py-0.5 rounded-lg bg-[#1B4332] active:opacity-80 flex-row items-center gap-1"
+                      className="px-2 py-0.5 rounded-lg bg-[#4A2810] active:opacity-80 flex-row items-center gap-1"
                     >
                       <Ionicons name="pencil" size={10} color="#FFFFFF" />
                       <Text className="text-white font-sans-bold text-[10px]">Edit</Text>

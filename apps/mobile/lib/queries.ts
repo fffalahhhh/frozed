@@ -177,35 +177,41 @@ export const ADJUST_STOCK = gql`
 export const GET_ORDERS = gql`
   query GetOrders($limit: Int) {
     orders(limit: $limit) {
-      id
-      orderNumber
-      cashierId
-      cashierName
-      tableRef
-      orderType
-      customerName
-      customerPhone
-      status
-      paymentMethod
-      subtotal
-      discountAmount
-      totalAmount
-      notes
-      createdAt
-      paidAt
-      items {
+      orders {
         id
-        orderId
-        menuItemId
-        menuItemName
-        flavourId
-        flavourName
-        quantity
-        unitPrice
-        itemCost
-        lineTotal
+        orderNumber
+        cashierId
+        cashierName
+        tableRef
+        orderType
+        customerName
+        customerPhone
+        status
+        paymentMethod
+        subtotal
+        discountAmount
+        totalAmount
         notes
+        createdAt
+        paidAt
+        items {
+          id
+          orderId
+          menuItemId
+          menuItemName
+          flavourId
+          flavourName
+          quantity
+          unitPrice
+          itemCost
+          lineTotal
+          notes
+        }
       }
+      totalCount
+      page
+      totalPages
+      hasMore
     }
   }
 `;
